@@ -1,0 +1,85 @@
+@model DMS_Examify.Models.LoginViewModel
+@{
+    Layout = "_LoginLayout";
+    ViewData["Title"] = "Đăng nhập";
+}
+
+<div class="login-wrapper">
+    <div class="login-card">
+        <div class="login-logo">
+            <div class="logo-icon">E</div>
+            <h2>DMS Examify</h2>
+            <p>Hệ thống quản lý thi trắc nghiệm</p>
+        </div>
+
+        @if (ViewData["Error"] != null)
+        {
+            <div class="alert alert-danger mb-3" style="background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); color: #fca5a5;">
+                <i class="bi bi-exclamation-circle"></i> @ViewData["Error"]
+            </div>
+        }
+
+        <form asp-action="Login" method="post">
+            <!-- Chọn loại đăng nhập -->
+            <div class="login-type-group">
+                <div class="login-type-option">
+                    <input type="radio" name="LoginType" value="GiangVien" id="typeGV"
+                           checked="@(Model.LoginType == "GiangVien")" onchange="toggleLoginType()" />
+                    <label for="typeGV">
+                        <i class="bi bi-person-badge"></i> GIẢNG VIÊN
+                    </label>
+                </div>
+                <div class="login-type-option">
+                    <input type="radio" name="LoginType" value="SinhVien" id="typeSV"
+                           @(Model.LoginType == "SinhVien" ? "checked" : "") onchange="toggleLoginType()" />
+                    <label for="typeSV">
+                        <i class="bi bi-mortarboard"></i> SINH VIÊN
+                    </label>
+                </div>
+            </div>
+
+            <!-- Login / Mã SV -->
+            <div class="mb-3">
+                <label class="form-label" id="loginLabel">Login</label>
+                <div style="position: relative;">
+                    <input type="text" class="form-control" name="Login" value="@Model.Login"
+                           placeholder="Nhập tên đăng nhập" style="padding-left: 40px;" id="loginInput" />
+                    <i class="bi bi-person" style="position:absolute; left:14px; top:50%; transform:translateY(-50%); color:rgba(255,255,255,0.3);"></i>
+                </div>
+            </div>
+
+            <!-- Password -->
+            <div class="mb-4">
+                <label class="form-label">Password</label>
+                <div style="position: relative;">
+                    <input type="password" class="form-control" name="Password" value="@Model.Password"
+                           placeholder="Nhập mật khẩu" style="padding-left: 40px;" />
+                    <i class="bi bi-lock" style="position:absolute; left:14px; top:50%; transform:translateY(-50%); color:rgba(255,255,255,0.3);"></i>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-box-arrow-in-right"></i> Đăng nhập
+            </button>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function toggleLoginType() {
+            const isSV = document.getElementById('typeSV').checked;
+            const label = document.getElementById('loginLabel');
+            const input = document.getElementById('loginInput');
+            if (isSV) {
+                label.textContent = 'Mã SV';
+                input.placeholder = 'Nhập mã sinh viên';
+            } else {
+                label.textContent = 'Login';
+                input.placeholder = 'Nhập tên đăng nhập';
+            }
+        }
+        // Init on page load
+        toggleLoginType();
+    </script>
+}

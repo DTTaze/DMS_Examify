@@ -1,47 +1,171 @@
-﻿<!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="vi">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - DMS_Examify</title>
+    <title>@ViewData["Title"] - DMS Examify</title>
     <script type="importmap"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/DMS_Examify.styles.css" asp-append-version="true" />
 </head>
 <body>
-    <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
-            <div class="container-fluid">
-                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">DMS_Examify</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
-                        </li>
-                    </ul>
+    @{
+        var userRole = Context.Session.GetString("UserRole") ?? "";
+        var userName = Context.Session.GetString("UserName") ?? "Guest";
+        var userLogin = Context.Session.GetString("UserLogin") ?? "";
+
+        var isPGV = userRole == "PGV";
+        var isGV = userRole == "Giangvien";
+        var isSV = userRole == "Sinhvien";
+
+        // Label hiển thị vai trò
+        var roleLabel = isPGV ? "Phòng Giáo vụ" : isGV ? "Giảng viên" : isSV ? "Sinh viên" : "Guest";
+    }
+
+    <div class="app-wrapper">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <div class="brand-icon">E</div>
+                <div>
+                    <div class="brand-text">DMS Examify</div>
+                    <div class="brand-sub">Hệ thống thi trắc nghiệm</div>
                 </div>
             </div>
-        </nav>
-    </header>
-    <div class="container">
-        <main role="main" class="pb-3">
-            @RenderBody()
-        </main>
+
+            <nav class="sidebar-menu">
+                <!-- TỔNG QUAN — Tất cả vai trò -->
+                <div class="menu-label">Tổng quan</div>
+                <a asp-controller="Home" asp-action="Index"
+                   class="menu-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "Home" ? "active" : "")">
+                    <i class="bi bi-grid-1x2-fill"></i> Dashboard
+                </a>
+
+                @if (isPGV)
+                {
+                    <!-- QUẢN LÝ DANH MỤC — Chỉ PGV -->
+                    <div class="menu-label">Quản lý danh mục</div>
+                    <a asp-controller="MonHoc" asp-action="Index"
+                       class="menu-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "MonHoc" ? "active" : "")">
+                        <i class="bi bi-book"></i> Môn học
+                    </a>
+                    <a asp-controller="SinhVien" asp-action="Index"
+                       class="menu-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "SinhVien" ? "active" : "")">
+                        <i class="bi bi-people"></i> Sinh viên
+                    </a>
+                    <a asp-controller="GiaoVien" asp-action="Index"
+                       class="menu-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "GiaoVien" ? "active" : "")">
+                        <i class="bi bi-person-badge"></i> Giáo viên
+                    </a>
+                }
+
+                @if (isPGV || isGV)
+                {
+                    <!-- QUẢN LÝ ĐỀ THI — PGV + Giảng viên -->
+                    <div class="menu-label">Quản lý đề thi</div>
+                    <a asp-controller="BoDe" asp-action="Index"
+                       class="menu-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "BoDe" ? "active" : "")">
+                        <i class="bi bi-file-earmark-text"></i> Câu hỏi thi
+                    </a>
+                    <a asp-controller="DangKyThi" asp-action="Index"
+                       class="menu-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "DangKyThi" ? "active" : "")">
+                        <i class="bi bi-calendar-check"></i> Đăng ký thi
+                    </a>
+                }
+
+                @if (isSV || isGV)
+                {
+                    <!-- THI — Sinh viên + Giảng viên (thi thử) -->
+                    <div class="menu-label">Thi cử</div>
+                    <a asp-controller="Thi" asp-action="Index"
+                       class="menu-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "Thi" ? "active" : "")">
+                        <i class="bi bi-pencil-square"></i> Thi @(isGV ? "(thi thử)" : "")
+                    </a>
+                }
+
+                @if (isPGV || isGV || isSV)
+                {
+                    <!-- XEM KẾT QUẢ — Tất cả vai trò -->
+                    if (isSV)
+                    {
+                        <div class="menu-label">Thi cử</div>
+                    }
+                    else if (!isSV && !isGV)
+                    {
+                        <div class="menu-label">Kết quả</div>
+                    }
+                    <a asp-controller="KetQua" asp-action="Index"
+                       class="menu-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "KetQua" ? "active" : "")">
+                        <i class="bi bi-eye"></i> Xem kết quả
+                    </a>
+                }
+
+                @if (isPGV || isGV)
+                {
+                    <!-- BẢNG ĐIỂM — PGV + Giảng viên -->
+                    @if (!isGV) // PGV cần label riêng
+                    {
+                        // Không cần label thêm vì đã có "Kết quả" ở trên
+                    }
+                    <a asp-controller="BangDiem" asp-action="Index"
+                       class="menu-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "BangDiem" ? "active" : "")">
+                        <i class="bi bi-table"></i> Bảng điểm
+                    </a>
+                }
+
+                @if (isPGV)
+                {
+                    <!-- HỆ THỐNG — Chỉ PGV -->
+                    <div class="menu-label">Hệ thống</div>
+                    <a asp-controller="TaiKhoan" asp-action="Index"
+                       class="menu-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "TaiKhoan" ? "active" : "")">
+                        <i class="bi bi-shield-lock"></i> Tài khoản & Phân quyền
+                    </a>
+                }
+
+                <!-- ĐĂNG XUẤT — Tất cả -->
+                <div class="menu-label">Tài khoản</div>
+                <a asp-controller="Auth" asp-action="Logout" class="menu-item">
+                    <i class="bi bi-box-arrow-left"></i> Đăng xuất
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Top Header -->
+            <header class="top-header">
+                <h1 class="page-title">
+                    @ViewData["Title"]
+                    @if (ViewData["Subtitle"] != null)
+                    {
+                        <small>@ViewData["Subtitle"]</small>
+                    }
+                </h1>
+                <div class="user-info">
+                    <div>
+                        <div class="user-name">@userName</div>
+                        <div class="user-role">@roleLabel</div>
+                    </div>
+                    <div class="user-avatar">
+                        @userName[0]
+                    </div>
+                </div>
+            </header>
+
+            <!-- Page Content -->
+            <div class="content-area animate-in">
+                @RenderBody()
+            </div>
+
+            <!-- Footer -->
+            <footer class="app-footer">
+                &copy; 2026 DMS Examify — Hệ thống quản lý thi trắc nghiệm
+            </footer>
+        </div>
     </div>
 
-    <footer class="border-top footer text-muted">
-        <div class="container">
-            &copy; 2026 - DMS_Examify - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
-        </div>
-    </footer>
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>

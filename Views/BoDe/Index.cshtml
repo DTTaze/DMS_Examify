@@ -1,0 +1,118 @@
+@model List<DMS_Examify.Models.BoDe>
+@{
+    ViewData["Title"] = "Nhập câu hỏi thi";
+    ViewData["Subtitle"] = "Quản lý bộ đề trắc nghiệm";
+}
+
+<div class="row g-4">
+    <!-- Form nhập câu hỏi -->
+    <div class="col-md-6 animate-in animate-in-delay-1">
+        <div class="card">
+            <div class="card-header">
+                <span><i class="bi bi-file-earmark-plus me-2"></i>Nhập câu hỏi</span>
+            </div>
+            <div class="card-body">
+                <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Câu hỏi số</label>
+                        <input type="number" class="form-control" id="txtCauHoi" placeholder="1" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Môn học</label>
+                        <select class="form-select" id="selMaMH">
+                            <option value="MH001">Cơ sở dữ liệu</option>
+                            <option value="MH002">Lập trình C++</option>
+                            <option value="MH003">Mạng máy tính</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Trình độ</label>
+                        <select class="form-select" id="selTrinhDo">
+                            <option value="A">A - Dễ</option>
+                            <option value="B">B - Trung bình</option>
+                            <option value="C">C - Khó</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Nội dung câu hỏi</label>
+                    <textarea class="form-control" id="txtNoiDung" rows="3" placeholder="Nhập nội dung câu hỏi..."></textarea>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Đáp án A</label>
+                        <input type="text" class="form-control" id="txtA" placeholder="Đáp án A" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Đáp án B</label>
+                        <input type="text" class="form-control" id="txtB" placeholder="Đáp án B" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Đáp án C</label>
+                        <input type="text" class="form-control" id="txtC" placeholder="Đáp án C" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Đáp án D</label>
+                        <input type="text" class="form-control" id="txtD" placeholder="Đáp án D" />
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Đáp án đúng</label>
+                    <select class="form-select" id="selDapAn" style="width:120px;">
+                        <option value="A">A</option>
+                        <option value="B">B</option>
+                        <option value="C">C</option>
+                        <option value="D">D</option>
+                    </select>
+                </div>
+
+                <div class="action-toolbar">
+                    <button type="button" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Thêm</button>
+                    <button type="button" class="btn btn-danger"><i class="bi bi-trash"></i> Xóa</button>
+                    <button type="button" class="btn btn-warning"><i class="bi bi-pencil-square"></i> Hiệu chỉnh</button>
+                    <button type="button" class="btn btn-outline-secondary"><i class="bi bi-arrow-counterclockwise"></i> Phục hồi</button>
+                    <button type="button" class="btn btn-info"><i class="bi bi-search"></i> Tìm</button>
+                    <button type="button" class="btn btn-success"><i class="bi bi-floppy"></i> Ghi</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bảng danh sách câu hỏi -->
+    <div class="col-md-6 animate-in animate-in-delay-2">
+        <div class="card">
+            <div class="card-header">
+                <span><i class="bi bi-list-ol me-2"></i>Danh sách câu hỏi</span>
+                <span class="badge bg-primary">@Model.Count câu</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th style="width:40px">Câu</th>
+                                <th>Nội dung</th>
+                                <th style="width:70px">Môn</th>
+                                <th style="width:60px">Trình độ</th>
+                                <th style="width:50px">ĐA</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var ch in Model)
+                            {
+                                var badgeClass = ch.TrinhDo == "A" ? "badge-level-a" : ch.TrinhDo == "B" ? "badge-level-b" : "badge-level-c";
+                                <tr style="cursor:pointer;">
+                                    <td><strong>@ch.CauHoi</strong></td>
+                                    <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">@ch.NoiDung</td>
+                                    <td>@ch.MaMH</td>
+                                    <td><span class="badge @badgeClass">@ch.TrinhDo</span></td>
+                                    <td><span class="badge bg-dark">@ch.DapAn</span></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

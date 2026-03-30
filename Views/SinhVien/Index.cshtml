@@ -1,0 +1,146 @@
+@model List<DMS_Examify.Models.Lop>
+@{
+    ViewData["Title"] = "Quản lý Sinh viên";
+    ViewData["Subtitle"] = "Nhập lớp và sinh viên";
+}
+
+<div class="row g-4">
+    <!-- Master: Danh sách Lớp -->
+    <div class="col-md-3 animate-in animate-in-delay-1">
+        <div class="card">
+            <div class="card-header">
+                <span><i class="bi bi-collection me-2"></i>Danh sách Lớp</span>
+            </div>
+            <div class="card-body p-0">
+                @foreach (var lop in Model)
+                {
+                    <div class="master-list">
+                        <div class="list-item" onclick="chonLop(this, '@lop.MaLop', '@lop.TenLop')"
+                             data-malop="@lop.MaLop">
+                            <div style="font-weight:600; font-size:13px;">@lop.TenLop</div>
+                            <div style="font-size:11px; color:var(--text-muted);">@lop.MaLop • @lop.DanhSachSV.Count SV</div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Detail: Form + Bảng SV -->
+    <div class="col-md-9">
+        <!-- Form nhập SV -->
+        <div class="card mb-3 animate-in animate-in-delay-2">
+            <div class="card-header">
+                <span><i class="bi bi-person-plus me-2"></i>Thông tin Sinh viên</span>
+                <span class="badge bg-secondary" id="badgeLop">Chưa chọn lớp</span>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Mã SV</label>
+                        <input type="text" class="form-control" id="txtMaSV" placeholder="VD: SV001" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Họ</label>
+                        <input type="text" class="form-control" id="txtHo" placeholder="Nguyễn Văn" />
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Tên</label>
+                        <input type="text" class="form-control" id="txtTen" placeholder="An" />
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Ngày sinh</label>
+                        <input type="date" class="form-control" id="txtNgaySinh" />
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Mật khẩu</label>
+                        <input type="password" class="form-control" id="txtMatKhau" placeholder="••••••" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Địa chỉ</label>
+                        <input type="text" class="form-control" id="txtDiaChi" placeholder="Nhập địa chỉ" />
+                    </div>
+                </div>
+                <div class="action-toolbar">
+                    <button type="button" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Thêm</button>
+                    <button type="button" class="btn btn-danger"><i class="bi bi-trash"></i> Xóa</button>
+                    <button type="button" class="btn btn-warning"><i class="bi bi-pencil-square"></i> Hiệu chỉnh</button>
+                    <button type="button" class="btn btn-outline-secondary"><i class="bi bi-arrow-counterclockwise"></i> Phục hồi</button>
+                    <button type="button" class="btn btn-info"><i class="bi bi-search"></i> Tìm</button>
+                    <button type="button" class="btn btn-success"><i class="bi bi-floppy"></i> Ghi</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bảng danh sách SV -->
+        <div class="card animate-in animate-in-delay-3">
+            <div class="card-header">
+                <span><i class="bi bi-people me-2"></i>Danh sách Sinh viên</span>
+            </div>
+            <div class="card-body p-0">
+                @foreach (var lop in Model)
+                {
+                    <div class="table-responsive sv-table" id="table-@lop.MaLop" style="display:none;">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th style="width:45px">STT</th>
+                                    <th>Mã SV</th>
+                                    <th>Họ</th>
+                                    <th>Tên</th>
+                                    <th>Ngày sinh</th>
+                                    <th>Địa chỉ</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @for (int i = 0; i < lop.DanhSachSV.Count; i++)
+                                {
+                                    var sv = lop.DanhSachSV[i];
+                                    <tr style="cursor:pointer;" onclick="chonSV(this, '@sv.MaSV', '@sv.Ho', '@sv.Ten', '@sv.NgaySinh.ToString("yyyy-MM-dd")', '@sv.DiaChi')">
+                                        <td>@(i + 1)</td>
+                                        <td><strong>@sv.MaSV</strong></td>
+                                        <td>@sv.Ho</td>
+                                        <td>@sv.Ten</td>
+                                        <td>@sv.NgaySinh.ToString("dd/MM/yyyy")</td>
+                                        <td>@sv.DiaChi</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                <div class="empty-state" id="emptyState">
+                    <i class="bi bi-arrow-left-circle"></i>
+                    <p>Chọn một lớp bên trái để xem danh sách sinh viên</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function chonLop(el, maLop, tenLop) {
+            // Update active state
+            document.querySelectorAll('.list-item').forEach(i => i.classList.remove('active'));
+            el.classList.add('active');
+            // Show corresponding table
+            document.querySelectorAll('.sv-table').forEach(t => t.style.display = 'none');
+            document.getElementById('emptyState').style.display = 'none';
+            const table = document.getElementById('table-' + maLop);
+            if (table) table.style.display = 'block';
+            document.getElementById('badgeLop').textContent = tenLop;
+            document.getElementById('badgeLop').className = 'badge bg-primary';
+        }
+
+        function chonSV(row, maSV, ho, ten, ngaySinh, diaChi) {
+            document.querySelectorAll('.sv-table tr').forEach(r => r.classList.remove('selected'));
+            row.classList.add('selected');
+            document.getElementById('txtMaSV').value = maSV;
+            document.getElementById('txtHo').value = ho;
+            document.getElementById('txtTen').value = ten;
+            document.getElementById('txtNgaySinh').value = ngaySinh;
+            document.getElementById('txtDiaChi').value = diaChi;
+        }
+    </script>
+}

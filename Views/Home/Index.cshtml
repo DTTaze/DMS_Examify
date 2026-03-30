@@ -1,8 +1,149 @@
-﻿@{
-    ViewData["Title"] = "Home Page";
+@{
+    ViewData["Title"] = "Dashboard";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<!-- Stats Row -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3 animate-in animate-in-delay-1">
+        <div class="stat-card">
+            <div class="stat-icon blue"><i class="bi bi-book"></i></div>
+            <div>
+                <div class="stat-value">12</div>
+                <div class="stat-label">Môn học</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 animate-in animate-in-delay-2">
+        <div class="stat-card">
+            <div class="stat-icon green"><i class="bi bi-people"></i></div>
+            <div>
+                <div class="stat-value">245</div>
+                <div class="stat-label">Sinh viên</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 animate-in animate-in-delay-3">
+        <div class="stat-card">
+            <div class="stat-icon amber"><i class="bi bi-person-badge"></i></div>
+            <div>
+                <div class="stat-value">18</div>
+                <div class="stat-label">Giáo viên</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 animate-in animate-in-delay-4">
+        <div class="stat-card">
+            <div class="stat-icon cyan"><i class="bi bi-file-earmark-text"></i></div>
+            <div>
+                <div class="stat-value">580</div>
+                <div class="stat-label">Câu hỏi thi</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row g-3">
+    <div class="col-md-8 animate-in animate-in-delay-2">
+        <div class="card">
+            <div class="card-header">
+                <span><i class="bi bi-lightning-charge me-2"></i>Truy cập nhanh</span>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <a asp-controller="MonHoc" asp-action="Index" class="text-decoration-none">
+                            <div class="stat-card" style="cursor:pointer;">
+                                <div class="stat-icon blue"><i class="bi bi-book"></i></div>
+                                <div>
+                                    <div style="font-weight:600; font-size:14px;">Môn học</div>
+                                    <div class="stat-label">Quản lý danh mục</div>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-md-4">
+                        <a asp-controller="BoDe" asp-action="Index" class="text-decoration-none">
+                            <div class="stat-card" style="cursor:pointer;">
+                                <div class="stat-icon amber"><i class="bi bi-file-earmark-text"></i></div>
+                                <div>
+                                    <div style="font-weight:600; font-size:14px;">Câu hỏi thi</div>
+                                    <div class="stat-label">Nhập bộ đề</div>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-md-4">
+                        <a asp-controller="DangKyThi" asp-action="Index" class="text-decoration-none">
+                            <div class="stat-card" style="cursor:pointer;">
+                                <div class="stat-icon green"><i class="bi bi-calendar-check"></i></div>
+                                <div>
+                                    <div style="font-weight:600; font-size:14px;">Đăng ký thi</div>
+                                    <div class="stat-label">Lên lịch thi</div>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-md-4">
+                        <a asp-controller="Thi" asp-action="Index" class="text-decoration-none">
+                            <div class="stat-card" style="cursor:pointer;">
+                                <div class="stat-icon red"><i class="bi bi-pencil-square"></i></div>
+                                <div>
+                                    <div style="font-weight:600; font-size:14px;">Thi</div>
+                                    <div class="stat-label">Làm bài thi</div>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-md-4">
+                        <a asp-controller="KetQua" asp-action="Index" class="text-decoration-none">
+                            <div class="stat-card" style="cursor:pointer;">
+                                <div class="stat-icon cyan"><i class="bi bi-eye"></i></div>
+                                <div>
+                                    <div style="font-weight:600; font-size:14px;">Kết quả</div>
+                                    <div class="stat-label">Xem lại bài thi</div>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-md-4">
+                        <a asp-controller="BangDiem" asp-action="Index" class="text-decoration-none">
+                            <div class="stat-card" style="cursor:pointer;">
+                                <div class="stat-icon blue"><i class="bi bi-table"></i></div>
+                                <div>
+                                    <div style="font-weight:600; font-size:14px;">Bảng điểm</div>
+                                    <div class="stat-label">In bảng điểm</div>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4 animate-in animate-in-delay-3">
+        <div class="card">
+            <div class="card-header">
+                <span><i class="bi bi-clock-history me-2"></i>Lịch thi sắp tới</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="p-3 border-bottom">
+                    <div style="font-weight:600; font-size:13px;">Cơ sở dữ liệu</div>
+                    <div class="text-muted" style="font-size:12px;">Lớp TH2024A • 01/04/2026 • 45 phút</div>
+                    <span class="badge badge-level-b mt-1">Trình độ B</span>
+                </div>
+                <div class="p-3 border-bottom">
+                    <div style="font-weight:600; font-size:13px;">Lập trình C++</div>
+                    <div class="text-muted" style="font-size:12px;">Lớp TH2024B • 03/04/2026 • 60 phút</div>
+                    <span class="badge badge-level-a mt-1">Trình độ A</span>
+                </div>
+                <div class="p-3">
+                    <div style="font-weight:600; font-size:13px;">Mạng máy tính</div>
+                    <div class="text-muted" style="font-size:12px;">Lớp TH2024C • 05/04/2026 • 30 phút</div>
+                    <span class="badge badge-level-c mt-1">Trình độ C</span>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>

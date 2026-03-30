@@ -1,0 +1,123 @@
+@model List<DMS_Examify.Models.GiaoVienDangKy>
+@{
+    ViewData["Title"] = "Đăng ký thi";
+    ViewData["Subtitle"] = "Lên lịch thi cho lớp";
+}
+
+<div class="row g-4">
+    <!-- Form đăng ký -->
+    <div class="col-md-5 animate-in animate-in-delay-1">
+        <div class="card">
+            <div class="card-header">
+                <span><i class="bi bi-calendar-plus me-2"></i>Đăng ký lịch thi</span>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">Lớp</label>
+                    <select class="form-select" id="selLop">
+                        <option value="TH2024A">TH2024A - Tin học 2024 - A</option>
+                        <option value="TH2024B">TH2024B - Tin học 2024 - B</option>
+                        <option value="TH2024C">TH2024C - Tin học 2024 - C</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Môn học</label>
+                    <select class="form-select" id="selMonHoc">
+                        <option value="MH001">Cơ sở dữ liệu</option>
+                        <option value="MH002">Lập trình C++</option>
+                        <option value="MH003">Mạng máy tính</option>
+                    </select>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Trình độ</label>
+                        <select class="form-select" id="selTrinhDoDK">
+                            <option value="A">A - Dễ</option>
+                            <option value="B">B - Trung bình</option>
+                            <option value="C">C - Khó</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Lần thi</label>
+                        <select class="form-select" id="selLanThi">
+                            <option value="1">Lần 1</option>
+                            <option value="2">Lần 2</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Số câu thi</label>
+                        <input type="number" class="form-control" id="txtSoCau" placeholder="20" value="20" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Ngày thi</label>
+                        <input type="date" class="form-control" id="txtNgayThiDK" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Thời gian (phút)</label>
+                        <input type="number" class="form-control" id="txtThoiGian" placeholder="45" value="45" />
+                    </div>
+                </div>
+
+                <!-- Cảnh báo số câu hỏi -->
+                <div class="alert alert-info" id="alertSoCau">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Số câu hỏi hiện có trong bộ đề: <strong>5 câu</strong>.
+                    Vui lòng kiểm tra đủ số câu trước khi đăng ký.
+                </div>
+
+                <div class="action-toolbar">
+                    <button type="button" class="btn btn-success" style="min-width:160px;">
+                        <i class="bi bi-check-lg"></i> Đăng ký
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-counterclockwise"></i> Hủy
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Danh sách đã đăng ký -->
+    <div class="col-md-7 animate-in animate-in-delay-2">
+        <div class="card">
+            <div class="card-header">
+                <span><i class="bi bi-calendar-check me-2"></i>Danh sách đăng ký thi</span>
+                <span class="badge bg-primary">@Model.Count lịch</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Lớp</th>
+                                <th>Môn</th>
+                                <th>Trình độ</th>
+                                <th>Lần</th>
+                                <th>Số câu</th>
+                                <th>Ngày thi</th>
+                                <th>TG (phút)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var dk in Model)
+                            {
+                                var badgeClass = dk.TrinhDo == "A" ? "badge-level-a" : dk.TrinhDo == "B" ? "badge-level-b" : "badge-level-c";
+                                <tr>
+                                    <td><strong>@dk.MaLop</strong></td>
+                                    <td>@dk.MaMH</td>
+                                    <td><span class="badge @badgeClass">@dk.TrinhDo</span></td>
+                                    <td>@dk.Lan</td>
+                                    <td>@dk.SoCauThi</td>
+                                    <td>@dk.NgayThi.ToString("dd/MM/yyyy")</td>
+                                    <td>@dk.ThoiGian</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

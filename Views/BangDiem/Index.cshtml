@@ -1,0 +1,106 @@
+@model DMS_Examify.Models.BangDiemViewModel
+@{
+    ViewData["Title"] = "Bảng điểm môn học";
+    ViewData["Subtitle"] = "In bảng điểm thi hết môn";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <!-- Bộ lọc -->
+        <div class="card mb-4 animate-in">
+            <div class="card-body">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label">Lớp</label>
+                        <select class="form-select">
+                            <option value="TH2024A" selected>TH2024A - Tin học 2024 - A</option>
+                            <option value="TH2024B">TH2024B - Tin học 2024 - B</option>
+                            <option value="TH2024C">TH2024C - Tin học 2024 - C</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Môn học</label>
+                        <select class="form-select">
+                            <option value="MH001" selected>Cơ sở dữ liệu</option>
+                            <option value="MH002">Lập trình C++</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Lần thi</label>
+                        <select class="form-select">
+                            <option value="1" selected>Lần 1</option>
+                            <option value="2">Lần 2</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <button class="btn btn-primary w-100">
+                            <i class="bi bi-search me-1"></i> Xem
+                        </button>
+                    </div>
+                    <div class="col-md-2">
+                        <button class="btn btn-outline-secondary w-100" onclick="window.print()">
+                            <i class="bi bi-printer me-1"></i> In
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bảng điểm -->
+        <div class="card animate-in animate-in-delay-1">
+            <div class="card-body">
+                <div class="grade-header">
+                    <h4 style="font-weight:400; color:var(--text-secondary);">TRƯỜNG ĐẠI HỌC</h4>
+                    <h3>BẢNG ĐIỂM THI HẾT MÔN</h3>
+                    <div style="font-size:14px; color:var(--text-secondary);">
+                        Lớp: <strong>@Model.TenLop</strong> &nbsp; | &nbsp;
+                        Môn thi: <strong>@Model.TenMH</strong> &nbsp; | &nbsp;
+                        Lần thi: <strong>@Model.Lan</strong>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-bordered grade-report">
+                        <thead>
+                            <tr>
+                                <th style="width:50px">STT</th>
+                                <th style="width:90px">MASV</th>
+                                <th>HỌ</th>
+                                <th style="width:100px">TÊN</th>
+                                <th style="width:80px">ĐIỂM</th>
+                                <th style="width:90px">ĐIỂM CHỮ</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var sv in Model.DanhSach)
+                            {
+                                var diemColor = sv.Diem >= 8 ? "var(--success)" : sv.Diem >= 5 ? "var(--warning)" : "var(--danger)";
+                                <tr>
+                                    <td>@sv.STT</td>
+                                    <td><strong>@sv.MaSV</strong></td>
+                                    <td style="text-align:left !important;">@sv.Ho</td>
+                                    <td style="text-align:left !important;">@sv.Ten</td>
+                                    <td style="font-weight:700; color:@diemColor;">@sv.Diem.ToString("F1")</td>
+                                    <td><span class="badge bg-dark">@sv.DiemChu</span></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <div style="font-size:13px; color:var(--text-secondary);">
+                            Tổng số sinh viên: <strong>@Model.DanhSach.Count</strong>
+                        </div>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <div style="font-size:13px; color:var(--text-secondary);">
+                            Ngày in: <strong>@DateTime.Now.ToString("dd/MM/yyyy")</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,165 @@
+@model List<DMS_Examify.Models.TaiKhoan>
+@{
+    ViewData["Title"] = "Tài khoản & Phân quyền";
+    ViewData["Subtitle"] = "Tạo tài khoản và quản lý quyền hạn";
+}
+
+<div class="row g-4">
+    <!-- Form tạo tài khoản -->
+    <div class="col-md-5 animate-in animate-in-delay-1">
+        <div class="card">
+            <div class="card-header">
+                <span><i class="bi bi-person-plus me-2"></i>Tạo tài khoản mới</span>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">Họ tên</label>
+                    <input type="text" class="form-control" id="txtHoTenTK" placeholder="Nhập họ tên" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Tên đăng nhập (Login)</label>
+                    <input type="text" class="form-control" id="txtLoginTK" placeholder="VD: gv_tuan" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Mật khẩu</label>
+                    <input type="password" class="form-control" id="txtPasswordTK" placeholder="Nhập mật khẩu" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Nhóm quyền</label>
+                    <select class="form-select" id="selNhomQuyen">
+                        <option value="PGV">PGV (Phòng giáo vụ - Toàn quyền)</option>
+                        <option value="Giangvien" selected>Giảng viên</option>
+                    </select>
+                    <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">
+                        <i class="bi bi-info-circle"></i> Chỉ cho phép tạo tài khoản cho PGV và Giảng viên. Sinh viên dùng tài khoản chung.
+                    </div>
+                </div>
+
+                <button type="button" class="btn btn-success w-100" style="padding:10px;">
+                    <i class="bi bi-check-lg me-1"></i> Tạo tài khoản
+                </button>
+            </div>
+        </div>
+
+        <!-- Bảng phân quyền -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <span><i class="bi bi-shield-lock me-2"></i>Bảng phân quyền</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table" style="font-size:12px;">
+                        <thead>
+                            <tr>
+                                <th>Chức năng</th>
+                                <th class="text-center">PGV</th>
+                                <th class="text-center">GV</th>
+                                <th class="text-center">SV</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Quản lý Môn học</td>
+                                <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                                <td class="text-center"><i class="bi bi-x-circle text-danger"></i></td>
+                                <td class="text-center"><i class="bi bi-x-circle text-danger"></i></td>
+                            </tr>
+                            <tr>
+                                <td>Quản lý Sinh viên</td>
+                                <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                                <td class="text-center"><i class="bi bi-x-circle text-danger"></i></td>
+                                <td class="text-center"><i class="bi bi-x-circle text-danger"></i></td>
+                            </tr>
+                            <tr>
+                                <td>Quản lý Giáo viên</td>
+                                <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                                <td class="text-center"><i class="bi bi-x-circle text-danger"></i></td>
+                                <td class="text-center"><i class="bi bi-x-circle text-danger"></i></td>
+                            </tr>
+                            <tr>
+                                <td>Nhập câu hỏi thi</td>
+                                <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                                <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                                <td class="text-center"><i class="bi bi-x-circle text-danger"></i></td>
+                            </tr>
+                            <tr>
+                                <td>Đăng ký thi</td>
+                                <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                                <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                                <td class="text-center"><i class="bi bi-x-circle text-danger"></i></td>
+                            </tr>
+                            <tr>
+                                <td>Thi</td>
+                                <td class="text-center"><i class="bi bi-x-circle text-danger"></i></td>
+                                <td class="text-center"><i class="bi bi-check-circle-fill text-success" title="Thi thử, không ghi điểm"></i></td>
+                                <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                            </tr>
+                            <tr>
+                                <td>Xem kết quả</td>
+                                <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                                <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                                <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                            </tr>
+                            <tr>
+                                <td>Bảng điểm</td>
+                                <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                                <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                                <td class="text-center"><i class="bi bi-x-circle text-danger"></i></td>
+                            </tr>
+                            <tr>
+                                <td>Tài khoản & Phân quyền</td>
+                                <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                                <td class="text-center"><i class="bi bi-x-circle text-danger"></i></td>
+                                <td class="text-center"><i class="bi bi-x-circle text-danger"></i></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Danh sách tài khoản -->
+    <div class="col-md-7 animate-in animate-in-delay-2">
+        <div class="card">
+            <div class="card-header">
+                <span><i class="bi bi-people me-2"></i>Danh sách tài khoản</span>
+                <span class="badge bg-primary">@Model.Count tài khoản</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th style="width:45px">STT</th>
+                                <th>Login</th>
+                                <th>Họ tên</th>
+                                <th>Nhóm quyền</th>
+                                <th style="width:80px">Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (int i = 0; i < Model.Count; i++)
+                            {
+                                var tk = Model[i];
+                                var badgeClass = tk.NhomQuyen == "PGV" ? "badge-role-pgv" : tk.NhomQuyen == "Giangvien" ? "badge-role-gv" : "badge-role-sv";
+                                var nhomLabel = tk.NhomQuyen == "PGV" ? "PGV" : tk.NhomQuyen == "Giangvien" ? "Giảng viên" : "Sinh viên";
+                                <tr>
+                                    <td>@(i + 1)</td>
+                                    <td><strong>@tk.LoginName</strong></td>
+                                    <td>@tk.HoTen</td>
+                                    <td><span class="badge @badgeClass">@nhomLabel</span></td>
+                                    <td>
+                                        <button class="btn btn-outline-secondary btn-sm" title="Xóa">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
