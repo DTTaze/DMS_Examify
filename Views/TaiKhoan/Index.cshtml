@@ -12,32 +12,39 @@
                 <span><i class="bi bi-person-plus me-2"></i>Tạo tài khoản mới</span>
             </div>
             <div class="card-body">
-                <div class="mb-3">
-                    <label class="form-label">Họ tên</label>
-                    <input type="text" class="form-control" id="txtHoTenTK" placeholder="Nhập họ tên" />
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Tên đăng nhập (Login)</label>
-                    <input type="text" class="form-control" id="txtLoginTK" placeholder="VD: gv_tuan" />
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Mật khẩu</label>
-                    <input type="password" class="form-control" id="txtPasswordTK" placeholder="Nhập mật khẩu" />
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Nhóm quyền</label>
-                    <select class="form-select" id="selNhomQuyen">
-                        <option value="PGV">PGV (Phòng giáo vụ - Toàn quyền)</option>
-                        <option value="Giangvien" selected>Giảng viên</option>
-                    </select>
-                    <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">
-                        <i class="bi bi-info-circle"></i> Chỉ cho phép tạo tài khoản cho PGV và Giảng viên. Sinh viên dùng tài khoản chung.
-                    </div>
-                </div>
+                <form asp-action="Create" asp-controller="TaiKhoan" method="post">
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
-                <button type="button" class="btn btn-success w-100" style="padding:10px;">
-                    <i class="bi bi-check-lg me-1"></i> Tạo tài khoản
-                </button>
+                    <div class="mb-3">
+                        <label for="MaGV" class="form-label">Mã Giáo Viên / PGV (MAGV)</label>
+                        <input type="text" name="MaGV" id="MaGV" class="form-control" placeholder="VD: GV001" required />
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="LoginName" class="form-label">Tên đăng nhập (Login)</label>
+                        <input type="text" name="LoginName" id="LoginName" class="form-control" placeholder="VD: gv_tuan" required />
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="Password" class="form-label">Mật khẩu</label>
+                        <input type="password" name="Password" id="Password" class="form-control" placeholder="Nhập mật khẩu" required />
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="Role" class="form-label">Nhóm quyền</label>
+                        <select name="Role" id="Role" class="form-select">
+                            <option value="PGV">PGV (Phòng giáo vụ - Toàn quyền)</option>
+                            <option value="Giangvien" selected>Giảng viên</option>
+                        </select>
+                        <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">
+                            <i class="bi bi-info-circle"></i> Chỉ cho phép tạo tài khoản cho PGV và Giảng viên. Sinh viên dùng tài khoản chung.
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-success w-100" style="padding:10px;">
+                        <i class="bi bi-check-lg me-1"></i> Tạo tài khoản
+                    </button>
+                </form>
             </div>
         </div>
 
