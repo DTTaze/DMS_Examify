@@ -1,27 +1,35 @@
 using DMS_Examify.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Configuration;
+using System.Data;
 
 namespace DMS_Examify.Controllers
 {
     public class AuthController : Controller
     {
-        // Mock accounts — 3 vai trò
-        private static readonly List<TaiKhoan> MockAccounts = new()
-        {
-            new TaiKhoan { LoginName = "admin",  Password = "admin123", NhomQuyen = "PGV",       HoTen = "Quản trị viên" },
-            new TaiKhoan { LoginName = "gv01",   Password = "gv123",    NhomQuyen = "Giangvien", HoTen = "Trần Minh Tuấn" },
-        };
+        private readonly IConfiguration _configuration;
+        private readonly string _masterConnectionString;
+        private readonly string _studentConnectionString;
 
-        // Mock sinh viên
-        private static readonly List<SinhVien> MockSinhVien = new()
+        public AuthController(IConfiguration configuration)
         {
-            new SinhVien { MaSV = "SV001", Ho = "Nguyễn Văn", Ten = "An", MatKhau = "sv123", MaLop = "TH2024A" },
-            new SinhVien { MaSV = "SV002", Ho = "Trần Thị",   Ten = "Bình", MatKhau = "sv123", MaLop = "TH2024A" },
-        };
+            _configuration = configuration;
+            _masterConnectionString = configuration.GetConnectionString("DefaultConnection") ?? string.Empty;
+
+            var builder = new SqlConnectionStringBuilder(_masterConnectionString)
+            {
+                IntegratedSecurity = false,
+                UserID = "sv",
+                Password = "sv",
+                TrustServerCertificate = true,
+            };
+
+            _studentConnectionString = builder.ConnectionString;
+        }
 
         public IActionResult Login()
         {
-            // Nếu đã login rồi thì redirect về Home
             if (!string.IsNullOrEmpty(HttpContext.Session.GetString("UserRole")))
             {
                 return RedirectToAction("Index", "Home");
@@ -38,45 +46,100 @@ namespace DMS_Examify.Controllers
                 return View(model);
             }
 
-            if (model.LoginType == "SinhVien")
+            try
             {
-                // Đăng nhập bằng Sinh viên: Login = Mã SV
-                var sv = MockSinhVien.FirstOrDefault(s =>
-                    s.MaSV.Equals(model.Login, StringComparison.OrdinalIgnoreCase) &&
-                    s.MatKhau == model.Password);
-
-                if (sv == null)
+                if (model.LoginType == "SinhVien")
                 {
-                    ViewData["Error"] = "Mã SV hoặc mật khẩu không đúng.";
-                    return View(model);
+                    var sv = ValidateSinhVien(model.Login, model.Password);
+                    if (sv == null)
+                    {
+                        ViewData["Error"] = "Mã SV hoặc mật khẩu không đúng.";
+                        return View(model);
+                    }
+
+                    HttpContext.Session.SetString("UserRole", "Sinhvien");
+                    HttpContext.Session.SetString("UserName", $"{sv.Ho} {sv.Ten}");
+                    HttpContext.Session.SetString("UserLogin", sv.MaSV);
+                    HttpContext.Session.SetString("MaLop", sv.MaLop);
+                }
+                else
+                {
+                    if (!ValidateGiangVien(model.Login, model.Password))
+                    {
+                        ViewData["Error"] = "Tên đăng nhập hoặc mật khẩu giảng viên không đúng.";
+                        return View(model);
+                    }
+
+                    HttpContext.Session.SetString("UserRole", "Giangvien");
+                    HttpContext.Session.SetString("UserName", model.Login);
+                    HttpContext.Session.SetString("UserLogin", model.Login);
                 }
 
-                // Lưu session
-                HttpContext.Session.SetString("UserRole", "Sinhvien");
-                HttpContext.Session.SetString("UserName", $"{sv.Ho} {sv.Ten}");
-                HttpContext.Session.SetString("UserLogin", sv.MaSV);
-                HttpContext.Session.SetString("MaLop", sv.MaLop);
+                return RedirectToAction("Index", "Home");
             }
-            else
+            catch (SqlException ex)
             {
-                // Đăng nhập bằng Giảng viên / PGV
-                var account = MockAccounts.FirstOrDefault(a =>
-                    a.LoginName.Equals(model.Login, StringComparison.OrdinalIgnoreCase) &&
-                    a.Password == model.Password);
-
-                if (account == null)
-                {
-                    ViewData["Error"] = "Tên đăng nhập hoặc mật khẩu không đúng.";
-                    return View(model);
-                }
-
-                // Lưu session
-                HttpContext.Session.SetString("UserRole", account.NhomQuyen);
-                HttpContext.Session.SetString("UserName", account.HoTen);
-                HttpContext.Session.SetString("UserLogin", account.LoginName);
+                ViewData["Error"] = "Lỗi kết nối cơ sở dữ liệu: " + ex.Message;
+                return View(model);
             }
+            catch (Exception ex)
+            {
+                ViewData["Error"] = "Đăng nhập thất bại: " + ex.Message;
+                return View(model);
+            }
+        }
 
-            return RedirectToAction("Index", "Home");
+        private bool ValidateGiangVien(string login, string password)
+        {
+            var gvConnStr = BuildConnectionString(login, password);
+            using var conn = new SqlConnection(gvConnStr);
+            conn.Open();
+
+            using var cmd = new SqlCommand("dbo.usp_GiangVien_Login", conn)
+            {
+                CommandType = CommandType.StoredProcedure
+            };
+            cmd.Parameters.AddWithValue("@LoginName", login);
+
+            using var reader = cmd.ExecuteReader();
+            return reader.Read();
+        }
+
+        private SinhVien? ValidateSinhVien(string maSV, string matKhau)
+        {
+            using var conn = new SqlConnection(_studentConnectionString);
+            conn.Open();
+
+            using var cmd = new SqlCommand("dbo.usp_SinhVien_Login", conn)
+            {
+                CommandType = CommandType.StoredProcedure
+            };
+            cmd.Parameters.AddWithValue("@MASV", maSV);
+            cmd.Parameters.AddWithValue("@PASSWORD", matKhau);
+
+            using var reader = cmd.ExecuteReader();
+            if (!reader.Read())
+                return null;
+
+            return new SinhVien
+            {
+                MaSV = reader["MaSV"].ToString() ?? string.Empty,
+                Ho = reader["Ho"].ToString() ?? string.Empty,
+                Ten = reader["Ten"].ToString() ?? string.Empty,
+                MaLop = reader["MaLop"].ToString() ?? string.Empty
+            };
+        }
+
+        private string BuildConnectionString(string userId, string password)
+        {
+            var builder = new SqlConnectionStringBuilder(_masterConnectionString)
+            {
+                IntegratedSecurity = false,
+                UserID = userId,
+                Password = password,
+                TrustServerCertificate = true
+            };
+            return builder.ConnectionString;
         }
 
         public IActionResult Logout()
