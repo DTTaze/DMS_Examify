@@ -67,12 +67,12 @@
                 </div>
 
                 <div class="action-toolbar">
-                    <button type="button" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Thêm</button>
-                    <button type="button" class="btn btn-danger"><i class="bi bi-trash"></i> Xóa</button>
-                    <button type="button" class="btn btn-warning"><i class="bi bi-pencil-square"></i> Hiệu chỉnh</button>
-                    <button type="button" class="btn btn-outline-secondary"><i class="bi bi-arrow-counterclockwise"></i> Phục hồi</button>
-                    <button type="button" class="btn btn-info"><i class="bi bi-search"></i> Tìm</button>
-                    <button type="button" class="btn btn-success"><i class="bi bi-floppy"></i> Ghi</button>
+                    <button type="button" class="btn btn-primary" onclick="themBoDe()"><i class="bi bi-plus-lg"></i> Thêm</button>
+                    <button type="button" class="btn btn-danger" onclick="xoaBoDe()"><i class="bi bi-trash"></i> Xóa</button>
+                    <button type="button" class="btn btn-warning" onclick="hieuChinhBoDe()"><i class="bi bi-pencil-square"></i> Hiệu chỉnh</button>
+                    <button type="button" class="btn btn-outline-secondary" onclick="phucHoiBoDe()"><i class="bi bi-arrow-counterclockwise"></i> Phục hồi</button>
+                    <button type="button" class="btn btn-info" onclick="timBoDe()"><i class="bi bi-search"></i> Tìm</button>
+                    <button type="button" class="btn btn-success" onclick="ghiBoDe()"><i class="bi bi-floppy"></i> Ghi</button>
                 </div>
             </div>
         </div>
@@ -101,7 +101,7 @@
                             @foreach (var ch in Model)
                             {
                                 var badgeClass = ch.TrinhDo == "A" ? "badge-level-a" : ch.TrinhDo == "B" ? "badge-level-b" : "badge-level-c";
-                                <tr style="cursor:pointer;">
+                                <tr style="cursor:pointer;" data-cauhoi="@ch.CauHoi" data-maMH="@ch.MaMH" data-trinhDo="@ch.TrinhDo" data-noiDung="@ch.NoiDung" data-dapAnA="@ch.DapAnA" data-dapAnB="@ch.DapAnB" data-dapAnC="@ch.DapAnC" data-dapAnD="@ch.DapAnD" data-dapAn="@ch.DapAn" data-maGV="@ch.MaGV" onclick="chonBoDe(this)">
                                     <td><strong>@ch.CauHoi</strong></td>
                                     <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">@ch.NoiDung</td>
                                     <td>@ch.MaMH</td>
@@ -116,3 +116,113 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        let selectedBoDeRow = null;
+
+        function chonBoDe(row) {
+            document.querySelectorAll('table tbody tr').forEach(r => r.classList.remove('selected'));
+            row.classList.add('selected');
+            selectedBoDeRow = row;
+
+            document.getElementById('txtCauHoi').value = row.dataset.cauhoi;
+            document.getElementById('selMaMH').value = row.dataset.maMH;
+            document.getElementById('selTrinhDo').value = row.dataset.trinhDo;
+            document.getElementById('txtNoiDung').value = row.dataset.noiDung;
+            document.getElementById('txtA').value = row.dataset.dapAnA;
+            document.getElementById('txtB').value = row.dataset.dapAnB;
+            document.getElementById('txtC').value = row.dataset.dapAnC;
+            document.getElementById('txtD').value = row.dataset.dapAnD;
+            document.getElementById('selDapAn').value = row.dataset.dapAn;
+            document.getElementById('txtMaGV').value = row.dataset.maGV || '';
+        }
+
+        function themBoDe() {
+            selectedBoDeRow = null;
+            document.getElementById('txtCauHoi').value = '';
+            document.getElementById('selMaMH').selectedIndex = 0;
+            document.getElementById('selTrinhDo').selectedIndex = 0;
+            document.getElementById('txtNoiDung').value = '';
+            document.getElementById('txtA').value = '';
+            document.getElementById('txtB').value = '';
+            document.getElementById('txtC').value = '';
+            document.getElementById('txtD').value = '';
+            document.getElementById('selDapAn').selectedIndex = 0;
+            document.getElementById('txtMaGV').value = '';
+        }
+
+        function hieuChinhBoDe() {
+            if (!selectedBoDeRow) { alert('Chọn câu hỏi để hiệu chỉnh'); return; }
+            selectedBoDeRow.cells[0].innerHTML = '<strong>' + document.getElementById('txtCauHoi').value + '</strong>';
+            selectedBoDeRow.cells[1].textContent = document.getElementById('txtNoiDung').value;
+            selectedBoDeRow.cells[2].textContent = document.getElementById('selMaMH').value;
+            selectedBoDeRow.cells[3].innerHTML = '<span class="badge badge-level-' + document.getElementById('selTrinhDo').value.toLowerCase() + '">' + document.getElementById('selTrinhDo').value + '</span>';
+            selectedBoDeRow.cells[4].innerHTML = '<span class="badge bg-dark">' + document.getElementById('selDapAn').value + '</span>';
+        }
+
+        function phucHoiBoDe() {
+            selectedBoDeRow = null;
+            document.querySelectorAll('table tbody tr').forEach(r => r.classList.remove('selected'));
+            themBoDe();
+        }
+
+        async function timBoDe() {
+            const keyword = prompt('Nhập từ khóa tìm kiếm:');
+            if (keyword == null) return;
+            const res = await fetch('/BoDe/Search?keyword=' + encodeURIComponent(keyword));
+            if (!res.ok) { alert('Tìm kiếm thất bại'); return; }
+            const list = await res.json();
+
+            const tbody = document.querySelector('table tbody');
+            tbody.innerHTML = '';
+            list.forEach((item, idx) => {
+                const row = tbody.insertRow();
+                row.style.cursor = 'pointer';
+                row.dataset.cauhoi = item.cauHoi;
+                row.dataset.maMH = item.maMH;
+                row.dataset.trinhDo = item.trinhDo;
+                row.dataset.noiDung = item.noiDung;
+                row.dataset.dapAnA = item.dapAnA;
+                row.dataset.dapAnB = item.dapAnB;
+                row.dataset.dapAnC = item.dapAnC;
+                row.dataset.dapAnD = item.dapAnD;
+                row.dataset.dapAn = item.dapAn;
+                row.dataset.maGV = item.maGV;
+                row.onclick = () => chonBoDe(row);
+
+                const badgeClass = item.trinhDo === 'A' ? 'badge-level-a' : item.trinhDo === 'B' ? 'badge-level-b' : 'badge-level-c';
+
+                row.innerHTML = `<td><strong>${item.cauHoi}</strong></td><td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${item.noiDung}</td><td>${item.maMH}</td><td><span class="badge ${badgeClass}">${item.trinhDo}</span></td><td><span class="badge bg-dark">${item.dapAn}</span></td>`;
+            });
+        }
+
+        async function ghiBoDe() {
+            const boDe = {
+                CauHoi: parseInt(document.getElementById('txtCauHoi').value, 10) || 0,
+                MaMH: document.getElementById('selMaMH').value,
+                TrinhDo: document.getElementById('selTrinhDo').value,
+                NoiDung: document.getElementById('txtNoiDung').value.trim(),
+                DapAnA: document.getElementById('txtA').value.trim(),
+                DapAnB: document.getElementById('txtB').value.trim(),
+                DapAnC: document.getElementById('txtC').value.trim(),
+                DapAnD: document.getElementById('txtD').value.trim(),
+                DapAn: document.getElementById('selDapAn').value,
+                MaGV: document.getElementById('txtMaGV').value.trim()
+            };
+            if (!boDe.CauHoi || !boDe.MaMH || !boDe.NoiDung || !boDe.DapAn) { alert('Thông tin chưa đầy đủ'); return; }
+            const url = selectedBoDeRow ? '/BoDe/Update' : '/BoDe/Insert';
+            const res = await fetch(url, { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(boDe)});
+            if (res.ok) { alert('Ghi thành công'); location.reload(); } else { alert('Lỗi:' + await res.text()); }
+        }
+
+        async function xoaBoDe() {
+            if (!selectedBoDeRow) { alert('Chọn câu hỏi để xóa'); return; }
+            if (!confirm('Xác nhận xóa?')) return;
+            const cauHoi = parseInt(document.getElementById('txtCauHoi').value, 10);
+            const maMH = document.getElementById('selMaMH').value;
+            const res = await fetch('/BoDe/Delete?cauHoi=' + cauHoi + '&maMH=' + encodeURIComponent(maMH), { method:'POST' });
+            if (res.ok) { alert('Xóa thành công'); location.reload(); } else { alert('Xóa thất bại'); }
+        }
+    </script>
+}

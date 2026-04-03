@@ -36,12 +36,12 @@
                 </div>
 
                 <div class="action-toolbar">
-                    <button type="button" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Thêm</button>
-                    <button type="button" class="btn btn-danger"><i class="bi bi-trash"></i> Xóa</button>
-                    <button type="button" class="btn btn-warning"><i class="bi bi-pencil-square"></i> Hiệu chỉnh</button>
-                    <button type="button" class="btn btn-outline-secondary"><i class="bi bi-arrow-counterclockwise"></i> Phục hồi</button>
-                    <button type="button" class="btn btn-info"><i class="bi bi-search"></i> Tìm</button>
-                    <button type="button" class="btn btn-success"><i class="bi bi-floppy"></i> Ghi</button>
+                    <button type="button" class="btn btn-primary" onclick="themGV()"><i class="bi bi-plus-lg"></i> Thêm</button>
+                    <button type="button" class="btn btn-danger" onclick="xoaGV()"><i class="bi bi-trash"></i> Xóa</button>
+                    <button type="button" class="btn btn-warning" onclick="hieuChinhGV()"><i class="bi bi-pencil-square"></i> Hiệu chỉnh</button>
+                    <button type="button" class="btn btn-outline-secondary" onclick="phucHoiGV()"><i class="bi bi-arrow-counterclockwise"></i> Phục hồi</button>
+                    <button type="button" class="btn btn-info" onclick="timGV()"><i class="bi bi-search"></i> Tìm</button>
+                    <button type="button" class="btn btn-success" onclick="ghiGV()"><i class="bi bi-floppy"></i> Ghi</button>
                 </div>
             </div>
         </div>
@@ -90,14 +90,98 @@
 
 @section Scripts {
     <script>
+        let selectedRowGV = null;
+
         function chonGV(row, maGV, ho, ten, sdt, diaChi) {
             document.querySelectorAll('table tbody tr').forEach(r => r.classList.remove('selected'));
             row.classList.add('selected');
+            selectedRowGV = row;
             document.getElementById('txtMaGV').value = maGV;
             document.getElementById('txtHoGV').value = ho;
             document.getElementById('txtTenGV').value = ten;
             document.getElementById('txtSoDTLL').value = sdt;
             document.getElementById('txtDiaChiGV').value = diaChi;
+        }
+
+        function themGV() {
+            selectedRowGV = null;
+            document.getElementById('txtMaGV').value = '';
+            document.getElementById('txtHoGV').value = '';
+            document.getElementById('txtTenGV').value = '';
+            document.getElementById('txtSoDTLL').value = '';
+            document.getElementById('txtDiaChiGV').value = '';
+            document.getElementById('txtMaGV').focus();
+        }
+
+        function hieuChinhGV() {
+            if (!selectedRowGV) {
+                alert('Vui lòng chọn một giáo viên để hiệu chỉnh.');
+                return;
+            }
+            selectedRowGV.cells[1].innerHTML = '<strong>' + document.getElementById('txtMaGV').value + '</strong>';
+            selectedRowGV.cells[2].textContent = document.getElementById('txtHoGV').value;
+            selectedRowGV.cells[3].textContent = document.getElementById('txtTenGV').value;
+            selectedRowGV.cells[4].textContent = document.getElementById('txtSoDTLL').value;
+            selectedRowGV.cells[5].textContent = document.getElementById('txtDiaChiGV').value;
+        }
+
+        function phucHoiGV() {
+            selectedRowGV = null;
+            document.querySelectorAll('table tbody tr').forEach(r => r.classList.remove('selected'));
+            document.getElementById('txtMaGV').value = '';
+            document.getElementById('txtHoGV').value = '';
+            document.getElementById('txtTenGV').value = '';
+            document.getElementById('txtSoDTLL').value = '';
+            document.getElementById('txtDiaChiGV').value = '';
+        }
+
+        async function timGV() {
+            const keyword = prompt('Nhập từ khóa tìm kiếm:');
+            if (keyword == null) return;
+
+            const res = await fetch('/GiaoVien/Search?keyword=' + encodeURIComponent(keyword));
+            if (!res.ok) { alert('Tìm kiếm thất bại'); return; }
+            const ds = await res.json();
+
+            const tbody = document.querySelector('table tbody');
+            tbody.innerHTML = '';
+            ds.forEach((item, idx) => {
+                const row = tbody.insertRow();
+                row.style.cursor = 'pointer';
+                row.onclick = () => chonGV(row, item.maGV, item.ho, item.ten, item.soDTLL, item.diaChi);
+                row.innerHTML = `<td>${idx + 1}</td><td><strong>${item.maGV}</strong></td><td>${item.ho}</td><td>${item.ten}</td><td>${item.soDTLL}</td><td>${item.diaChi}</td>`;
+            });
+        }
+
+        async function ghiGV() {
+            const model = {
+                MaGV: document.getElementById('txtMaGV').value.trim(),
+                Ho: document.getElementById('txtHoGV').value.trim(),
+                Ten: document.getElementById('txtTenGV').value.trim(),
+                SoDTLL: document.getElementById('txtSoDTLL').value.trim(),
+                DiaChi: document.getElementById('txtDiaChiGV').value.trim()
+            };
+            if (!model.MaGV || !model.Ho || !model.Ten) {
+                alert('Thông tin chưa đầy đủ');
+                return;
+            }
+            const url = selectedRowGV ? '/GiaoVien/Update' : '/GiaoVien/Insert';
+            const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(model) });
+            if (res.ok) {
+                alert('Ghi thành công');
+                location.reload();
+            } else {
+                const msg = await res.text();
+                alert('Lỗi: ' + msg);
+            }
+        }
+
+        async function xoaGV() {
+            if (!selectedRowGV) { alert('Chọn giáo viên cần xóa'); return; }
+            if (!confirm('Xác nhận xóa?')) return;
+            const maGV = document.getElementById('txtMaGV').value;
+            const res = await fetch('/GiaoVien/Delete?maGV=' + encodeURIComponent(maGV), { method: 'POST' });
+            if (res.ok) { alert('Xóa thành công'); location.reload(); } else { alert('Xóa thất bại'); }
         }
     </script>
 }

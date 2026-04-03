@@ -62,12 +62,12 @@
                     </div>
                 </div>
                 <div class="action-toolbar">
-                    <button type="button" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Thêm</button>
-                    <button type="button" class="btn btn-danger"><i class="bi bi-trash"></i> Xóa</button>
-                    <button type="button" class="btn btn-warning"><i class="bi bi-pencil-square"></i> Hiệu chỉnh</button>
-                    <button type="button" class="btn btn-outline-secondary"><i class="bi bi-arrow-counterclockwise"></i> Phục hồi</button>
-                    <button type="button" class="btn btn-info"><i class="bi bi-search"></i> Tìm</button>
-                    <button type="button" class="btn btn-success"><i class="bi bi-floppy"></i> Ghi</button>
+                    <button type="button" class="btn btn-primary" onclick="themSV()"><i class="bi bi-plus-lg"></i> Thêm</button>
+                    <button type="button" class="btn btn-danger" onclick="xoaSV()"><i class="bi bi-trash"></i> Xóa</button>
+                    <button type="button" class="btn btn-warning" onclick="hieuChinhSV()"><i class="bi bi-pencil-square"></i> Hiệu chỉnh</button>
+                    <button type="button" class="btn btn-outline-secondary" onclick="phucHoiSV()"><i class="bi bi-arrow-counterclockwise"></i> Phục hồi</button>
+                    <button type="button" class="btn btn-info" onclick="timSV()"><i class="bi bi-search"></i> Tìm</button>
+                    <button type="button" class="btn btn-success" onclick="ghiSV()"><i class="bi bi-floppy"></i> Ghi</button>
                 </div>
             </div>
         </div>
@@ -120,27 +120,119 @@
 
 @section Scripts {
     <script>
+        let selectedLop = null;
+        let selectedSinhVienRow = null;
+
         function chonLop(el, maLop, tenLop) {
-            // Update active state
             document.querySelectorAll('.list-item').forEach(i => i.classList.remove('active'));
             el.classList.add('active');
-            // Show corresponding table
+            selectedLop = maLop;
             document.querySelectorAll('.sv-table').forEach(t => t.style.display = 'none');
             document.getElementById('emptyState').style.display = 'none';
             const table = document.getElementById('table-' + maLop);
             if (table) table.style.display = 'block';
             document.getElementById('badgeLop').textContent = tenLop;
             document.getElementById('badgeLop').className = 'badge bg-primary';
+            phucHoiSV();
         }
 
         function chonSV(row, maSV, ho, ten, ngaySinh, diaChi) {
             document.querySelectorAll('.sv-table tr').forEach(r => r.classList.remove('selected'));
             row.classList.add('selected');
+            selectedSinhVienRow = row;
             document.getElementById('txtMaSV').value = maSV;
             document.getElementById('txtHo').value = ho;
             document.getElementById('txtTen').value = ten;
             document.getElementById('txtNgaySinh').value = ngaySinh;
             document.getElementById('txtDiaChi').value = diaChi;
+        }
+
+        function themSV() {
+            selectedSinhVienRow = null;
+            document.getElementById('txtMaSV').value = '';
+            document.getElementById('txtHo').value = '';
+            document.getElementById('txtTen').value = '';
+            document.getElementById('txtNgaySinh').value = '';
+            document.getElementById('txtDiaChi').value = '';
+            document.getElementById('txtMatKhau').value = '';
+            document.getElementById('txtMaSV').focus();
+        }
+
+        function hieuChinhSV() {
+            if (!selectedSinhVienRow) { alert('Chọn sinh viên để hiệu chỉnh.'); return; }
+            selectedSinhVienRow.cells[1].innerHTML = '<strong>' + document.getElementById('txtMaSV').value + '</strong>';
+            selectedSinhVienRow.cells[2].textContent = document.getElementById('txtHo').value;
+            selectedSinhVienRow.cells[3].textContent = document.getElementById('txtTen').value;
+            selectedSinhVienRow.cells[4].textContent = new Date(document.getElementById('txtNgaySinh').value).toLocaleDateString('vi-VN');
+            selectedSinhVienRow.cells[5].textContent = document.getElementById('txtDiaChi').value;
+        }
+
+        function phucHoiSV() {
+            selectedSinhVienRow = null;
+            document.querySelectorAll('.sv-table tr').forEach(r => r.classList.remove('selected'));
+            document.getElementById('txtMaSV').value = '';
+            document.getElementById('txtHo').value = '';
+            document.getElementById('txtTen').value = '';
+            document.getElementById('txtNgaySinh').value = '';
+            document.getElementById('txtDiaChi').value = '';
+            document.getElementById('txtMatKhau').value = '';
+        }
+
+        async function timSV() {
+            const keyword = prompt('Nhập từ khóa tìm kiếm:');
+            if (keyword == null) return;
+            const res = await fetch('/SinhVien/Search?keyword=' + encodeURIComponent(keyword));
+            if (!res.ok) { alert('Tìm thất bại'); return; }
+            const list = await res.json();
+
+            const tables = document.querySelectorAll('.sv-table');
+            tables.forEach(t => t.style.display = 'none');
+            document.getElementById('emptyState').style.display = 'none';
+
+            const map = {};
+            list.forEach(item => {
+                if (!map[item.maLop]) map[item.maLop] = [];
+                map[item.maLop].push(item);
+            });
+
+            for (const lop in map) {
+                const tableWrap = document.getElementById('table-' + lop);
+                if (!tableWrap) continue;
+                tableWrap.style.display = 'block';
+                const tbody = tableWrap.querySelector('tbody');
+                tbody.innerHTML = '';
+                map[lop].forEach((sv, idx) => {
+                    const row = tbody.insertRow();
+                    row.style.cursor = 'pointer';
+                    row.onclick = () => chonSV(row, sv.maSV, sv.ho, sv.ten, new Date(sv.ngaySinh).toISOString().slice(0, 10), sv.diaChi);
+                    row.innerHTML = `<td>${idx + 1}</td><td><strong>${sv.maSV}</strong></td><td>${sv.ho}</td><td>${sv.ten}</td><td>${new Date(sv.ngaySinh).toLocaleDateString('vi-VN')}</td><td>${sv.diaChi}</td>`;
+                });
+            }
+        }
+
+        async function ghiSV() {
+            const sinhVien = {
+                MaSV: document.getElementById('txtMaSV').value.trim(),
+                Ho: document.getElementById('txtHo').value.trim(),
+                Ten: document.getElementById('txtTen').value.trim(),
+                NgaySinh: document.getElementById('txtNgaySinh').value,
+                DiaChi: document.getElementById('txtDiaChi').value.trim(),
+                MaLop: selectedLop || '',
+                MatKhau: document.getElementById('txtMatKhau').value.trim()
+            };
+            if (!sinhVien.MaSV || !sinhVien.Ho || !sinhVien.Ten || !sinhVien.MaLop) { alert('Vui lòng nhập đầy đủ thông tin'); return; }
+
+            const url = selectedSinhVienRow ? '/SinhVien/Update' : '/SinhVien/Insert';
+            const res = await fetch(url, { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(sinhVien) });
+            if (res.ok) { alert('Ghi thành công'); location.reload(); } else { alert('Lỗi: ' + await res.text()); }
+        }
+
+        async function xoaSV() {
+            if (!selectedSinhVienRow) { alert('Chọn sinh viên cần xóa'); return; }
+            if (!confirm('Xác nhận xóa?')) return;
+            const maSV = document.getElementById('txtMaSV').value;
+            const res = await fetch('/SinhVien/Delete?maSV=' + encodeURIComponent(maSV), { method:'POST' });
+            if (res.ok) { alert('Xóa thành công'); location.reload(); } else { alert('Xóa thất bại'); }
         }
     </script>
 }

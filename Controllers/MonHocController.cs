@@ -1,25 +1,111 @@
 using DMS_Examify.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Configuration;
+using System.Data;
 
 namespace DMS_Examify.Controllers
 {
     public class MonHocController : BaseController
     {
-        private static List<MonHoc> _danhSach = new()
+        private readonly string _connectionString;
+
+        public MonHocController(IConfiguration configuration)
         {
-            new MonHoc { MaMH = "MH001", TenMH = "Cơ sở dữ liệu" },
-            new MonHoc { MaMH = "MH002", TenMH = "Lập trình C++" },
-            new MonHoc { MaMH = "MH003", TenMH = "Mạng máy tính" },
-            new MonHoc { MaMH = "MH004", TenMH = "Cấu trúc dữ liệu và giải thuật" },
-            new MonHoc { MaMH = "MH005", TenMH = "Hệ điều hành" },
-        };
+            _connectionString = configuration.GetConnectionString("DefaultConnection") ?? string.Empty;
+        }
 
         public IActionResult Index()
         {
             if (!CheckRole("PGV")) return Denied();
             ViewData["Title"] = "Quản lý Môn học";
             ViewData["Subtitle"] = "Thêm, sửa, xóa môn học";
-            return View(_danhSach);
+            return View(GetAllMonHoc());
+        }
+
+        private List<MonHoc> GetAllMonHoc()
+        {
+            var ds = new List<MonHoc>();
+            using var conn = new SqlConnection(_connectionString);
+            conn.Open();
+            using var cmd = new SqlCommand("dbo.usp_MonHoc_GetAll", conn) { CommandType = CommandType.StoredProcedure };
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                ds.Add(new MonHoc
+                {
+                    MaMH = reader["MaMH"].ToString() ?? string.Empty,
+                    TenMH = reader["TenMH"].ToString() ?? string.Empty
+                });
+            }
+            return ds;
+        }
+
+        [HttpPost]
+        public IActionResult Insert(MonHoc model)
+        {
+            if (!CheckRole("PGV")) return Denied();
+            if (model == null || string.IsNullOrEmpty(model.MaMH) || string.IsNullOrEmpty(model.TenMH))
+                return BadRequest("Thông tin môn học chưa đầy đủ.");
+
+            using var conn = new SqlConnection(_connectionString);
+            conn.Open();
+            using var cmd = new SqlCommand("dbo.usp_MonHoc_Insert", conn) { CommandType = CommandType.StoredProcedure };
+            cmd.Parameters.AddWithValue("@MaMH", model.MaMH);
+            cmd.Parameters.AddWithValue("@TenMH", model.TenMH);
+            cmd.ExecuteNonQuery();
+            return Ok();
+        }
+
+        [HttpPost]
+        public IActionResult Update(MonHoc model)
+        {
+            if (!CheckRole("PGV")) return Denied();
+            if (model == null || string.IsNullOrEmpty(model.MaMH) || string.IsNullOrEmpty(model.TenMH))
+                return BadRequest("Thông tin môn học chưa đầy đủ.");
+
+            using var conn = new SqlConnection(_connectionString);
+            conn.Open();
+            using var cmd = new SqlCommand("dbo.usp_MonHoc_Update", conn) { CommandType = CommandType.StoredProcedure };
+            cmd.Parameters.AddWithValue("@MaMH", model.MaMH);
+            cmd.Parameters.AddWithValue("@TenMH", model.TenMH);
+            cmd.ExecuteNonQuery();
+            return Ok();
+        }
+
+        [HttpPost]
+        public IActionResult Delete(string maMH)
+        {
+            if (!CheckRole("PGV")) return Denied();
+            if (string.IsNullOrEmpty(maMH)) return BadRequest("Mã môn học không hợp lệ.");
+
+            using var conn = new SqlConnection(_connectionString);
+            conn.Open();
+            using var cmd = new SqlCommand("dbo.usp_MonHoc_Delete", conn) { CommandType = CommandType.StoredProcedure };
+            cmd.Parameters.AddWithValue("@MaMH", maMH);
+            cmd.ExecuteNonQuery();
+            return Ok();
+        }
+
+        [HttpGet]
+        public IActionResult Search(string keyword)
+        {
+            if (!CheckRole("PGV")) return Denied();
+            var ds = new List<MonHoc>();
+            using var conn = new SqlConnection(_connectionString);
+            conn.Open();
+            using var cmd = new SqlCommand("dbo.usp_MonHoc_Search", conn) { CommandType = CommandType.StoredProcedure };
+            cmd.Parameters.AddWithValue("@Keyword", (object)keyword ?? DBNull.Value);
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                ds.Add(new MonHoc
+                {
+                    MaMH = reader["MaMH"].ToString() ?? string.Empty,
+                    TenMH = reader["TenMH"].ToString() ?? string.Empty
+                });
+            }
+            return Json(ds);
         }
     }
 }

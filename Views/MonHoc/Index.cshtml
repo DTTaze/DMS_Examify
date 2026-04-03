@@ -150,23 +150,68 @@
             }
         }
 
-        function ghiMonHoc() {
-            const maMH = document.getElementById('txtMaMH').value;
-            const tenMH = document.getElementById('txtTenMH').value;
+        async function ghiMonHoc() {
+            const maMH = document.getElementById('txtMaMH').value.trim();
+            const tenMH = document.getElementById('txtTenMH').value.trim();
             if (!maMH || !tenMH) {
                 alert('Vui lòng nhập đầy đủ thông tin.');
                 return;
             }
-            if (!selectedRow) {
-                // Add new row
-                const tbody = document.querySelector('#tableMonHoc tbody');
-                const rowCount = tbody.rows.length + 1;
-                const newRow = tbody.insertRow();
-                newRow.onclick = function () { chonMonHoc(this, maMH, tenMH); };
-                newRow.style.cursor = 'pointer';
-                newRow.innerHTML = `<td>${rowCount}</td><td><strong>${maMH}</strong></td><td>${tenMH}</td>`;
+
+            const data = { MaMH: maMH, TenMH: tenMH };
+            const url = selectedRow ? '/MonHoc/Update' : '/MonHoc/Insert';
+
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            if (res.ok) {
+                alert('Đã ghi thành công!');
+                location.reload();
+            } else {
+                const message = await res.text();
+                alert('Lỗi: ' + message);
             }
-            alert('Đã ghi thành công!');
+        }
+
+        async function xoaMonHoc() {
+            if (!selectedRow) {
+                alert('Vui lòng chọn một môn học để xóa.');
+                return;
+            }
+            if (!confirm('Bạn có chắc muốn xóa môn học này?')) return;
+
+            const maMH = document.getElementById('txtMaMH').value;
+            const res = await fetch('/MonHoc/Delete?maMH=' + encodeURIComponent(maMH), { method: 'POST' });
+            if (res.ok) {
+                alert('Xóa thành công');
+                location.reload();
+            } else {
+                alert('Xóa thất bại');
+            }
+        }
+
+        async function timMonHoc() {
+            const keyword = prompt('Nhập từ khóa tìm kiếm:');
+            if (keyword == null) return;
+
+            const res = await fetch('/MonHoc/Search?keyword=' + encodeURIComponent(keyword));
+            if (!res.ok) {
+                alert('Tìm kiếm lỗi');
+                return;
+            }
+
+            const list = await res.json();
+            const tbody = document.querySelector('#tableMonHoc tbody');
+            tbody.innerHTML = '';
+            list.forEach((item, idx) => {
+                const row = tbody.insertRow();
+                row.style.cursor = 'pointer';
+                row.onclick = () => chonMonHoc(row, item.maMH, item.tenMH);
+                row.innerHTML = `<td>${idx + 1}</td><td><strong>${item.maMH}</strong></td><td>${item.tenMH}</td>`;
+            });
         }
     </script>
 }
