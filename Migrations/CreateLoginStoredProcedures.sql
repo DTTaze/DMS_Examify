@@ -8,15 +8,17 @@ BEGIN
         CASE
             WHEN EXISTS (
                 SELECT 1
-                FROM sys.server_role_members rm
-                JOIN sys.server_principals r ON rm.role_principal_id = r.principal_id
-                JOIN sys.server_principals m ON rm.member_principal_id = m.principal_id
+                FROM sys.database_role_members rm
+                JOIN sys.database_principals r 
+                    ON rm.role_principal_id = r.principal_id
+                JOIN sys.database_principals m 
+                    ON rm.member_principal_id = m.principal_id
                 WHERE r.name = 'PGV'
                   AND m.name = @LoginName
             ) THEN 'PGV'
             ELSE 'Giangvien'
         END AS UserRole
-    FROM sys.sql_logins
+    FROM sys.database_principals
     WHERE name = @LoginName;
 END
 GO

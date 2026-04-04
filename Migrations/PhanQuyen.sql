@@ -50,6 +50,9 @@ GO
 GRANT EXECUTE ON [dbo].[SP_TAOTAIKHOAN] TO [PGV];
 GO
 
+GRANT EXECUTE ON [dbo].[usp_GiangVien_Login] TO [PGV];
+GO
+
 GRANT EXECUTE ON [dbo].[usp_GiangVien_Login] TO [Giangvien];
 GO
 
