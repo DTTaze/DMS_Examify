@@ -64,13 +64,14 @@ namespace DMS_Examify.Controllers
                 }
                 else
                 {
-                    if (!ValidateGiangVien(model.Login, model.Password))
+                    var role = ValidateGiangVien(model.Login, model.Password);
+                    if (string.IsNullOrEmpty(role))
                     {
                         ViewData["Error"] = "Tên đăng nhập hoặc mật khẩu giảng viên không đúng.";
                         return View(model);
                     }
 
-                    HttpContext.Session.SetString("UserRole", "Giangvien");
+                    HttpContext.Session.SetString("UserRole", role);
                     HttpContext.Session.SetString("UserName", model.Login);
                     HttpContext.Session.SetString("UserLogin", model.Login);
                 }
@@ -89,7 +90,7 @@ namespace DMS_Examify.Controllers
             }
         }
 
-        private bool ValidateGiangVien(string login, string password)
+        private string? ValidateGiangVien(string login, string password)
         {
             var gvConnStr = BuildConnectionString(login, password);
             using var conn = new SqlConnection(gvConnStr);
@@ -102,7 +103,10 @@ namespace DMS_Examify.Controllers
             cmd.Parameters.AddWithValue("@LoginName", login);
 
             using var reader = cmd.ExecuteReader();
-            return reader.Read();
+            if (!reader.Read())
+                return null;
+
+            return reader["UserRole"].ToString() ?? "Giangvien";
         }
 
         private SinhVien? ValidateSinhVien(string maSV, string matKhau)
