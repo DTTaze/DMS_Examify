@@ -4,22 +4,11 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    SELECT TOP 1
+    SELECT 
         CASE
-            WHEN EXISTS (
-                SELECT 1
-                FROM sys.database_role_members rm
-                JOIN sys.database_principals r 
-                    ON rm.role_principal_id = r.principal_id
-                JOIN sys.database_principals m 
-                    ON rm.member_principal_id = m.principal_id
-                WHERE r.name = 'PGV'
-                  AND m.name = @LoginName
-            ) THEN 'PGV'
+            WHEN IS_MEMBER('PGV') = 1 THEN 'PGV'
             ELSE 'Giangvien'
-        END AS UserRole
-    FROM sys.database_principals
-    WHERE name = @LoginName;
+        END AS UserRole;
 END
 GO
 

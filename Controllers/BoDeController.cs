@@ -19,7 +19,19 @@ namespace DMS_Examify.Controllers
             if (!CheckRole("PGV", "Giangvien")) return Denied();
             ViewData["Title"] = "Nhập câu hỏi thi";
             ViewData["Subtitle"] = "Quản lý bộ đề trắc nghiệm";
-            return View(_danhSach);
+
+            var data = _danhSach;
+            var userRole = HttpContext.Session.GetString("UserRole");
+            var userLogin = HttpContext.Session.GetString("UserLogin");
+
+            if (userRole == "Giangvien")
+            {
+                // Logic bảo vệ vòng ngoài C#: Giảng viên chỉ xem câu hỏi mình soạn
+                // MaGV trong dữ liệu sẽ khớp với Login DB / UserLogin của Giảng viên.
+                data = _danhSach.Where(x => x.MaGV == userLogin).ToList();
+            }
+
+            return View(data);
         }
     }
 }
