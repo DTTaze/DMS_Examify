@@ -64,16 +64,17 @@ namespace DMS_Examify.Controllers
                 }
                 else
                 {
-                    var role = ValidateGiangVien(model.Login, model.Password);
-                    if (string.IsNullOrEmpty(role))
+                    var user = ValidateGiangVien(model.Login, model.Password);
+
+                    if (user == null || string.IsNullOrEmpty(user.Value.Role))
                     {
                         ViewData["Error"] = "Tên đăng nhập hoặc mật khẩu giảng viên không đúng.";
                         return View(model);
                     }
 
-                    HttpContext.Session.SetString("UserRole", role);
-                    HttpContext.Session.SetString("UserName", model.Login);
-                    HttpContext.Session.SetString("UserLogin", model.Login);
+                    HttpContext.Session.SetString("UserRole", user.Value.Role);
+                    HttpContext.Session.SetString("UserName", user.Value.HoTen);
+                    HttpContext.Session.SetString("UserLogin", user.Value.UserName);
                 }
 
                 return RedirectToAction("Index", "Home");
@@ -90,23 +91,28 @@ namespace DMS_Examify.Controllers
             }
         }
 
-        private string? ValidateGiangVien(string login, string password)
+        private (string Role, string UserName, string HoTen)? ValidateGiangVien(string login, string password)
         {
-            var gvConnStr = BuildConnectionString(login, password);
-            using var conn = new SqlConnection(gvConnStr);
-            conn.Open();
+            var connStr = BuildConnectionString(login, password);
 
-            using var cmd = new SqlCommand("dbo.usp_GiangVien_Login", conn)
+            using var conn = new SqlConnection(connStr);
+            conn.Open();
+            using var cmd = new SqlCommand("dbo.usp_LayThongTinTaiKhoan", conn)
             {
                 CommandType = CommandType.StoredProcedure
             };
-            cmd.Parameters.AddWithValue("@LoginName", login);
+
+            cmd.Parameters.AddWithValue("@TENLOGIN", login);
 
             using var reader = cmd.ExecuteReader();
             if (!reader.Read())
                 return null;
 
-            return reader["UserRole"].ToString() ?? "Giangvien";
+            return (
+                reader["TENNHOM"].ToString() ?? "",
+                reader["USERNAME"].ToString() ?? "",
+                reader["HOTEN"].ToString() ?? ""
+            );
         }
 
         private SinhVien? ValidateSinhVien(string maSV, string matKhau)
