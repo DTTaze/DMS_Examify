@@ -1,7 +1,6 @@
 using DMS_Examify.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
-using Microsoft.Extensions.Configuration;
 using System.Data;
 
 namespace DMS_Examify.Controllers
@@ -18,48 +17,67 @@ namespace DMS_Examify.Controllers
         public IActionResult Index()
         {
             if (!CheckRole("PGV", "Giangvien")) return Denied();
-            ViewData["Title"] = "Nhập câu hỏi thi";
-            ViewData["Subtitle"] = "Quản lý bộ đề trắc nghiệm";
-            return View(GetAllBoDe());
+
+            ViewBag.Title = "Nhập câu hỏi thi";
+            ViewBag.Subtitle = "Quản lý bộ đề trắc nghiệm";
+
+            var vm = new BoDeViewModel
+            {
+                BoDes = GetAllBoDe(),
+                MonHocList = GetMonHocList()
+            };
+
+            return View(vm);
         }
 
         private List<BoDe> GetAllBoDe()
         {
             var ds = new List<BoDe>();
+
+            string maGV = HttpContext.Session.GetString("UserName") ?? string.Empty;
+
             using var conn = new SqlConnection(_connectionString);
             conn.Open();
-            using var cmd = new SqlCommand("dbo.usp_BoDe_GetAll", conn) { CommandType = CommandType.StoredProcedure };
+
+            using var cmd = new SqlCommand("dbo.usp_GetCauHoiByGiangVien", conn)
+            {
+                CommandType = CommandType.StoredProcedure
+            };
+
+            cmd.Parameters.AddWithValue("@MAGV", maGV);
+
             using var reader = cmd.ExecuteReader();
+
             while (reader.Read())
             {
                 ds.Add(new BoDe
                 {
-                    CauHoi = reader["CauHoi"] as int? ?? 0,
-                    MaMH = reader["MaMH"].ToString() ?? string.Empty,
-                    TrinhDo = reader["TrinhDo"].ToString() ?? string.Empty,
-                    NoiDung = reader["NoiDung"].ToString() ?? string.Empty,
-                    DapAnA = reader["DapAnA"].ToString() ?? string.Empty,
-                    DapAnB = reader["DapAnB"].ToString() ?? string.Empty,
-                    DapAnC = reader["DapAnC"].ToString() ?? string.Empty,
-                    DapAnD = reader["DapAnD"].ToString() ?? string.Empty,
-                    DapAn = reader["DapAn"].ToString() ?? string.Empty,
-                    MaGV = reader["MaGV"].ToString() ?? string.Empty
+                    CauHoi = reader["CAUHOI"] as int? ?? 0,
+                    MaMH = reader["MAMH"]?.ToString() ?? string.Empty,
+                    TrinhDo = reader["TRINHDO"]?.ToString() ?? string.Empty,
+                    NoiDung = reader["NOIDUNG"]?.ToString() ?? string.Empty,
+                    DapAnA = reader["A"]?.ToString() ?? string.Empty,
+                    DapAnB = reader["B"]?.ToString() ?? string.Empty,
+                    DapAnC = reader["C"]?.ToString() ?? string.Empty,
+                    DapAnD = reader["D"]?.ToString() ?? string.Empty,
+                    DapAn = reader["DAP_AN"]?.ToString() ?? string.Empty,
+                    MaGV = reader["MAGV"]?.ToString() ?? string.Empty
                 });
             }
+
             return ds;
         }
 
         [HttpPost]
-        public IActionResult Insert(BoDe model)
+        public IActionResult Insert([FromBody] BoDe model)
         {
-            if (!CheckRole("PGV", "Giangvien")) return Denied();
-            if (model == null || model.CauHoi <= 0 || string.IsNullOrEmpty(model.MaMH))
-                return BadRequest("Thông tin câu hỏi không hợp lệ.");
-
             using var conn = new SqlConnection(_connectionString);
             conn.Open();
-            using var cmd = new SqlCommand("dbo.usp_BoDe_Insert", conn) { CommandType = CommandType.StoredProcedure };
-            cmd.Parameters.AddWithValue("@CauHoi", model.CauHoi);
+
+
+            using var cmd = new SqlCommand("usp_BoDe_Insert", conn);
+            cmd.CommandType = CommandType.StoredProcedure;
+
             cmd.Parameters.AddWithValue("@MaMH", model.MaMH);
             cmd.Parameters.AddWithValue("@TrinhDo", model.TrinhDo);
             cmd.Parameters.AddWithValue("@NoiDung", model.NoiDung);
@@ -68,13 +86,15 @@ namespace DMS_Examify.Controllers
             cmd.Parameters.AddWithValue("@DapAnC", model.DapAnC);
             cmd.Parameters.AddWithValue("@DapAnD", model.DapAnD);
             cmd.Parameters.AddWithValue("@DapAn", model.DapAn);
-            cmd.Parameters.AddWithValue("@MaGV", model.MaGV);
-            cmd.ExecuteNonQuery();
-            return Ok();
+            cmd.Parameters.AddWithValue("@MaGV", HttpContext.Session.GetString("UserName"));
+
+            var cauHoi = Convert.ToInt32(cmd.ExecuteScalar());
+
+            return Json(new { cauHoi });
         }
 
         [HttpPost]
-        public IActionResult Update(BoDe model)
+        public IActionResult Update([FromBody] BoDe model)
         {
             if (!CheckRole("PGV", "Giangvien")) return Denied();
             if (model == null || model.CauHoi <= 0 || string.IsNullOrEmpty(model.MaMH))
@@ -92,7 +112,7 @@ namespace DMS_Examify.Controllers
             cmd.Parameters.AddWithValue("@DapAnC", model.DapAnC);
             cmd.Parameters.AddWithValue("@DapAnD", model.DapAnD);
             cmd.Parameters.AddWithValue("@DapAn", model.DapAn);
-            cmd.Parameters.AddWithValue("@MaGV", model.MaGV);
+            cmd.Parameters.AddWithValue("@MaGV", HttpContext.Session.GetString("UserName"));
             cmd.ExecuteNonQuery();
             return Ok();
         }
@@ -117,29 +137,83 @@ namespace DMS_Examify.Controllers
         public IActionResult Search(string keyword)
         {
             if (!CheckRole("PGV", "Giangvien")) return Denied();
+
             var ds = new List<BoDe>();
+
             using var conn = new SqlConnection(_connectionString);
             conn.Open();
-            using var cmd = new SqlCommand("dbo.usp_BoDe_Search", conn) { CommandType = CommandType.StoredProcedure };
-            cmd.Parameters.AddWithValue("@Keyword", (object)keyword ?? DBNull.Value);
+
+            using var cmd = new SqlCommand("dbo.usp_BoDe_Search", conn)
+            {
+                CommandType = CommandType.StoredProcedure
+            };
+
+            cmd.Parameters.Add("@Keyword", SqlDbType.NVarChar, 500)
+                .Value = string.IsNullOrWhiteSpace(keyword) ? DBNull.Value : keyword;
+
             using var reader = cmd.ExecuteReader();
+
             while (reader.Read())
             {
                 ds.Add(new BoDe
                 {
-                    CauHoi = reader["CauHoi"] as int? ?? 0,
-                    MaMH = reader["MaMH"].ToString() ?? string.Empty,
-                    TrinhDo = reader["TrinhDo"].ToString() ?? string.Empty,
-                    NoiDung = reader["NoiDung"].ToString() ?? string.Empty,
-                    DapAnA = reader["DapAnA"].ToString() ?? string.Empty,
-                    DapAnB = reader["DapAnB"].ToString() ?? string.Empty,
-                    DapAnC = reader["DapAnC"].ToString() ?? string.Empty,
-                    DapAnD = reader["DapAnD"].ToString() ?? string.Empty,
-                    DapAn = reader["DapAn"].ToString() ?? string.Empty,
-                    MaGV = reader["MaGV"].ToString() ?? string.Empty
+                    CauHoi = reader.GetInt32(reader.GetOrdinal("CAUHOI")),
+
+                    MaMH = reader["MAMH"]?.ToString()?.Trim() ?? "",
+                    TrinhDo = reader["TRINHDO"]?.ToString()?.Trim() ?? "",
+                    NoiDung = reader["NOIDUNG"]?.ToString() ?? "",
+
+                    DapAnA = reader["A"]?.ToString() ?? "",
+                    DapAnB = reader["B"]?.ToString() ?? "",
+                    DapAnC = reader["C"]?.ToString() ?? "",
+                    DapAnD = reader["D"]?.ToString() ?? "",
+
+                    DapAn = reader["DAP_AN"]?.ToString()?.Trim() ?? "",
+                    MaGV = reader["MAGV"]?.ToString()?.Trim() ?? ""
                 });
             }
+
             return Json(ds);
+        }
+
+        private List<MonHoc> GetMonHocList()
+        {
+            var list = new List<MonHoc>();
+            using var conn = new SqlConnection(_connectionString);
+            conn.Open();
+
+            using var cmd = new SqlCommand("usp_MonHoc_GetAll", conn);
+            cmd.CommandType = CommandType.StoredProcedure;
+
+            using var reader = cmd.ExecuteReader();
+
+            while (reader.Read())
+            {
+                list.Add(new MonHoc
+                {
+                    MaMH = reader["MAMH"]?.ToString() ?? string.Empty,
+                    TenMH = reader["TENMH"]?.ToString() ?? string.Empty
+                });
+            }
+
+            return list;
+        }
+
+        [HttpGet]
+        public IActionResult GetLatestCauHoi()
+        {
+            int max = 0;
+
+            using var conn = new SqlConnection(_connectionString);
+            conn.Open();
+
+            using var cmd = new SqlCommand("usp_BoDe_GetLatestCauHoi", conn);
+            cmd.CommandType = CommandType.StoredProcedure;
+
+            var result = cmd.ExecuteScalar();
+            max = result != null ? Convert.ToInt32(result) : 0;
+
+            return Json(max);
         }
     }
 }

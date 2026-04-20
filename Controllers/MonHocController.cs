@@ -23,7 +23,7 @@ namespace DMS_Examify.Controllers
             return View(GetAllMonHoc());
         }
 
-        private List<MonHoc> GetAllMonHoc()
+        public List<MonHoc> GetAllMonHoc()
         {
             var ds = new List<MonHoc>();
             using var conn = new SqlConnection(_connectionString);
