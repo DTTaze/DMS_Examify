@@ -45,26 +45,28 @@ namespace DMS_Examify.Controllers
         }
 
         [HttpPost]
-        public IActionResult Insert(GiaoVien model)
+        public IActionResult Insert([FromBody] GiaoVien model)
         {
-            if (!CheckRole("PGV")) return Denied();
-            if (model == null || string.IsNullOrEmpty(model.MaGV) || string.IsNullOrEmpty(model.Ho) || string.IsNullOrEmpty(model.Ten))
-                return BadRequest("Thông tin giáo viên chưa đầy đủ.");
+            if (model == null) return BadRequest("Null");
 
             using var conn = new SqlConnection(_connectionString);
             conn.Open();
-            using var cmd = new SqlCommand("dbo.usp_GiaoVien_Insert", conn) { CommandType = CommandType.StoredProcedure };
-            cmd.Parameters.AddWithValue("@MaGV", model.MaGV);
-            cmd.Parameters.AddWithValue("@Ho", model.Ho);
-            cmd.Parameters.AddWithValue("@Ten", model.Ten);
-            cmd.Parameters.AddWithValue("@SoDTLL", model.SoDTLL);
-            cmd.Parameters.AddWithValue("@DiaChi", model.DiaChi);
+
+            using var cmd = new SqlCommand("dbo.usp_GiaoVien_Insert", conn);
+            cmd.CommandType = CommandType.StoredProcedure;
+
+            cmd.Parameters.Add("@MaGV", SqlDbType.NVarChar).Value = model.MaGV;
+            cmd.Parameters.Add("@Ho", SqlDbType.NVarChar).Value = model.Ho;
+            cmd.Parameters.Add("@Ten", SqlDbType.NVarChar).Value = model.Ten;
+            cmd.Parameters.Add("@SoDTLL", SqlDbType.NVarChar).Value = model.SoDTLL ?? "";
+            cmd.Parameters.Add("@DiaChi", SqlDbType.NVarChar).Value = model.DiaChi ?? "";
+
             cmd.ExecuteNonQuery();
             return Ok();
         }
 
         [HttpPost]
-        public IActionResult Update(GiaoVien model)
+        public IActionResult Update([FromBody] GiaoVien model)
         {
             if (!CheckRole("PGV")) return Denied();
             if (model == null || string.IsNullOrEmpty(model.MaGV))

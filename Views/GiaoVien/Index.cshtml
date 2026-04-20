@@ -1,187 +1,396 @@
 @model List<DMS_Examify.Models.GiaoVien>
-@{
-    ViewData["Title"] = "Quản lý Giáo viên";
-    ViewData["Subtitle"] = "Thêm, sửa, xóa giáo viên";
-}
+@{ ViewData["Title"] = "Quản lý Giáo viên"; }
 
-<div class="row g-4">
-    <!-- Form nhập -->
+  <div class="row g-4">
+    <!-- FORM -->
     <div class="col-md-5 animate-in animate-in-delay-1">
-        <div class="card">
-            <div class="card-header">
-                <span><i class="bi bi-person-badge me-2"></i>Thông tin Giáo viên</span>
-            </div>
-            <div class="card-body">
-                <div class="mb-3">
-                    <label class="form-label">Mã giáo viên</label>
-                    <input type="text" class="form-control" id="txtMaGV" placeholder="VD: GV001" />
-                </div>
-                <div class="row g-3 mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label">Họ</label>
-                        <input type="text" class="form-control" id="txtHoGV" placeholder="Trần Minh" />
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Tên</label>
-                        <input type="text" class="form-control" id="txtTenGV" placeholder="Tuấn" />
-                    </div>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Số ĐT liên lạc</label>
-                    <input type="text" class="form-control" id="txtSoDTLL" placeholder="0901234567" />
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Địa chỉ</label>
-                    <input type="text" class="form-control" id="txtDiaChiGV" placeholder="Nhập địa chỉ" />
-                </div>
-
-                <div class="action-toolbar">
-                    <button type="button" class="btn btn-primary" onclick="themGV()"><i class="bi bi-plus-lg"></i> Thêm</button>
-                    <button type="button" class="btn btn-danger" onclick="xoaGV()"><i class="bi bi-trash"></i> Xóa</button>
-                    <button type="button" class="btn btn-warning" onclick="hieuChinhGV()"><i class="bi bi-pencil-square"></i> Hiệu chỉnh</button>
-                    <button type="button" class="btn btn-outline-secondary" onclick="phucHoiGV()"><i class="bi bi-arrow-counterclockwise"></i> Phục hồi</button>
-                    <button type="button" class="btn btn-info" onclick="timGV()"><i class="bi bi-search"></i> Tìm</button>
-                    <button type="button" class="btn btn-success" onclick="ghiGV()"><i class="bi bi-floppy"></i> Ghi</button>
-                </div>
-            </div>
+      <div class="card">
+        <div class="card-header">
+          <span
+            ><i class="bi bi-person-badge me-2"></i>Thông tin Giáo viên</span
+          >
         </div>
+        <div class="card-body">
+          <div class="mb-3">
+            <label class="form-label">Mã giáo viên</label>
+            <input
+              type="text"
+              class="form-control"
+              id="txtMaGV"
+              placeholder="VD: GV001"
+            />
+          </div>
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label">Họ</label>
+              <input
+                type="text"
+                class="form-control"
+                id="txtHoGV"
+                placeholder="Trần Minh"
+              />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Tên</label>
+              <input
+                type="text"
+                class="form-control"
+                id="txtTenGV"
+                placeholder="Tuấn"
+              />
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Số ĐT liên lạc</label>
+            <input
+              type="text"
+              class="form-control"
+              id="txtSoDTLL"
+              placeholder="0901234567"
+            />
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Địa chỉ</label>
+            <input
+              type="text"
+              class="form-control"
+              id="txtDiaChiGV"
+              placeholder="Nhập địa chỉ"
+            />
+          </div>
+
+          <div class="action-toolbar">
+            <button type="button" class="btn btn-primary" onclick="themGV()">
+              <i class="bi bi-plus-lg"></i> Thêm
+            </button>
+            <button type="button" class="btn btn-danger" onclick="xoaGV()">
+              <i class="bi bi-trash"></i> Xóa
+            </button>
+            <button
+              type="button"
+              class="btn btn-warning"
+              onclick="hieuChinhGV()"
+            >
+              <i class="bi bi-pencil-square"></i> Hiệu chỉnh
+            </button>
+            <button
+              type="button"
+              class="btn btn-outline-secondary"
+              onclick="phucHoiGV()"
+            >
+              <i class="bi bi-arrow-counterclockwise"></i> Phục hồi
+            </button>
+            <button type="button" class="btn btn-info" onclick="timGV()">
+              <i class="bi bi-search"></i> Tìm
+            </button>
+            <button type="button" class="btn btn-success" onclick="ghiGV()">
+              <i class="bi bi-floppy"></i> Ghi
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- Bảng danh sách -->
-    <div class="col-md-7 animate-in animate-in-delay-2">
-        <div class="card">
-            <div class="card-header">
-                <span><i class="bi bi-list-ul me-2"></i>Danh sách Giáo viên</span>
-                <span class="badge bg-primary">@Model.Count GV</span>
-            </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th style="width:45px">STT</th>
-                                <th>Mã GV</th>
-                                <th>Họ</th>
-                                <th>Tên</th>
-                                <th>Số ĐT</th>
-                                <th>Địa chỉ</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @for (int i = 0; i < Model.Count; i++)
-                            {
-                                var gv = Model[i];
-                                <tr style="cursor:pointer;" onclick="chonGV(this, '@gv.MaGV', '@gv.Ho', '@gv.Ten', '@gv.SoDTLL', '@gv.DiaChi')">
-                                    <td>@(i + 1)</td>
-                                    <td><strong>@gv.MaGV</strong></td>
-                                    <td>@gv.Ho</td>
-                                    <td>@gv.Ten</td>
-                                    <td>@gv.SoDTLL</td>
-                                    <td>@gv.DiaChi</td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
+    <!-- TABLE -->
+    <div class="col-md-7">
+      <table class="table table-hover">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Mã</th>
+            <th>Họ</th>
+            <th>Tên</th>
+            <th>SĐT</th>
+            <th>Địa chỉ</th>
+          </tr>
+        </thead>
+        <tbody id="gvTable">
+          @for (int i = 0; i < Model.Count; i++) { var gv = Model[i];
+          <tr
+            data-id="@gv.MaGV"
+            data-magv="@gv.MaGV"
+            data-ho="@gv.Ho"
+            data-ten="@gv.Ten"
+            data-sdt="@gv.SoDTLL"
+            data-diachi="@gv.DiaChi"
+            onclick="
+              chonGV(
+                this,
+                '@gv.MaGV',
+                '@gv.Ho',
+                '@gv.Ten',
+                '@gv.SoDTLL',
+                '@gv.DiaChi',
+              )
+            "
+          >
+            <td>@(i + 1)</td>
+            <td>@gv.MaGV</td>
+            <td>@gv.Ho</td>
+            <td>@gv.Ten</td>
+            <td>@gv.SoDTLL</td>
+            <td>@gv.DiaChi</td>
+          </tr>
+          }
+        </tbody>
+      </table>
     </div>
-</div>
+  </div>
 
-@section Scripts {
-    <script>
-        let selectedRowGV = null;
+  @section Scripts {
+  <script>
+    let newItems = [];
+    let updatedItems = [];
+    let deletedItems = [];
+    let selectedRow = null;
+    let historyStack = [];
+    let tempId = -1;
 
-        function chonGV(row, maGV, ho, ten, sdt, diaChi) {
-            document.querySelectorAll('table tbody tr').forEach(r => r.classList.remove('selected'));
-            row.classList.add('selected');
-            selectedRowGV = row;
-            document.getElementById('txtMaGV').value = maGV;
-            document.getElementById('txtHoGV').value = ho;
-            document.getElementById('txtTenGV').value = ten;
-            document.getElementById('txtSoDTLL').value = sdt;
-            document.getElementById('txtDiaChiGV').value = diaChi;
-        }
+    // ================= SAVE STATE (UNDO) =================
+    function pushState() {
+      historyStack.push({
+        html: document.getElementById("gvTable").innerHTML,
+        newItems: JSON.parse(JSON.stringify(newItems)),
+        updatedItems: JSON.parse(JSON.stringify(updatedItems)),
+        deletedItems: JSON.parse(JSON.stringify(deletedItems)),
+      });
+    }
 
-        function themGV() {
-            selectedRowGV = null;
-            document.getElementById('txtMaGV').value = '';
-            document.getElementById('txtHoGV').value = '';
-            document.getElementById('txtTenGV').value = '';
-            document.getElementById('txtSoDTLL').value = '';
-            document.getElementById('txtDiaChiGV').value = '';
-            document.getElementById('txtMaGV').focus();
-        }
+    // ================= UNDO =================
+    function undo() {
+      if (!historyStack.length) return alert("Không có gì để undo");
 
-        function hieuChinhGV() {
-            if (!selectedRowGV) {
-                alert('Vui lòng chọn một giáo viên để hiệu chỉnh.');
-                return;
-            }
-            selectedRowGV.cells[1].innerHTML = '<strong>' + document.getElementById('txtMaGV').value + '</strong>';
-            selectedRowGV.cells[2].textContent = document.getElementById('txtHoGV').value;
-            selectedRowGV.cells[3].textContent = document.getElementById('txtTenGV').value;
-            selectedRowGV.cells[4].textContent = document.getElementById('txtSoDTLL').value;
-            selectedRowGV.cells[5].textContent = document.getElementById('txtDiaChiGV').value;
-        }
+      const s = historyStack.pop();
+      document.getElementById("gvTable").innerHTML = s.html;
+      newItems = s.newItems;
+      updatedItems = s.updatedItems;
+      deletedItems = s.deletedItems;
 
-        function phucHoiGV() {
-            selectedRowGV = null;
-            document.querySelectorAll('table tbody tr').forEach(r => r.classList.remove('selected'));
-            document.getElementById('txtMaGV').value = '';
-            document.getElementById('txtHoGV').value = '';
-            document.getElementById('txtTenGV').value = '';
-            document.getElementById('txtSoDTLL').value = '';
-            document.getElementById('txtDiaChiGV').value = '';
-        }
+      bindRows();
+      selectedRow = null;
+    }
 
-        async function timGV() {
-            const keyword = prompt('Nhập từ khóa tìm kiếm:');
-            if (keyword == null) return;
+    function phucHoiGV() {
+    if (!historyStack.length) {
+        alert("Không có gì để phục hồi");
+        return;
+    }
 
-            const res = await fetch('/GiaoVien/Search?keyword=' + encodeURIComponent(keyword));
-            if (!res.ok) { alert('Tìm kiếm thất bại'); return; }
-            const ds = await res.json();
+    const s = historyStack.pop();
 
-            const tbody = document.querySelector('table tbody');
-            tbody.innerHTML = '';
-            ds.forEach((item, idx) => {
-                const row = tbody.insertRow();
-                row.style.cursor = 'pointer';
-                row.onclick = () => chonGV(row, item.maGV, item.ho, item.ten, item.soDTLL, item.diaChi);
-                row.innerHTML = `<td>${idx + 1}</td><td><strong>${item.maGV}</strong></td><td>${item.ho}</td><td>${item.ten}</td><td>${item.soDTLL}</td><td>${item.diaChi}</td>`;
-            });
-        }
+    // restore UI
+    document.getElementById("gvTable").innerHTML = s.html;
 
-        async function ghiGV() {
-            const model = {
-                MaGV: document.getElementById('txtMaGV').value.trim(),
-                Ho: document.getElementById('txtHoGV').value.trim(),
-                Ten: document.getElementById('txtTenGV').value.trim(),
-                SoDTLL: document.getElementById('txtSoDTLL').value.trim(),
-                DiaChi: document.getElementById('txtDiaChiGV').value.trim()
-            };
-            if (!model.MaGV || !model.Ho || !model.Ten) {
-                alert('Thông tin chưa đầy đủ');
-                return;
-            }
-            const url = selectedRowGV ? '/GiaoVien/Update' : '/GiaoVien/Insert';
-            const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(model) });
-            if (res.ok) {
-                alert('Ghi thành công');
-                location.reload();
-            } else {
-                const msg = await res.text();
-                alert('Lỗi: ' + msg);
-            }
-        }
+    // restore data
+    newItems = s.newItems;
+    updatedItems = s.updatedItems;
+    deletedItems = s.deletedItems;
 
-        async function xoaGV() {
-            if (!selectedRowGV) { alert('Chọn giáo viên cần xóa'); return; }
-            if (!confirm('Xác nhận xóa?')) return;
-            const maGV = document.getElementById('txtMaGV').value;
-            const res = await fetch('/GiaoVien/Delete?maGV=' + encodeURIComponent(maGV), { method: 'POST' });
-            if (res.ok) { alert('Xóa thành công'); location.reload(); } else { alert('Xóa thất bại'); }
-        }
-    </script>
+    // bind lại sự kiện click
+    bindRows();
+
+    // reset trạng thái chọn
+    selectedRow = null;
+
+    // clear form (giống BoDe)
+    txtMaGV.value = '';
+    txtHoGV.value = '';
+    txtTenGV.value = '';
+    txtSoDTLL.value = '';
+    txtDiaChiGV.value = '';
 }
+
+    // ================= FORM =================
+    function getForm() {
+      return {
+        MaGV: txtMaGV.value.trim(),
+        Ho: txtHoGV.value.trim(),
+        Ten: txtTenGV.value.trim(),
+        SoDTLL: txtSoDTLL.value.trim(),
+        DiaChi: txtDiaChiGV.value.trim(),
+      };
+    }
+
+    function fillForm(row) {
+      txtMaGV.value = row.dataset.magv;
+      txtHoGV.value = row.dataset.ho;
+      txtTenGV.value = row.dataset.ten;
+      txtSoDTLL.value = row.dataset.sdt;
+      txtDiaChiGV.value = row.dataset.diachi;
+    }
+
+    // ================= BIND ROW =================
+    function bindRows() {
+      document.querySelectorAll("#gvTable tr").forEach((r) => {
+        r.onclick = () => {
+          document
+            .querySelectorAll("#gvTable tr")
+            .forEach((x) => x.classList.remove("table-active"));
+          r.classList.add("table-active");
+          selectedRow = r;
+          fillForm(r);
+        };
+      });
+    }
+
+    // ================= ADD =================
+    function themGV() {
+      const d = getForm();
+      if (!d.MaGV || !d.Ho || !d.Ten) return alert("Thiếu dữ liệu");
+
+      pushState();
+
+      const id = tempId--;
+      newItems.push({ Id: id, ...d });
+
+      const row = document.getElementById("gvTable").insertRow();
+      row.dataset.id = id;
+      row.dataset.magv = d.MaGV;
+      row.dataset.ho = d.Ho;
+      row.dataset.ten = d.Ten;
+      row.dataset.sdt = d.SoDTLL;
+      row.dataset.diachi = d.DiaChi;
+
+      row.innerHTML = `
+        <td>...</td>
+        <td>${d.MaGV}</td>
+        <td>${d.Ho}</td>
+        <td>${d.Ten}</td>
+        <td>${d.SoDTLL}</td>
+        <td>${d.DiaChi}</td>
+    `;
+
+      bindRows();
+    }
+
+    // ================= EDIT =================
+    function hieuChinhGV() {
+      if (!selectedRow) return alert("Chọn giáo viên");
+
+      const d = getForm();
+
+      if (!d.MaGV || !d.Ho || !d.Ten) {
+        alert("Dữ liệu không hợp lệ (không được để trống)");
+        return;
+      }
+
+      const id = parseInt(selectedRow.dataset.id || 0);
+
+      pushState();
+
+      selectedRow.innerHTML = `
+<td>${id > 0 ? id : "..."}</td>
+<td>${d.MaGV}</td>
+<td>${d.Ho}</td>
+<td>${d.Ten}</td>
+<td>${d.SoDTLL}</td>
+<td>${d.DiaChi}</td>
+`;
+
+      Object.assign(selectedRow.dataset, {
+        magv: d.MaGV,
+        ho: d.Ho,
+        ten: d.Ten,
+        sdt: d.SoDTLL,
+        diachi: d.DiaChi,
+      });
+
+      if (id < 0) {
+        const i = newItems.findIndex((x) => x.Id === id);
+        if (i >= 0) newItems[i] = { Id: id, ...d };
+      } else {
+        updatedItems = updatedItems.filter(
+          (x) => x.MaGV !== selectedRow.dataset.magv,
+        );
+        updatedItems.push(d);
+      }
+    }
+
+    // ================= DELETE =================
+    function xoaGV() {
+      if (!selectedRow) return alert("Chọn dòng");
+
+      const id = parseInt(selectedRow.dataset.id || 0);
+      const maGV = selectedRow.dataset.magv;
+
+      pushState();
+
+      if (id < 0) {
+        newItems = newItems.filter((x) => x.Id !== id);
+      } else {
+        updatedItems = updatedItems.filter((x) => x.MaGV !== maGV);
+        if (!deletedItems.includes(maGV)) deletedItems.push(maGV);
+      }
+
+      selectedRow.remove();
+      selectedRow = null;
+    }
+
+    // ================= SAVE ALL =================
+    async function ghiGV() {
+      // DELETE
+      for (const ma of deletedItems) {
+        await fetch(`/GiaoVien/Delete?maGV=${ma}`, { method: "POST" });
+      }
+
+      // UPDATE
+      for (const u of updatedItems) {
+        await fetch(`/GiaoVien/Update`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(u),
+        });
+      }
+
+      // INSERT
+      for (const n of newItems) {
+        await fetch(`/GiaoVien/Insert`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(n),
+        });
+      }
+
+      alert("Lưu thành công");
+      location.reload();
+    }
+
+    // ================= SEARCH =================
+    async function timGV() {
+      const k = prompt("Nhập từ khóa");
+      if (!k) return;
+
+      const res = await fetch(`/GiaoVien/Search?keyword=${k}`);
+      const data = await res.json();
+
+      const tbody = document.getElementById("gvTable");
+      tbody.innerHTML = "";
+
+      data.forEach((x, i) => {
+        const row = tbody.insertRow();
+
+        row.dataset.id = x.maGV;
+        row.dataset.magv = x.maGV;
+        row.dataset.ho = x.ho;
+        row.dataset.ten = x.ten;
+        row.dataset.sdt = x.soDTLL;
+        row.dataset.diachi = x.diaChi;
+
+        row.innerHTML = `
+<td>${i + 1}</td>
+<td>${x.maGV}</td>
+<td>${x.ho}</td>
+<td>${x.ten}</td>
+<td>${x.soDTLL}</td>
+<td>${x.diaChi}</td>
+`;
+      });
+
+      bindRows();
+    }
+
+    // ================= INIT =================
+    window.onload = bindRows;
+  </script>
+  }</DMS_Examify.Models.GiaoVien
+>
