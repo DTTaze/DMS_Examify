@@ -20,6 +20,47 @@ namespace DMS_Examify.Controllers
             if (!CheckRole("PGV")) return Denied();
             ViewData["Title"] = "Tài khoản & Phân quyền";
             ViewData["Subtitle"] = "Tạo tài khoản và quản lý quyền hạn";
+
+            List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> roles = new List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>();
+            string connectionString = _configuration.GetConnectionString("DefaultConnection");
+            try
+            {
+                using (SqlConnection conn = new SqlConnection(connectionString))
+                {
+                    using (SqlCommand cmd = new SqlCommand("usp_LayDanhSachQuyen_TaoTaiKhoan", conn))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        conn.Open();
+                        using (SqlDataReader reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                string roleValue = reader["TenNhomQuyen"] != DBNull.Value ? reader["TenNhomQuyen"].ToString() : "";
+                                if (!string.IsNullOrEmpty(roleValue))
+                                {
+                                    string roleText = roleValue;
+                                    if (roleValue == "PGV") roleText = "PGV (Phòng giáo vụ - Toàn quyền)";
+                                    else if (roleValue == "Giangvien") roleText = "Giảng viên";
+                                    
+                                    roles.Add(new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem
+                                    {
+                                        Value = roleValue,
+                                        Text = roleText,
+                                        Selected = (roleValue == "Giangvien")
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ViewBag.ErrorMessage = "Lỗi khi truy xuất danh sách quyền từ Server: " + ex.Message;
+            }
+
+            ViewBag.Roles = roles;
+
             return View(_danhSach);
         }
 
@@ -28,6 +69,63 @@ namespace DMS_Examify.Controllers
         public TaiKhoanController(IConfiguration configuration)
         {
             _configuration = configuration;
+        }
+
+        [HttpGet]
+        public IActionResult GetGiaoVienInfo(string magv)
+        {
+            if (!CheckRole("PGV")) return Json(new { success = false, message = "Bạn không có quyền thực hiện thao tác này." });
+            if (string.IsNullOrEmpty(magv)) return Json(new { success = false, message = "Mã GV không được để trống" });
+
+            string connectionString = _configuration.GetConnectionString("DefaultConnection");
+            try
+            {
+                using (SqlConnection conn = new SqlConnection(connectionString))
+                {
+                    // LƯU Ý: Thay đổi tên SP_LayThongTinGiaoVien theo đúng tên SP trong database của bạn
+                    using (SqlCommand cmd = new SqlCommand("usp_LayThongTinGiaoVienTheoMa", conn))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.AddWithValue("@MAGV", magv);
+                        
+                        conn.Open();
+                        using (SqlDataReader reader = cmd.ExecuteReader())
+                        {
+                            if (reader.Read())
+                            {
+                                string magvResult = reader["MAGV"] != DBNull.Value ? reader["MAGV"].ToString() : "";
+                                string ho = reader["HO"] != DBNull.Value ? reader["HO"].ToString() : "";
+                                string ten = reader["TEN"] != DBNull.Value ? reader["TEN"].ToString() : "";
+                                string sodtll = reader["SODTLL"] != DBNull.Value ? reader["SODTLL"].ToString() : "";
+                                string diachi = reader["DIACHI"] != DBNull.Value ? reader["DIACHI"].ToString() : "";
+                                
+                                string hoTen = $"{ho} {ten}".Trim();
+
+                                return Json(new { 
+                                    success = true, 
+                                    magv = magvResult,
+                                    fullName = hoTen,
+                                    sodtll = sodtll,
+                                    diachi = diachi
+                                });
+                            }
+                            else
+                            {
+                                return Json(new { success = false, message = "Không tìm thấy thông tin giáo viên với mã này." });
+                            }
+                        }
+                    }
+                }
+            }
+            catch (SqlException ex)
+            {
+                // Bắt lỗi đỏ từ RAISERROR trong SP trả về
+                return Json(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = "Lỗi hệ thống: " + ex.Message });
+            }
         }
 
         [HttpGet]
@@ -87,7 +185,7 @@ namespace DMS_Examify.Controllers
                             {
                                 case 0:
                                     TempData["SuccessMessage"] = "Tạo tài khoản thành công!";
-                                    return RedirectToAction("Index", "Home");
+                                    return RedirectToAction("Index");
                                 case 1:
                                     ModelState.AddModelError("LoginName", "Tên đăng nhập (Login name) đã tồn tại trên Server.");
                                     break;

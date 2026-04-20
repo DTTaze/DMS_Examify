@@ -5,6 +5,24 @@
 }
 
 <div class="row g-4">
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="col-12">
+            <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+                <i class="bi bi-check-circle-fill me-2"></i> <strong>Tuyệt vời!</strong> @TempData["SuccessMessage"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        </div>
+    }
+    @if (ViewBag.ErrorMessage != null)
+    {
+        <div class="col-12">
+            <div class="alert alert-danger" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i> @ViewBag.ErrorMessage
+            </div>
+        </div>
+    }
+
     <!-- Form tạo tài khoản -->
     <div class="col-md-5 animate-in animate-in-delay-1">
         <div class="card">
@@ -17,27 +35,46 @@
 
                     <div class="mb-3">
                         <label for="MaGV" class="form-label">Mã Giáo Viên / PGV (MAGV)</label>
-                        <input type="text" name="MaGV" id="MaGV" class="form-control" placeholder="VD: GV001" required />
+                        <input type="text" name="MaGV" id="MaGV" class="form-control" placeholder="VD: GV001"
+                            required />
                     </div>
-                    
+
+                    <div class="mb-3">
+                        <div id="gvError" class="text-danger fw-bold mb-1" style="display:none; font-size:13px;"></div>
+                        <label for="FullName" class="form-label">Họ tên Giáo viên</label>
+                        <input type="text" id="FullName" class="form-control bg-light" placeholder="Họ tên sẽ tự động hiển thị" readonly />
+                    </div>
+
                     <div class="mb-3">
                         <label for="LoginName" class="form-label">Tên đăng nhập (Login)</label>
-                        <input type="text" name="LoginName" id="LoginName" class="form-control" placeholder="VD: gv_tuan" required />
+                        <input type="text" name="LoginName" id="LoginName" class="form-control"
+                            placeholder="VD: gv_tuan" required />
                     </div>
-                    
+
                     <div class="mb-3">
                         <label for="Password" class="form-label">Mật khẩu</label>
-                        <input type="password" name="Password" id="Password" class="form-control" placeholder="Nhập mật khẩu" required />
+                        <input type="password" name="Password" id="Password" class="form-control"
+                            placeholder="Nhập mật khẩu" required />
                     </div>
-                    
+
                     <div class="mb-3">
                         <label for="Role" class="form-label">Nhóm quyền</label>
-                        <select name="Role" id="Role" class="form-select">
-                            <option value="PGV">PGV (Phòng giáo vụ - Toàn quyền)</option>
-                            <option value="Giangvien" selected>Giảng viên</option>
+                        <select name="Role" id="Role" class="form-select" @(ViewBag.Roles == null || ((List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>)ViewBag.Roles).Count == 0 ? "disabled" : "")>
+                            @if (ViewBag.Roles != null && ((List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>)ViewBag.Roles).Count > 0)
+                            {
+                                foreach (var roleItem in (List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>)ViewBag.Roles)
+                                {
+                                    <option value="@roleItem.Value" selected="@(roleItem.Selected ? "selected" : null)">@roleItem.Text</option>
+                                }
+                            }
+                            else
+                            {
+                                <option value="" disabled selected>Lỗi không tải được danh sách quyền</option>
+                            }
                         </select>
                         <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">
-                            <i class="bi bi-info-circle"></i> Chỉ cho phép tạo tài khoản cho PGV và Giảng viên. Sinh viên dùng tài khoản chung.
+                            <i class="bi bi-info-circle"></i> Chỉ cho phép tạo tài khoản cho PGV và Giảng viên. Sinh
+                            viên dùng tài khoản chung.
                         </div>
                     </div>
 
@@ -98,7 +135,8 @@
                             <tr>
                                 <td>Thi</td>
                                 <td class="text-center"><i class="bi bi-x-circle text-danger"></i></td>
-                                <td class="text-center"><i class="bi bi-check-circle-fill text-success" title="Thi thử, không ghi điểm"></i></td>
+                                <td class="text-center"><i class="bi bi-check-circle-fill text-success"
+                                        title="Thi thử, không ghi điểm"></i></td>
                                 <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
                             </tr>
                             <tr>
@@ -149,8 +187,10 @@
                             @for (int i = 0; i < Model.Count; i++)
                             {
                                 var tk = Model[i];
-                                var badgeClass = tk.NhomQuyen == "PGV" ? "badge-role-pgv" : tk.NhomQuyen == "Giangvien" ? "badge-role-gv" : "badge-role-sv";
-                                var nhomLabel = tk.NhomQuyen == "PGV" ? "PGV" : tk.NhomQuyen == "Giangvien" ? "Giảng viên" : "Sinh viên";
+                                var badgeClass = tk.NhomQuyen == "PGV" ? "badge-role-pgv" : tk.NhomQuyen == "Giangvien" ?
+                                "badge-role-gv" : "badge-role-sv";
+                                var nhomLabel = tk.NhomQuyen == "PGV" ? "PGV" : tk.NhomQuyen == "Giangvien" ? "Giảng viên" :
+                                "Sinh viên";
                                 <tr>
                                     <td>@(i + 1)</td>
                                     <td><strong>@tk.LoginName</strong></td>
@@ -170,3 +210,40 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            let timeout = null;
+            $('#MaGV').on('input', function () {
+                clearTimeout(timeout);
+                var magv = $(this).val().trim();
+                
+                // Reset thông tin
+                $('#FullName').val('');
+                $('#gvError').hide().text('');
+
+                if (magv.length === 0) return;
+
+                // Chờ người dùng gõ xong 500ms thì mới gọi API
+                timeout = setTimeout(function () {
+                    $.ajax({
+                        url: '@Url.Action("GetGiaoVienInfo", "TaiKhoan")',
+                        type: 'GET',
+                        data: { magv: magv },
+                        success: function (res) {
+                            if (res.success) {
+                                $('#FullName').val(res.fullName);
+                            } else {
+                                $('#gvError').text(res.message).show();
+                            }
+                        },
+                        error: function (xhr) {
+                            $('#gvError').text('Lỗi kết nối hoặc lỗi server.').show();
+                        }
+                    });
+                }, 500);
+            });
+        });
+    </script>
+}
