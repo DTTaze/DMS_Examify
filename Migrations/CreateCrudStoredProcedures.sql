@@ -275,3 +275,66 @@ BEGIN
        OR MaGV LIKE '%' + @Keyword + '%';
 END
 GO
+
+CREATE PROCEDURE usp_Lop_Insert
+    @MALOP NCHAR(15),
+    @TENLOP NVARCHAR(50)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF EXISTS (SELECT 1 FROM LOP WHERE MALOP = @MALOP)
+    BEGIN
+        RAISERROR(N'Mã lớp đã tồn tại', 16, 1);
+        RETURN;
+    END
+
+    INSERT INTO LOP(MALOP, TENLOP)
+    VALUES(@MALOP, @TENLOP);
+END
+
+CREATE PROCEDURE usp_Lop_Update
+    @MALOP NCHAR(15),
+    @TENLOP NVARCHAR(50)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF NOT EXISTS (SELECT 1 FROM LOP WHERE MALOP = @MALOP)
+    BEGIN
+        RAISERROR(N'Không tìm thấy lớp', 16, 1);
+        RETURN;
+    END
+
+    UPDATE LOP
+    SET TENLOP = @TENLOP
+    WHERE MALOP = @MALOP;
+END
+
+CREATE PROCEDURE usp_Lop_Delete
+    @MALOP NCHAR(15)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF NOT EXISTS (SELECT 1 FROM LOP WHERE MALOP = @MALOP)
+    BEGIN
+        RAISERROR(N'Không tìm thấy lớp', 16, 1);
+        RETURN;
+    END
+
+    DELETE FROM LOP
+    WHERE MALOP = @MALOP;
+END
+
+CREATE PROCEDURE usp_Lop_GetAll
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT 
+        MALOP,
+        TENLOP
+    FROM LOP
+    ORDER BY MALOP;
+END
