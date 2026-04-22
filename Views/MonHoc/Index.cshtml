@@ -1,88 +1,62 @@
 @model List<DMS_Examify.Models.MonHoc>
-@{
-    ViewData["Title"] = "Quản lý Môn học";
-    ViewData["Subtitle"] = "Thêm, sửa, xóa môn học";
-}
 
 <div class="row g-4">
-    <!-- Form nhập liệu -->
-    <div class="col-md-5 animate-in animate-in-delay-1">
+    <!-- FORM -->
+    <div class="col-md-5">
         <div class="card">
-            <div class="card-header">
-                <span><i class="bi bi-pencil me-2"></i>Thông tin Môn học</span>
-            </div>
+            <div class="card-header">Thông tin Môn học</div>
             <div class="card-body">
-                <form id="formMonHoc">
-                    <div class="mb-3">
-                        <label class="form-label">Mã môn học</label>
-                        <input type="text" class="form-control" id="txtMaMH" placeholder="VD: MH001" />
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Tên môn học</label>
-                        <input type="text" class="form-control" id="txtTenMH" placeholder="Nhập tên môn học" />
-                    </div>
 
-                    <div class="action-toolbar">
-                        <button type="button" class="btn btn-primary" onclick="themMonHoc()">
-                            <i class="bi bi-plus-lg"></i> Thêm
-                        </button>
-                        <button type="button" class="btn btn-danger" onclick="xoaMonHoc()">
-                            <i class="bi bi-trash"></i> Xóa
-                        </button>
-                        <button type="button" class="btn btn-warning" onclick="hieuChinhMonHoc()">
-                            <i class="bi bi-pencil-square"></i> Hiệu chỉnh
-                        </button>
-                        <button type="button" class="btn btn-outline-secondary" onclick="phucHoiMonHoc()">
-                            <i class="bi bi-arrow-counterclockwise"></i> Phục hồi
-                        </button>
-                        <button type="button" class="btn btn-info" onclick="timMonHoc()">
-                            <i class="bi bi-search"></i> Tìm
-                        </button>
-                        <button type="button" class="btn btn-success" onclick="ghiMonHoc()">
-                            <i class="bi bi-floppy"></i> Ghi
-                        </button>
-                    </div>
-                </form>
+                <div class="mb-3">
+                    <label>Mã môn học</label>
+                    <input id="txtMaMH" class="form-control" />
+                </div>
+
+                <div class="mb-3">
+                    <label>Tên môn học</label>
+                    <input id="txtTenMH" class="form-control" />
+                </div>
+
+                <div class="d-flex gap-2 flex-wrap">
+                    <button type="button" class="btn btn-primary" onclick="them()">Thêm</button>
+                    <button type="button" class="btn btn-warning" onclick="sua()">Sửa</button>
+                    <button type="button" class="btn btn-danger" onclick="xoa()">Xóa</button>
+                    <button type="button" class="btn btn-info" onclick="tim()">Tìm</button>
+                    <button type="button" class="btn btn-success" onclick="ghi()">Ghi</button>
+                    <button type="button" class="btn btn-secondary" onclick="resetForm()">Reset</button>
+                </div>
+
             </div>
         </div>
     </div>
 
-    <!-- Bảng danh sách -->
-    <div class="col-md-7 animate-in animate-in-delay-2">
+    <!-- TABLE -->
+    <div class="col-md-7">
         <div class="card">
             <div class="card-header">
-                <span><i class="bi bi-list-ul me-2"></i>Danh sách Môn học</span>
-                <span class="badge bg-primary">@Model.Count môn</span>
+                Danh sách Môn học (@Model.Count)
             </div>
+
             <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover" id="tableMonHoc">
-                        <thead>
-                            <tr>
-                                <th style="width:50px">STT</th>
-                                <th>Mã MH</th>
-                                <th>Tên môn học</th>
+                <table class="table table-hover" id="tbl">
+                    <thead>
+                        <tr>
+                            <th>STT</th>
+                            <th>Mã</th>
+                            <th>Tên</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (int i = 0; i < Model.Count; i++)
+                        {
+                            <tr data-mamh="@Model[i].MaMH" data-tenmh="@Model[i].TenMH">
+                                <td>@(i + 1)</td>
+                                <td>@Model[i].MaMH</td>
+                                <td>@Model[i].TenMH</td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            @for (int i = 0; i < Model.Count; i++)
-                            {
-                                <tr onclick="chonMonHoc(this, '@Model[i].MaMH', '@Model[i].TenMH')" style="cursor:pointer;">
-                                    <td>@(i + 1)</td>
-                                    <td><strong>@Model[i].MaMH</strong></td>
-                                    <td>@Model[i].TenMH</td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
-                @if (Model.Count == 0)
-                {
-                    <div class="empty-state">
-                        <i class="bi bi-inbox"></i>
-                        <p>Chưa có môn học nào</p>
-                    </div>
-                }
+                        }
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -90,128 +64,203 @@
 
 @section Scripts {
     <script>
+        let newItems = [];
+        let updatedItems = [];
+        let deletedItems = [];
         let selectedRow = null;
+        let historyStack = [];
+        let tempId = -1;
 
-        function chonMonHoc(row, maMH, tenMH) {
-            // Deselect previous
-            document.querySelectorAll('#tableMonHoc tbody tr').forEach(r => r.classList.remove('selected'));
-            row.classList.add('selected');
-            selectedRow = row;
-            document.getElementById('txtMaMH').value = maMH;
-            document.getElementById('txtTenMH').value = tenMH;
+        function pushState() {
+            historyStack.push({
+                html: document.querySelector("#tbl tbody").innerHTML,
+                newItems: JSON.parse(JSON.stringify(newItems)),
+                updatedItems: JSON.parse(JSON.stringify(updatedItems)),
+                deletedItems: JSON.parse(JSON.stringify(deletedItems))
+            });
         }
 
-        function themMonHoc() {
-            document.getElementById('txtMaMH').value = '';
-            document.getElementById('txtTenMH').value = '';
-            document.getElementById('txtMaMH').focus();
+        function undo() {
+            if (!historyStack.length) return alert("Không có gì để undo");
+
+            const s = historyStack.pop();
+            document.querySelector("#tbl tbody").innerHTML = s.html;
+            newItems = s.newItems;
+            updatedItems = s.updatedItems;
+            deletedItems = s.deletedItems;
+
+            bindRows();
             selectedRow = null;
         }
 
-        function xoaMonHoc() {
-            if (selectedRow) {
-                if (confirm('Bạn có chắc muốn xóa môn học này?')) {
-                    selectedRow.remove();
-                    document.getElementById('txtMaMH').value = '';
-                    document.getElementById('txtTenMH').value = '';
-                    selectedRow = null;
+        function getForm() {
+            return {
+                MaMH: txtMaMH.value.trim(),
+                TenMH: txtTenMH.value.trim()
+            };
+        }
+
+        function fillForm(row) {
+            txtMaMH.value = row.dataset.mamh;
+            txtTenMH.value = row.dataset.tenmh;
+        }
+
+        function bindRows() {
+            document.querySelectorAll("#tbl tbody tr").forEach(r => {
+                r.onclick = () => {
+                    document.querySelectorAll("#tbl tbody tr")
+                        .forEach(x => x.classList.remove("table-active"));
+
+                    r.classList.add("table-active");
+                    selectedRow = r;
+                    fillForm(r);
+                };
+            });
+        }
+
+        function them() {
+            const d = getForm();
+            if (!d.MaMH || !d.TenMH) return alert("Nhập đầy đủ");
+
+            pushState();
+
+            const id = tempId--;
+
+            newItems.push({ Id: id, ...d });
+
+            const row = document.querySelector("#tbl tbody").insertRow();
+            row.dataset.id = id;
+            row.dataset.mamh = d.MaMH;
+            row.dataset.tenmh = d.TenMH;
+
+            row.innerHTML = `
+                    <td>...</td>
+                    <td>${d.MaMH}</td>
+                    <td>${d.TenMH}</td>
+                `;
+
+            bindRows();
+            resetForm();
+        }
+
+        function sua() {
+            if (!selectedRow) return alert("Chọn dòng");
+
+            const d = getForm();
+            const id = parseInt(selectedRow.dataset.id);
+
+            pushState();
+
+            selectedRow.innerHTML = `
+                    <td>${id > 0 ? id : "..."}</td>
+                    <td>${d.MaMH}</td>
+                    <td>${d.TenMH}</td>
+                `;
+
+            selectedRow.dataset.mamh = d.MaMH;
+            selectedRow.dataset.tenmh = d.TenMH;
+
+            if (id < 0) {
+                const i = newItems.findIndex(x => x.Id === id);
+                if (i >= 0) newItems[i] = { Id: id, ...d };
+            } else {
+                updatedItems = updatedItems.filter(x => x.MaMH !== d.MaMH);
+                updatedItems.push(d);
+            }
+        }
+
+        function xoa() {
+            if (!selectedRow) return alert("Chọn dòng");
+
+            const id = parseInt(selectedRow.dataset.id);
+            const maMH = selectedRow.dataset.mamh;
+
+            pushState();
+
+            if (id < 0) {
+                newItems = newItems.filter(x => x.Id !== id);
+            } else {
+                updatedItems = updatedItems.filter(x => x.MaMH !== maMH);
+
+                if (!deletedItems.some(x => x.MaMH === maMH)) {
+                    deletedItems.push({ MaMH: maMH });
                 }
-            } else {
-                alert('Vui lòng chọn một môn học để xóa.');
             }
-        }
 
-        function hieuChinhMonHoc() {
-            if (selectedRow) {
-                const cells = selectedRow.cells;
-                cells[1].innerHTML = '<strong>' + document.getElementById('txtMaMH').value + '</strong>';
-                cells[2].textContent = document.getElementById('txtTenMH').value;
-                alert('Đã hiệu chỉnh thành công!');
-            } else {
-                alert('Vui lòng chọn một môn học để hiệu chỉnh.');
-            }
-        }
-
-        function phucHoiMonHoc() {
-            document.getElementById('txtMaMH').value = '';
-            document.getElementById('txtTenMH').value = '';
+            selectedRow.remove();
             selectedRow = null;
-            document.querySelectorAll('#tableMonHoc tbody tr').forEach(r => r.classList.remove('selected'));
+            updateSTT();
         }
 
-        function timMonHoc() {
-            const keyword = prompt('Nhập từ khóa tìm kiếm:');
-            if (keyword) {
-                const rows = document.querySelectorAll('#tableMonHoc tbody tr');
-                rows.forEach(row => {
-                    const text = row.textContent.toLowerCase();
-                    row.style.display = text.includes(keyword.toLowerCase()) ? '' : 'none';
+        async function ghi() {
+            // DELETE
+            for (const d of deletedItems) {
+                await fetch(`/MonHoc/Delete?maMH=${d.MaMH}`, { method: "POST" });
+            }
+
+            // UPDATE
+            for (const u of updatedItems) {
+                await fetch(`/MonHoc/Update`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(u)
                 });
             }
+
+            // INSERT
+            for (const n of newItems) {
+                await fetch(`/MonHoc/Insert`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(n)
+                });
+            }
+
+            alert("Lưu xong");
+            location.reload();
         }
 
-        async function ghiMonHoc() {
-            const maMH = document.getElementById('txtMaMH').value.trim();
-            const tenMH = document.getElementById('txtTenMH').value.trim();
-            if (!maMH || !tenMH) {
-                alert('Vui lòng nhập đầy đủ thông tin.');
-                return;
-            }
-
-            const data = { MaMH: maMH, TenMH: tenMH };
-            const url = selectedRow ? '/MonHoc/Update' : '/MonHoc/Insert';
-
-            const res = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
-
-            if (res.ok) {
-                alert('Đã ghi thành công!');
-                location.reload();
-            } else {
-                const message = await res.text();
-                alert('Lỗi: ' + message);
-            }
-        }
-
-        async function xoaMonHoc() {
-            if (!selectedRow) {
-                alert('Vui lòng chọn một môn học để xóa.');
-                return;
-            }
-            if (!confirm('Bạn có chắc muốn xóa môn học này?')) return;
-
-            const maMH = document.getElementById('txtMaMH').value;
-            const res = await fetch('/MonHoc/Delete?maMH=' + encodeURIComponent(maMH), { method: 'POST' });
-            if (res.ok) {
-                alert('Xóa thành công');
-                location.reload();
-            } else {
-                alert('Xóa thất bại');
-            }
-        }
-
-        async function timMonHoc() {
-            const keyword = prompt('Nhập từ khóa tìm kiếm:');
-            if (keyword == null) return;
-
-            const res = await fetch('/MonHoc/Search?keyword=' + encodeURIComponent(keyword));
-            if (!res.ok) {
-                alert('Tìm kiếm lỗi');
-                return;
-            }
-
-            const list = await res.json();
-            const tbody = document.querySelector('#tableMonHoc tbody');
-            tbody.innerHTML = '';
-            list.forEach((item, idx) => {
-                const row = tbody.insertRow();
-                row.style.cursor = 'pointer';
-                row.onclick = () => chonMonHoc(row, item.maMH, item.tenMH);
-                row.innerHTML = `<td>${idx + 1}</td><td><strong>${item.maMH}</strong></td><td>${item.tenMH}</td>`;
+        function updateSTT() {
+            const rows = document.querySelectorAll("#tbl tbody tr");
+            rows.forEach((r, i) => {
+                r.cells[0].textContent = i + 1;
             });
         }
+
+        function resetForm() {
+            txtMaMH.value = "";
+            txtTenMH.value = "";
+            selectedRow = null;
+        }
+
+        function tim() {
+            const k = prompt("Nhập từ khóa");
+            if (!k) return;
+
+            fetch(`/MonHoc/Search?keyword=${k}`)
+                .then(r => r.json())
+                .then(data => {
+                    const tbody = document.querySelector("#tbl tbody");
+                    tbody.innerHTML = "";
+
+                    data.forEach((x, i) => {
+                        const row = tbody.insertRow();
+
+                        row.dataset.id = x.maMH;
+                        row.dataset.mamh = x.maMH;
+                        row.dataset.tenmh = x.tenMH;
+
+                        row.innerHTML = `
+                                <td>${i + 1}</td>
+                                <td>${x.maMH}</td>
+                                <td>${x.tenMH}</td>
+                            `;
+                    });
+
+                    bindRows();
+                });
+        }
+
+        window.onload = bindRows;
     </script>
 }

@@ -42,7 +42,7 @@ namespace DMS_Examify.Controllers
         }
 
         [HttpPost]
-        public IActionResult Insert(MonHoc model)
+        public IActionResult Insert([FromBody] MonHoc model)
         {
             if (!CheckRole("PGV")) return Denied();
             if (model == null || string.IsNullOrEmpty(model.MaMH) || string.IsNullOrEmpty(model.TenMH))
@@ -58,7 +58,7 @@ namespace DMS_Examify.Controllers
         }
 
         [HttpPost]
-        public IActionResult Update(MonHoc model)
+        public IActionResult Update([FromBody] MonHoc model)
         {
             if (!CheckRole("PGV")) return Denied();
             if (model == null || string.IsNullOrEmpty(model.MaMH) || string.IsNullOrEmpty(model.TenMH))
