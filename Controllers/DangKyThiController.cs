@@ -1,10 +1,19 @@
 using DMS_Examify.Models;
+using System.Data;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
 
 namespace DMS_Examify.Controllers
 {
     public class DangKyThiController : BaseController
     {
+        private readonly IConfiguration _configuration;
+
+        public DangKyThiController(IConfiguration configuration)
+        {
+            _configuration = configuration;
+        }
+
         private static List<GiaoVienDangKy> _danhSach = new()
         {
             new GiaoVienDangKy { MaGV = "GV001", MaMH = "MH001", MaLop = "TH2024A", TrinhDo = "B", NgayThi = new DateTime(2026, 4, 1), Lan = 1, SoCauThi = 20, ThoiGian = 45 },
@@ -16,6 +25,43 @@ namespace DMS_Examify.Controllers
             if (!CheckRole("PGV", "Giangvien")) return Denied();
             ViewData["Title"] = "Đăng ký thi";
             ViewData["Subtitle"] = "Lên lịch thi cho lớp";
+
+            List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> lops = new List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>();
+            string connectionString = _configuration.GetConnectionString("DefaultConnection");
+            try
+            {
+                using (SqlConnection conn = new SqlConnection(connectionString))
+                {
+                    using (SqlCommand cmd = new SqlCommand("usp_LayDanhSachLop", conn))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        conn.Open();
+                        using (SqlDataReader reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                string maLop = reader["MALOP"] != DBNull.Value ? reader["MALOP"].ToString() : "";
+                                string tenLop = reader["TENLOP"] != DBNull.Value ? reader["TENLOP"].ToString() : "";
+                                if (!string.IsNullOrEmpty(maLop))
+                                {
+                                    lops.Add(new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem
+                                    {
+                                        Value = maLop,
+                                        Text = $"{maLop} - {tenLop}"
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ViewBag.ErrorMessage = "Lỗi khi truy xuất danh sách lớp từ Server: " + ex.Message;
+            }
+
+            ViewBag.Lops = lops;
+
             return View(_danhSach);
         }
     }

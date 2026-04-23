@@ -15,9 +15,13 @@
                 <div class="mb-3">
                     <label class="form-label">Lớp</label>
                     <select class="form-select" id="selLop">
-                        <option value="TH2024A">TH2024A - Tin học 2024 - A</option>
-                        <option value="TH2024B">TH2024B - Tin học 2024 - B</option>
-                        <option value="TH2024C">TH2024C - Tin học 2024 - C</option>
+                        @if (ViewBag.Lops != null)
+                        {
+                            foreach (var lop in ViewBag.Lops)
+                            {
+                                <option value="@lop.Value">@lop.Text</option>
+                            }
+                        }
                     </select>
                 </div>
                 <div class="mb-3">
