@@ -60,7 +60,41 @@ namespace DMS_Examify.Controllers
                 ViewBag.ErrorMessage = "Lỗi khi truy xuất danh sách lớp từ Server: " + ex.Message;
             }
 
+            List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> monHocs = new List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>();
+            try
+            {
+                using (SqlConnection conn = new SqlConnection(connectionString))
+                {
+                    using (SqlCommand cmd = new SqlCommand("usp_LayDanhSachMonHoc", conn))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        conn.Open();
+                        using (SqlDataReader reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                string maMH = reader["MAMH"] != DBNull.Value ? reader["MAMH"].ToString() : "";
+                                string tenMH = reader["TENMH"] != DBNull.Value ? reader["TENMH"].ToString() : "";
+                                if (!string.IsNullOrEmpty(maMH))
+                                {
+                                    monHocs.Add(new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem
+                                    {
+                                        Value = maMH,
+                                        Text = tenMH
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ViewBag.ErrorMessage = "Lỗi khi truy xuất danh sách môn học từ Server: " + ex.Message;
+            }
+
             ViewBag.Lops = lops;
+            ViewBag.MonHocs = monHocs;
 
             return View(_danhSach);
         }

@@ -27,9 +27,13 @@
                 <div class="mb-3">
                     <label class="form-label">Môn học</label>
                     <select class="form-select" id="selMonHoc">
-                        <option value="MH001">Cơ sở dữ liệu</option>
-                        <option value="MH002">Lập trình C++</option>
-                        <option value="MH003">Mạng máy tính</option>
+                        @if (ViewBag.MonHocs != null)
+                        {
+                            foreach (var mon in ViewBag.MonHocs)
+                            {
+                                <option value="@mon.Value">@mon.Text</option>
+                            }
+                        }
                     </select>
                 </div>
                 <div class="row g-3 mb-3">
