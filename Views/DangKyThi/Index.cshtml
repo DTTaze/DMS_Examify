@@ -76,7 +76,7 @@
                 </div>
 
                 <div class="action-toolbar">
-                    <button type="button" class="btn btn-success" style="min-width:160px;">
+                    <button type="button" class="btn btn-success" id="btnDangKy" style="min-width:160px;">
                         <i class="bi bi-check-lg"></i> Đăng ký
                     </button>
                     <button type="button" class="btn btn-outline-secondary">
@@ -129,3 +129,62 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            var today = new Date().toISOString().split('T')[0];
+            $("#txtNgayThiDK").attr('min', today);
+            $("#btnDangKy").click(function() {
+                var model = {
+                    MaLop: $("#selLop").val(),
+                    MaMH: $("#selMonHoc").val(),
+                    TrinhDo: $("#selTrinhDoDK").val(),
+                    Lan: parseInt($("#selLanThi").val()),
+                    SoCauThi: parseInt($("#txtSoCau").val()),
+                    NgayThi: $("#txtNgayThiDK").val(),
+                    ThoiGian: parseInt($("#txtThoiGian").val())
+                };
+
+                if (!model.NgayThi) {
+                    alert("Vui lòng chọn ngày thi.");
+                    return;
+                }
+
+                if (model.NgayThi < today) {
+                    alert("Ngày thi không được ở trong quá khứ.");
+                    return;
+                }
+
+                if (isNaN(model.SoCauThi) || model.SoCauThi <= 0) {
+                    alert("Số câu thi không hợp lệ.");
+                    return;
+                }
+
+                if (isNaN(model.ThoiGian) || model.ThoiGian <= 0) {
+                    alert("Thời gian thi không hợp lệ.");
+                    return;
+                }
+
+                $.ajax({
+                    url: '@Url.Action("DangKy", "DangKyThi")',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(model),
+                    success: function(res) {
+                        if (res.success) {
+                            alert(res.message);
+                            location.reload(); // Tải lại trang để cập nhật danh sách
+                        } else {
+                            alert("Lỗi: " + res.message);
+                        }
+                    },
+                    error: function(err) {
+                        alert("Có lỗi xảy ra trong quá trình kết nối.");
+                        console.error(err);
+                    }
+                });
+            });
+        });
+    </script>
+}
