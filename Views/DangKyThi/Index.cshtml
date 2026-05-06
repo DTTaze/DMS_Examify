@@ -71,7 +71,7 @@
                 <!-- Cảnh báo số câu hỏi -->
                 <div class="alert alert-info" id="alertSoCau">
                     <i class="bi bi-info-circle me-1"></i>
-                    Số câu hỏi hiện có trong bộ đề: <strong>5 câu</strong>.
+                    Số câu hỏi của trình độ bạn chọn hiện có trong bộ đề: <strong id="lblSoCau">...</strong> câu.
                     Vui lòng kiểm tra đủ số câu trước khi đăng ký.
                 </div>
 
@@ -133,6 +133,36 @@
 @section Scripts {
     <script>
         $(document).ready(function() {
+            function loadSoCauHoi() {
+                var maMH = $("#selMonHoc").val();
+                var trinhDo = $("#selTrinhDoDK").val();
+                
+                if (maMH && trinhDo) {
+                    $.ajax({
+                        url: '@Url.Action("GetSoCauHoi", "DangKyThi")',
+                        type: 'GET',
+                        data: { maMH: maMH, trinhDo: trinhDo },
+                        success: function(res) {
+                            if (res.success) {
+                                $("#lblSoCau").text(res.soCau);
+                            } else {
+                                $("#lblSoCau").text("0");
+                            }
+                        },
+                        error: function() {
+                            $("#lblSoCau").text("0");
+                        }
+                    });
+                }
+            }
+
+            $("#selMonHoc, #selTrinhDoDK").change(function() {
+                loadSoCauHoi();
+            });
+
+            // Tải số câu lần đầu
+            loadSoCauHoi();
+
             var today = new Date().toISOString().split('T')[0];
             $("#txtNgayThiDK").attr('min', today);
             $("#btnDangKy").click(function() {

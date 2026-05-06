@@ -6,6 +6,16 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 
+CREATE FUNCTION [dbo].[udf_DemSoCauTrongBoDe] (@MAMH NChar(8), @TRINHDO Char(1)) 
+RETURNS INT
+AS
+BEGIN
+	DECLARE @SoCau INT = 0;
+	SELECT @SoCau = COUNT(CAUHOI) FROM dbo.BODE WHERE TRINHDO = @TRINHDO AND MAMH = @MAMH;
+	RETURN @SoCau;
+END
+GO
+
 CREATE FUNCTION [dbo].[udf_KiemTraDieuKienDangKy]
 (
     @MAMH Char(5),
@@ -20,7 +30,7 @@ BEGIN
     DECLARE @SoCauTrinhDoCao Int;
 
     -- Đếm số câu có sẵn ở trình độ chọn
-    SELECT @TongSoCauTDC = COUNT(CAUHOI) FROM dbo.BODE WHERE TRINHDO = @TRINHDO AND MAMH = @MAMH;
+    SELECT @TongSoCauTDC = dbo.udf_DemSoCauTrongBoDe(@MAMH, @TRINHDO);
 
     IF @TRINHDO = 'C'
     BEGIN
@@ -43,7 +53,7 @@ BEGIN
             DECLARE @TrinhDoThap Char(1) = CASE WHEN @TRINHDO = 'A' THEN 'B' ELSE 'C' END;
             DECLARE @TongSoCauTDT Int;
 
-            SELECT @TongSoCauTDT = COUNT(CAUHOI) FROM dbo.BODE WHERE TRINHDO = @TrinhDoThap AND MAMH = @MAMH;
+            SELECT @TongSoCauTDT = dbo.udf_DemSoCauTrongBoDe(@MAMH, @TrinhDoThap);
 
             IF @TongSoCauTDT < @SoCauTrinhDoThap 
             BEGIN
@@ -52,7 +62,6 @@ BEGIN
         END
     END
 
-    -- Trả về thông báo lỗi (nếu có) hoặc chuỗi rỗng
     RETURN @ThongBao;
 END
 GO

@@ -162,5 +162,39 @@ namespace DMS_Examify.Controllers
                 return Json(new { success = false, message = "Lỗi hệ thống: " + ex.Message });
             }
         }
+
+        [HttpGet]
+        public IActionResult GetSoCauHoi(string maMH, string trinhDo)
+        {
+            if (string.IsNullOrEmpty(maMH) || string.IsNullOrEmpty(trinhDo))
+                return Json(new { success = false, soCau = 0 });
+
+            int soCau = 0;
+            string connectionString = _configuration.GetConnectionString("DefaultConnection");
+            try
+            {
+                using (SqlConnection conn = new SqlConnection(connectionString))
+                {
+                    conn.Open();
+                    string query = "SELECT dbo.udf_DemSoCauTrongBoDe(@MAMH, @TRINHDO)";
+                    using (SqlCommand cmd = new SqlCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@MAMH", maMH);
+                        cmd.Parameters.AddWithValue("@TRINHDO", trinhDo);
+                        
+                        object result = cmd.ExecuteScalar();
+                        if (result != null && result != DBNull.Value)
+                        {
+                            soCau = Convert.ToInt32(result);
+                        }
+                    }
+                }
+                return Json(new { success = true, soCau = soCau });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
     }
 }
