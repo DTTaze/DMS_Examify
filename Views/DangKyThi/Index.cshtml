@@ -40,9 +40,13 @@
                     <div class="col-md-6">
                         <label class="form-label">Trình độ</label>
                         <select class="form-select" id="selTrinhDoDK">
-                            <option value="A">A - Dễ</option>
-                            <option value="B">B - Trung bình</option>
-                            <option value="C">C - Khó</option>
+                            @if (ViewBag.TrinhDos != null)
+                            {
+                                foreach (var trinhDo in ViewBag.TrinhDos)
+                                {
+                                    <option value="@trinhDo.Value">@trinhDo.Text</option>
+                                }
+                            }
                         </select>
                     </div>
                     <div class="col-md-6">
@@ -79,7 +83,7 @@
                     <button type="button" class="btn btn-success" id="btnDangKy" style="min-width:160px;">
                         <i class="bi bi-check-lg"></i> Đăng ký
                     </button>
-                    <button type="button" class="btn btn-outline-secondary">
+                    <button type="button" class="btn btn-outline-secondary" id="btnHuy">
                         <i class="bi bi-arrow-counterclockwise"></i> Hủy
                     </button>
                 </div>
@@ -214,6 +218,18 @@
                         console.error(err);
                     }
                 });
+            });
+
+            $("#btnHuy").click(function() {
+                $("#selLop").prop("selectedIndex", 0);
+                $("#selMonHoc").prop("selectedIndex", 0);
+                $("#selTrinhDoDK").prop("selectedIndex", 0);
+                $("#selLanThi").val("1");
+                $("#txtSoCau").val("20");
+                $("#txtNgayThiDK").val("");
+                $("#txtThoiGian").val("45");
+                
+                loadSoCauHoi();
             });
         });
     </script>

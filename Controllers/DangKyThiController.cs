@@ -14,11 +14,7 @@ namespace DMS_Examify.Controllers
             _configuration = configuration;
         }
 
-        private static List<GiaoVienDangKy> _danhSach = new()
-        {
-            new GiaoVienDangKy { MaGV = "GV001", MaMH = "MH001", MaLop = "TH2024A", TrinhDo = "B", NgayThi = new DateTime(2026, 4, 1), Lan = 1, SoCauThi = 20, ThoiGian = 45 },
-            new GiaoVienDangKy { MaGV = "GV002", MaMH = "MH002", MaLop = "TH2024B", TrinhDo = "A", NgayThi = new DateTime(2026, 4, 3), Lan = 1, SoCauThi = 30, ThoiGian = 60 },
-        };
+
 
         public IActionResult Index()
         {
@@ -93,10 +89,83 @@ namespace DMS_Examify.Controllers
                 ViewBag.ErrorMessage = "Lỗi khi truy xuất danh sách môn học từ Server: " + ex.Message;
             }
 
+            List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> trinhDos = new List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>();
+            try
+            {
+                using (SqlConnection conn = new SqlConnection(connectionString))
+                {
+                    using (SqlCommand cmd = new SqlCommand("usp_LayDanhSachTrinhDo", conn))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        conn.Open();
+                        using (SqlDataReader reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                string maTrinhDo = reader["MaTrinhDo"] != DBNull.Value ? reader["MaTrinhDo"].ToString() : "";
+                                string tenTrinhDo = reader["TenTrinhDo"] != DBNull.Value ? reader["TenTrinhDo"].ToString() : "";
+                                if (!string.IsNullOrEmpty(maTrinhDo))
+                                {
+                                    trinhDos.Add(new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem
+                                    {
+                                        Value = maTrinhDo,
+                                        Text = tenTrinhDo
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ViewBag.ErrorMessage = (ViewBag.ErrorMessage != null ? ViewBag.ErrorMessage + " | " : "") + "Lỗi khi truy xuất danh sách trình độ từ Server: " + ex.Message;
+            }
+
             ViewBag.Lops = lops;
             ViewBag.MonHocs = monHocs;
+            ViewBag.TrinhDos = trinhDos;
 
-            return View(_danhSach);
+            List<GiaoVienDangKy> danhSach = new List<GiaoVienDangKy>();
+            var maGV = HttpContext.Session.GetString("UserLogin");
+
+            if (!string.IsNullOrEmpty(maGV))
+            {
+                try
+                {
+                    using (SqlConnection conn = new SqlConnection(connectionString))
+                    {
+                        using (SqlCommand cmd = new SqlCommand("usp_LayDanhSachDeThi", conn))
+                        {
+                            cmd.CommandType = CommandType.StoredProcedure;
+                            cmd.Parameters.AddWithValue("@MaGV", maGV);
+                            conn.Open();
+                            using (SqlDataReader reader = cmd.ExecuteReader())
+                            {
+                                while (reader.Read())
+                                {
+                                    danhSach.Add(new GiaoVienDangKy
+                                    {
+                                        MaMH = reader["MAMH"]?.ToString() ?? "",
+                                        MaLop = reader["MALOP"]?.ToString() ?? "",
+                                        TrinhDo = reader["TRINHDO"]?.ToString() ?? "",
+                                        NgayThi = reader["NGAYTHI"] != DBNull.Value ? Convert.ToDateTime(reader["NGAYTHI"]) : DateTime.MinValue,
+                                        Lan = reader["LAN"] != DBNull.Value ? Convert.ToInt32(reader["LAN"]) : 1,
+                                        SoCauThi = reader["SOCAUTHI"] != DBNull.Value ? Convert.ToInt32(reader["SOCAUTHI"]) : 0,
+                                        ThoiGian = reader["THOIGIAN"] != DBNull.Value ? Convert.ToInt32(reader["THOIGIAN"]) : 0
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    ViewBag.ErrorMessage = (ViewBag.ErrorMessage != null ? ViewBag.ErrorMessage + " | " : "") + "Lỗi khi tải danh sách đã đăng ký: " + ex.Message;
+                }
+            }
+
+            return View(danhSach);
         }
 
         [HttpPost]
