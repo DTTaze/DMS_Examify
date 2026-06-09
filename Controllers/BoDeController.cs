@@ -33,8 +33,7 @@ namespace DMS_Examify.Controllers
         private List<BoDe> GetAllBoDe()
         {
             var ds = new List<BoDe>();
-
-            string maGV = HttpContext.Session.GetString("UserName") ?? string.Empty;
+            string maGV = HttpContext.Session.GetString("UserLogin") ?? string.Empty;
 
             using var conn = new SqlConnection(_connectionString);
             conn.Open();
@@ -86,7 +85,7 @@ namespace DMS_Examify.Controllers
             cmd.Parameters.AddWithValue("@DapAnC", model.DapAnC);
             cmd.Parameters.AddWithValue("@DapAnD", model.DapAnD);
             cmd.Parameters.AddWithValue("@DapAn", model.DapAn);
-            cmd.Parameters.AddWithValue("@MaGV", HttpContext.Session.GetString("UserName"));
+            cmd.Parameters.AddWithValue("@MaGV", HttpContext.Session.GetString("UserLogin")); // Dùng UserLogin = MAGV
 
             var cauHoi = Convert.ToInt32(cmd.ExecuteScalar());
 
@@ -112,7 +111,7 @@ namespace DMS_Examify.Controllers
             cmd.Parameters.AddWithValue("@DapAnC", model.DapAnC);
             cmd.Parameters.AddWithValue("@DapAnD", model.DapAnD);
             cmd.Parameters.AddWithValue("@DapAn", model.DapAn);
-            cmd.Parameters.AddWithValue("@MaGV", HttpContext.Session.GetString("UserName"));
+            cmd.Parameters.AddWithValue("@MaGV", HttpContext.Session.GetString("UserLogin")); // Dùng UserLogin = MAGV
             cmd.ExecuteNonQuery();
             return Ok();
         }
