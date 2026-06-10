@@ -1,12 +1,15 @@
 -- ============================================================
 -- FILE: 004_FixSearchSPs.sql
--- MỤC ĐÍCH: Thêm OPTION (RECOMPILE) vào tất cả Search SP còn lại
--- LÝ DO:  Tất cả Search SP dùng pattern:
---           WHERE @Keyword IS NULL OR @Keyword = '' OR col LIKE '%keyword%'
---         SQL Server cache execution plan lần đầu gọi. Nếu lần đầu @Keyword = NULL
---         (plan: Full Scan vì không có filter), lần sau @Keyword = 'SQL'
---         vẫn dùng plan Full Scan đó dù có thể dùng plan tốt hơn.
---         OPTION (RECOMPILE) buộc SQL Server tạo plan mới dựa trên giá trị thực tế.
+-- THU TU CHAY: 5 / 13  (sau 003, cap nhat cac SP da ton tai)
+-- MUC DICH: Them OPTION (RECOMPILE) vao tat ca Search SP con lai
+-- LY DO: Tat ca Search SP dung pattern:
+--          WHERE @Keyword IS NULL OR @Keyword = '' OR col LIKE '%keyword%'
+--        SQL Server cache execution plan lan dau goi. Neu lan dau @Keyword = NULL
+--        (plan: Full Scan vi khong co filter), lan sau @Keyword = 'SQL'
+--        van dung plan Full Scan do du co the dung plan tot hon.
+--        OPTION (RECOMPILE) buoc SQL Server tao plan moi dua tren gia tri thuc te.
+-- PHAN DE TAI: 4.3 - Nhap sinh vien, 4.5 - Nhap cau hoi thi
+-- BAI GIANG: SQL5 - Stored Procedure (Parameter Sniffing, OPTION RECOMPILE)
 -- ============================================================
 USE [THITRACNGHIEM]
 GO

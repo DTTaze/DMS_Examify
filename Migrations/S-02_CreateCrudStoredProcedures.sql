@@ -1,4 +1,30 @@
+-- ============================================================
+-- FILE: S-02_CreateCrudStoredProcedures.sql
+-- THU TU CHAY: S-02 / S-12  (sau S-01 PhanQuyen, truoc S-08 IDENTITY Migration)
+-- MUC DICH: Tao toan bo SP CRUD goc cho MonHoc, GiaoVien, SinhVien, BoDe, Lop
+-- LY DO: Cung cap day du SP CRUD de C# goi. Cac SP nay la phien ban
+--        KHOI TAO dau tien, duoc viet dua tren schema ban dau.
+-- PHAN DE TAI: 4.3 - Nhap sinh vien, 4.4 - Quan ly GV, 4.5 - Nhap cau hoi
+-- BAI GIANG: SQL5 - Stored Procedure (CRUD)
+--
+-- !!! CHU Y QUAN TRONG !!!
+-- File nay chua CAC LOI DA BIET se duoc fix trong Migration sau:
+--   1. usp_BoDe_*: Dung ten cot SAI (DapAnA, DapAnB... thay vi A, B...)
+--      -> Da duoc fix trong: 002_FixBodeCrudSPs.sql
+--   2. usp_BoDe_Insert: Co tham so @CauHoi INT nhung CAUHOI la IDENTITY
+--      -> Da duoc fix trong: 002_FixBodeCrudSPs.sql
+--   3. usp_SinhVien_*: Chua co cot MATKHAU trong schema goc
+--      -> Da them cot trong: 000_AlterSinhVienAddMatKhau.sql
+--   4. usp_BoDe_Search, usp_SinhVien_Search...: Thieu OPTION (RECOMPILE)
+--      -> Da duoc fix trong: 004_FixSearchSPs.sql
+-- Chay file nay truoc, sau do chay cac Migration 000-012 de fix loi.
+-- ============================================================
+USE [THITRACNGHIEM]
+GO
+
+-- ------------------------------------------------------------
 -- Stored Procedures for MonHoc
+-- ------------------------------------------------------------
 CREATE PROCEDURE dbo.usp_MonHoc_GetAll
 AS
 BEGIN
@@ -53,7 +79,9 @@ BEGIN
 END
 GO
 
+-- ------------------------------------------------------------
 -- Stored Procedures for GiaoVien
+-- ------------------------------------------------------------
 CREATE PROCEDURE dbo.usp_GiaoVien_GetAll
 AS
 BEGIN
@@ -117,7 +145,10 @@ BEGIN
 END
 GO
 
+-- ------------------------------------------------------------
 -- Stored Procedures for SinhVien
+-- (Luu y: cot MATKHAU duoc them qua 000_AlterSinhVienAddMatKhau.sql)
+-- ------------------------------------------------------------
 CREATE PROCEDURE dbo.usp_SinhVien_GetAll
 AS
 BEGIN
@@ -196,18 +227,22 @@ BEGIN
 END
 GO
 
+-- ------------------------------------------------------------
 -- Stored Procedures for BoDe
+-- !!! CANH BAO: Cac SP nay dung ten cot SAI. Da duoc fix trong 002_FixBodeCrudSPs.sql !!!
+-- ------------------------------------------------------------
 CREATE PROCEDURE dbo.usp_BoDe_GetAll
 AS
 BEGIN
     SET NOCOUNT ON;
+    -- LOI: Ten cot thuc te la A, B, C, D, DAP_AN (khong phai DapAnA, DapAnB...)
     SELECT CauHoi, MaMH, TrinhDo, NoiDung, DapAnA, DapAnB, DapAnC, DapAnD, DapAn, MaGV
     FROM BODE;
 END
 GO
 
 CREATE PROCEDURE dbo.usp_BoDe_Insert
-    @CauHoi INT,
+    @CauHoi INT,       -- LOI: CAUHOI la IDENTITY, khong the INSERT gia tri nay
     @MaMH NVARCHAR(50),
     @TrinhDo NVARCHAR(10),
     @NoiDung NVARCHAR(MAX),
@@ -276,6 +311,9 @@ BEGIN
 END
 GO
 
+-- ------------------------------------------------------------
+-- Stored Procedures for Lop
+-- ------------------------------------------------------------
 CREATE PROCEDURE usp_Lop_Insert
     @MALOP NCHAR(15),
     @TENLOP NVARCHAR(50)
@@ -285,13 +323,14 @@ BEGIN
 
     IF EXISTS (SELECT 1 FROM LOP WHERE MALOP = @MALOP)
     BEGIN
-        RAISERROR(N'Mã lớp đã tồn tại', 16, 1);
+        RAISERROR(N'Ma lop da ton tai', 16, 1);
         RETURN;
     END
 
     INSERT INTO LOP(MALOP, TENLOP)
     VALUES(@MALOP, @TENLOP);
 END
+GO
 
 CREATE PROCEDURE usp_Lop_Update
     @MALOP NCHAR(15),
@@ -302,7 +341,7 @@ BEGIN
 
     IF NOT EXISTS (SELECT 1 FROM LOP WHERE MALOP = @MALOP)
     BEGIN
-        RAISERROR(N'Không tìm thấy lớp', 16, 1);
+        RAISERROR(N'Khong tim thay lop', 16, 1);
         RETURN;
     END
 
@@ -310,6 +349,7 @@ BEGIN
     SET TENLOP = @TENLOP
     WHERE MALOP = @MALOP;
 END
+GO
 
 CREATE PROCEDURE usp_Lop_Delete
     @MALOP NCHAR(15)
@@ -319,22 +359,27 @@ BEGIN
 
     IF NOT EXISTS (SELECT 1 FROM LOP WHERE MALOP = @MALOP)
     BEGIN
-        RAISERROR(N'Không tìm thấy lớp', 16, 1);
+        RAISERROR(N'Khong tim thay lop', 16, 1);
         RETURN;
     END
 
     DELETE FROM LOP
     WHERE MALOP = @MALOP;
 END
+GO
 
 CREATE PROCEDURE usp_Lop_GetAll
 AS
 BEGIN
     SET NOCOUNT ON;
 
-    SELECT 
+    SELECT
         MALOP,
         TENLOP
     FROM LOP
     ORDER BY MALOP;
 END
+GO
+
+PRINT N'OK: Da tao toan bo SP CRUD (MonHoc, GiaoVien, SinhVien, BoDe, Lop).';
+GO

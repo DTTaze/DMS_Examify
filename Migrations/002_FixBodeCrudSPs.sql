@@ -1,14 +1,17 @@
 -- ============================================================
 -- FILE: 002_FixBodeCrudSPs.sql
--- MỤC ĐÍCH: Sửa toàn bộ SP CRUD của bảng BODE
--- LÝ DO:  Tất cả SP trong CreateCrudStoredProcedures.sql dùng tên cột sai:
---         DapAnA, DapAnB, DapAnC, DapAnD, DapAn
---         → Tên thực tế trong DB (từ THITRACNGHIEM.sql): A, B, C, D, DAP_AN
---         → Kết quả: SP gọi sẽ báo lỗi "Invalid column name 'DapAnA'"
---           và toàn bộ tính năng 4.5 không hoạt động.
+-- THU TU CHAY: 3 / 13  (sau 001, can chay truoc 003 vi 003 phu thuoc vao SP nay)
+-- MUC DICH: Sua toan bo SP CRUD cua bang BODE
+-- LY DO: Tat ca SP trong CreateCrudStoredProcedures.sql dung ten cot sai:
+--        DapAnA, DapAnB, DapAnC, DapAnD, DapAn
+--        -> Ten thuc te trong DB (tu THITRACNGHIEM.sql): A, B, C, D, DAP_AN
+--        -> Ket qua: SP goi se bao loi "Invalid column name 'DapAnA'"
+--          va toan bo tinh nang 4.5 khong hoat dong.
 --
---         Dùng CREATE OR ALTER để an toàn: SP đã tồn tại sẽ được cập nhật,
---         SP chưa tồn tại sẽ được tạo mới.
+--        Dung CREATE OR ALTER de an toan: SP da ton tai se duoc cap nhat,
+--        SP chua ton tai se duoc tao moi.
+-- PHAN DE TAI: 4.5 - Nhap cau hoi thi
+-- BAI GIANG: SQL5 - Stored Procedure (CRUD)
 -- ============================================================
 USE [THITRACNGHIEM]
 GO
