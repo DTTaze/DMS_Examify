@@ -1,5 +1,6 @@
 -- ============================================================
 -- FILE: 007_FixBodeMAGV_FK.sql
+-- THU TU CHAY: 8 / 13  (sau 006, can bang GIAOVIEN da co du lieu hop le)
 -- MUC DICH: Them Foreign Key BODE.MAGV -> GIAOVIEN(MAGV)
 -- LY DO: De tai quy dinh MAGV trong BODE la "Foreign Key" nhung
 --        schema goc khong co constraint nay. He qua: co the INSERT

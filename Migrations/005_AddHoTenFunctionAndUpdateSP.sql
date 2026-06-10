@@ -1,14 +1,17 @@
 -- ============================================================
 -- FILE: 005_AddHoTenFunctionAndUpdateSP.sql
--- MỤC ĐÍCH:
---   1. Tạo Function udf_LayHoTen(@Ho, @Ten) → NVARCHAR(62)
---   2. Cập nhật SP_LayThongTinTaiKhoan dùng Function thay vì ghép thủ công
--- LÝ DO:
---   SP_LayThongTinTaiKhoan hiện đang dùng (HO + ' ' + TEN) inline.
---   Vấn đề: Nếu HO hoặc TEN là NULL, kết quả là NULL toàn bộ trong SQL Server
---   vì NULL + bất kỳ = NULL. Ví dụ: NULL + ' ' + 'HUNG' = NULL.
---   Function với ISNULL xử lý an toàn trường hợp này.
---   Đồng thời tái sử dụng logic ở các SP khác nếu cần sau này.
+-- THU TU CHAY: 6 / 13  (sau 004, Function nay duoc dung boi 010, 012)
+-- MUC DICH:
+--   1. Tao Function udf_LayHoTen(@Ho, @Ten) -> NVARCHAR(62)
+--   2. Cap nhat SP_LayThongTinTaiKhoan dung Function thay vi ghep thu cong
+-- LY DO:
+--   SP_LayThongTinTaiKhoan hien dang dung (HO + ' ' + TEN) inline.
+--   Van de: Neu HO hoac TEN la NULL, ket qua la NULL toan bo trong SQL Server
+--   vi NULL + bat ky = NULL. Vi du: NULL + ' ' + 'HUNG' = NULL.
+--   Function voi ISNULL xu ly an toan truong hop nay.
+--   Dong thoi tai su dung logic o cac SP khac neu can sau nay.
+-- PHAN DE TAI: 4.2 - Dang nhap (Giao vien / PGV)
+-- BAI GIANG: SQL4 - User-defined Function (Scalar Function)
 -- ============================================================
 USE [THITRACNGHIEM]
 GO

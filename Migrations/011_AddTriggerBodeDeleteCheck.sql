@@ -1,5 +1,6 @@
 -- ============================================================
 -- FILE: 011_AddTriggerBodeDeleteCheck.sql
+-- THU TU CHAY: 12 / 13  (sau 010, can bang GIAOVIEN_DANGKY ton tai)
 -- MUC DICH: INSTEAD OF DELETE Trigger bao ve bang BODE
 -- LY DO: Phan 4.5 - GV co quyen xoa cau hoi trong bo de.
 --        Neu GV xoa cau hoi cua mot mon ma MON DO co lich thi

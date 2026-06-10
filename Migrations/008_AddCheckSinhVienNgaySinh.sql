@@ -1,5 +1,6 @@
 -- ============================================================
 -- FILE: 008_AddCheckSinhVienNgaySinh.sql
+-- THU TU CHAY: 9 / 13  (sau 007, doc lap voi cac index)
 -- MUC DICH: Them CHECK constraint cho SINHVIEN.NGAYSINH
 -- LY DO: Schema goc khong co kiem tra ngay sinh hop ly.
 --        Khong co CHECK -> co the nhap ngay sinh tuong lai hoac

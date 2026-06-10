@@ -1,5 +1,6 @@
 -- ============================================================
 -- FILE: 009_AddIndexBodeMAGV_MAMH.sql
+-- THU TU CHAY: 10 / 13  (sau 008, bo sung index sau khi FK da duoc tao)
 -- MUC DICH: Them composite index (MAGV, MAMH) tren bang BODE
 -- LY DO: Phan 4.5 - GV xem lai cac cau hoi do minh soan theo moi mon.
 --        Query thuong gap: WHERE MAGV = @MAGV AND MAMH = @MAMH

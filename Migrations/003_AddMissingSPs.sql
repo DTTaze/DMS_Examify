@@ -1,6 +1,12 @@
 -- ============================================================
 -- FILE: 003_AddMissingSPs.sql
--- MỤC ĐÍCH: Tạo các SP còn thiếu được gọi từ code C# nhưng chưa tồn tại trong DB
+-- THU TU CHAY: 4 / 13  (sau 002, can 002 da sua ten cot truoc)
+-- MUC DICH: Tao cac SP con thieu duoc goi tu code C# nhung chua ton tai trong DB
+-- LY DO: BoDeController.GetAllBoDe(), GetLatestCauHoi(),
+--        SinhVienController.SearchLop() goi SP nay nhung chua co trong Migrations.
+--        Ket qua: Cac tinh nang 4.3, 4.5 bi loi khi goi SP.
+-- PHAN DE TAI: 4.3 - Nhap sinh vien, 4.5 - Nhap cau hoi thi
+-- BAI GIANG: SQL5 - Stored Procedure (Optional Parameters, OPTION RECOMPILE)
 -- ============================================================
 USE [THITRACNGHIEM]
 GO

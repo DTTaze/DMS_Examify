@@ -1,6 +1,14 @@
 -- ============================================================
 -- FILE: 001_AddConstraintsAndIndexes.sql
--- MỤC ĐÍCH: Bổ sung các constraint và index còn thiếu theo đề tài
+-- THU TU CHAY: 2 / 13  (sau 000, truoc khi chay cac SP CRUD)
+-- MUC DICH: Bo sung cac constraint va index con thieu theo de tai
+-- LY DO: Schema goc thieu rang buoc toan ven du lieu va index toi uu.
+--        Khong co cac rang buoc nay -> co the INSERT du lieu sai,
+--        khong co index -> SP chay cham do phai Full Scan.
+-- PHAN DE TAI: 4.3 - Nhap sinh vien, 4.5 - Nhap cau hoi thi,
+--              4.6 - Dang ky thi
+-- BAI GIANG: SQL2 - Constraint (UNIQUE, NOT NULL)
+--            SQL6 - Index
 -- ============================================================
 USE [THITRACNGHIEM]
 GO

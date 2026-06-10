@@ -1,5 +1,6 @@
 -- ============================================================
 -- FILE: 012_AddSP_BoDe_TimKiemNangCao.sql
+-- THU TU CHAY: 13 / 13  (chay cuoi cung, can udf_LayHoTen (005) da ton tai)
 -- MUC DICH: Stored Procedure tim kiem cau hoi nang cao
 --           voi cac tham so tuy chon (Optional Parameters)
 -- LY DO: SP hien tai (usp_BoDe_Search) chi co 1 tham so @Keyword

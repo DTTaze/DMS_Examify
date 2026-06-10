@@ -1,5 +1,6 @@
 -- ============================================================
 -- FILE: 006_FixSinhVienDiaChi.sql
+-- THU TU CHAY: 7 / 13  (sau 005, doc lap voi cac SP)
 -- MUC DICH: Mo rong cot SINHVIEN.DIACHI tu NVARCHAR(50) len NVARCHAR(100)
 -- LY DO: De tai quy dinh DIACHI la nVarchar(100), nhung schema goc
 --        khai bao nVarChar(50) -- nho hon de tai, co the bi cat bot

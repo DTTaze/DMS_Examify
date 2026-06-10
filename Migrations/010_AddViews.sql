@@ -1,5 +1,6 @@
 -- ============================================================
 -- FILE: 010_AddViews.sql
+-- THU TU CHAY: 11 / 13  (sau 009, can udf_LayHoTen da duoc tao o 005)
 -- MUC DICH: Tao 2 View phuc vu phan 4.3 va 4.5
 --   1. vw_SinhVienTheoLop  -> Danh sach SV kem ten lop (4.3 - subform)
 --   2. vw_BoDeCuaGiaoVien  -> Danh sach cau hoi kem ten GV va ten mon (4.5)
