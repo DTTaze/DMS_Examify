@@ -61,6 +61,7 @@ namespace DMS_Examify.Controllers
                     HttpContext.Session.SetString("UserName", $"{sv.Ho} {sv.Ten}");
                     HttpContext.Session.SetString("UserLogin", sv.MaSV);
                     HttpContext.Session.SetString("MaLop", sv.MaLop);
+                    HttpContext.Session.SetString("DbConnectionString", _studentConnectionString);
                 }
                 else
                 {
@@ -75,6 +76,9 @@ namespace DMS_Examify.Controllers
                     HttpContext.Session.SetString("UserRole", user.Value.Role);
                     HttpContext.Session.SetString("UserName", user.Value.HoTen);
                     HttpContext.Session.SetString("UserLogin", user.Value.UserName);
+
+                    var userConnStr = BuildConnectionString(model.Login, model.Password);
+                    HttpContext.Session.SetString("DbConnectionString", userConnStr);
                 }
 
                 return RedirectToAction("Index", "Home");
@@ -104,7 +108,7 @@ namespace DMS_Examify.Controllers
 
             using var conn = new SqlConnection(connStr);
             conn.Open();
-            using var cmd = new SqlCommand("dbo.SP_LayThongTinTaiKhoan", conn)
+            using var cmd = new SqlCommand("dbo.usp_LayThongTinTaiKhoan", conn)
             {
                 CommandType = CommandType.StoredProcedure
             };

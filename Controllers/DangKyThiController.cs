@@ -7,12 +7,6 @@ namespace DMS_Examify.Controllers
 {
     public class DangKyThiController : BaseController
     {
-        private readonly IConfiguration _configuration;
-
-        public DangKyThiController(IConfiguration configuration)
-        {
-            _configuration = configuration;
-        }
 
 
 
@@ -23,7 +17,7 @@ namespace DMS_Examify.Controllers
             ViewData["Subtitle"] = "Lên lịch thi cho lớp";
 
             List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> lops = new List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>();
-            string connectionString = _configuration.GetConnectionString("DefaultConnection");
+            string connectionString = ConnectionString;
             try
             {
                 using (SqlConnection conn = new SqlConnection(connectionString))
@@ -190,7 +184,7 @@ namespace DMS_Examify.Controllers
                 return Json(new { success = false, message = "Ngày thi không hợp lệ, không được chọn ngày trong quá khứ." });
             }
 
-            string connectionString = _configuration.GetConnectionString("DefaultConnection");
+            string connectionString = ConnectionString;
             try
             {
                 using (SqlConnection conn = new SqlConnection(connectionString))
@@ -239,7 +233,7 @@ namespace DMS_Examify.Controllers
                 return Json(new { success = false, soCau = 0 });
 
             int soCau = 0;
-            string connectionString = _configuration.GetConnectionString("DefaultConnection");
+            string connectionString = ConnectionString;
             try
             {
                 using (SqlConnection conn = new SqlConnection(connectionString))

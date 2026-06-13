@@ -8,12 +8,7 @@ namespace DMS_Examify.Controllers
 {
     public class MonHocController : BaseController
     {
-        private readonly string _connectionString;
-
-        public MonHocController(IConfiguration configuration)
-        {
-            _connectionString = configuration.GetConnectionString("DefaultConnection") ?? string.Empty;
-        }
+        private string _connectionString => ConnectionString;
 
         public IActionResult Index()
         {

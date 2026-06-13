@@ -22,7 +22,7 @@ namespace DMS_Examify.Controllers
             ViewData["Subtitle"] = "Tạo tài khoản và quản lý quyền hạn";
 
             List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> roles = new List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>();
-            string connectionString = _configuration.GetConnectionString("DefaultConnection");
+            string connectionString = ConnectionString;
             try
             {
                 using (SqlConnection conn = new SqlConnection(connectionString))
@@ -64,12 +64,7 @@ namespace DMS_Examify.Controllers
             return View(_danhSach);
         }
 
-        private readonly IConfiguration _configuration;
 
-        public TaiKhoanController(IConfiguration configuration)
-        {
-            _configuration = configuration;
-        }
 
         [HttpGet]
         public IActionResult GetGiaoVienInfo(string magv)
@@ -77,7 +72,7 @@ namespace DMS_Examify.Controllers
             if (!CheckRole("PGV")) return Json(new { success = false, message = "Bạn không có quyền thực hiện thao tác này." });
             if (string.IsNullOrEmpty(magv)) return Json(new { success = false, message = "Mã GV không được để trống" });
 
-            string connectionString = _configuration.GetConnectionString("DefaultConnection");
+            string connectionString = ConnectionString;
             try
             {
                 using (SqlConnection conn = new SqlConnection(connectionString))
@@ -154,7 +149,7 @@ namespace DMS_Examify.Controllers
                     return View(model);
                 }
 
-                string connectionString = _configuration.GetConnectionString("DefaultConnection");
+                string connectionString = ConnectionString;
 
                 using (SqlConnection conn = new SqlConnection(connectionString))
                 {

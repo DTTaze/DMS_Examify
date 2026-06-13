@@ -7,12 +7,7 @@ namespace DMS_Examify.Controllers
 {
     public class BoDeController : BaseController
     {
-        private readonly string _connectionString;
-
-        public BoDeController(IConfiguration configuration)
-        {
-            _connectionString = configuration.GetConnectionString("DefaultConnection") ?? string.Empty;
-        }
+        private string _connectionString => ConnectionString;
 
         public IActionResult Index()
         {

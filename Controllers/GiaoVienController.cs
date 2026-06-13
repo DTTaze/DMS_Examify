@@ -8,12 +8,7 @@ namespace DMS_Examify.Controllers
 {
     public class GiaoVienController : BaseController
     {
-        private readonly string _connectionString;
-
-        public GiaoVienController(IConfiguration configuration)
-        {
-            _connectionString = configuration.GetConnectionString("DefaultConnection") ?? string.Empty;
-        }
+        private string _connectionString => ConnectionString;
 
         public IActionResult Index()
         {
