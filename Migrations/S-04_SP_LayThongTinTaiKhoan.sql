@@ -18,50 +18,63 @@
 USE [THITRACNGHIEM]
 GO
 
-CREATE PROCEDURE [dbo].[SP_LayThongTinTaiKhoan]
-    @TENLOGIN NVARCHAR(50) -- Ten login SQL Server ma ung dung C# dung de ket noi
+ALTER PROCEDURE [dbo].[SP_LayThongTinTaiKhoan]
+    @TENLOGIN NVARCHAR(50) = NULL -- Gán mặc định NULL để linh hoạt gọi từ C#
 AS
 BEGIN
+    SET NOCOUNT ON;
+
+    -- Tự động lấy tên Login hiện tại nếu Client không truyền vào
+    IF @TENLOGIN IS NULL OR @TENLOGIN = ''
+    BEGIN
+        SET @TENLOGIN = SUSER_SNAME();
+    END
+
     DECLARE @USERNAME NVARCHAR(50)
     DECLARE @TENNHOM  NVARCHAR(50)
 
-    -- 1. Lay Ten User trong Database (chinh la MAGV) dua vao Ten Login
+    -- 1. Lấy Tên User trong Database dựa vào SID của Login
     SELECT @USERNAME = name
     FROM sys.database_principals
-    WHERE sid = SUSER_SID(@TENLOGIN)
+    WHERE sid = SUSER_SID(@TENLOGIN);
 
-    -- 2. Lay Ten Nhom Quyen (Role) cua User nay (PGV, Giangvien, hoac Sinhvien)
-    SELECT top 1 @TENNHOM = UserGroup.name
+    -- Kiểm tra lỗi nếu Login chưa được map vào Database
+    IF @USERNAME IS NULL
+    BEGIN
+        RAISERROR(N'Tài khoản đăng nhập chưa được ánh xạ (map) vào Database!', 16, 1);
+        RETURN;
+    END
+
+    -- 2. Lấy Tên Nhóm Quyền (Role) của User (chỉ lấy các nhóm nghiệp vụ chính)
+    SELECT TOP 1 @TENNHOM = UserGroup.name
     FROM sys.database_role_members DRM
     JOIN sys.database_principals UserGroup ON DRM.role_principal_id = UserGroup.principal_id
     JOIN sys.database_principals Users     ON DRM.member_principal_id = Users.principal_id
     WHERE Users.name = @USERNAME
+      AND UserGroup.name IN ('PGV', 'Giangvien', 'Sinhvien');
 
-    -- 3. Tra ve ket qua tuy theo nhom quyen
+    -- 3. Trả về kết quả tùy theo nhóm quyền
     IF @TENNHOM = 'Sinhvien'
     BEGIN
-        -- Neu la tai khoan chung cua sinh vien, chi tra ve Username va Nhom quyen.
-        -- C# se tu dung MASV nhap tren Form de lay Ho Ten sau.
+        -- Nếu là Sinh viên (dùng chung login sv), chỉ trả về tên login sv và nhóm quyền
         SELECT
             @USERNAME AS USERNAME,
-            ''         AS HOTEN,
+            N'Sinh Viên dùng chung' AS HOTEN,
             @TENNHOM   AS TENNHOM
     END
     ELSE
     BEGIN
-        -- Neu la Giang vien hoac PGV, USERNAME chinh la MAGV.
-        -- Join vao bang Giaovien de lay Ho Ten.
-        -- LOI: (HO + ' ' + TEN) se NULL neu HO hoac TEN la NULL
-        -- -> Da fix trong 005_AddHoTenFunctionAndUpdateSP.sql
+        -- Nếu là Giảng viên hoặc PGV, kết nối bảng GIAOVIEN lấy Họ Tên (sử dụng CONCAT an toàn)
         SELECT
             @USERNAME          AS USERNAME,
-            (HO + ' ' + TEN)   AS HOTEN,
+            LTRIM(RTRIM(CONCAT(HO, ' ', TEN))) AS HOTEN,
             @TENNHOM           AS TENNHOM
-        FROM Giaovien
-        WHERE MAGV = @USERNAME
+        FROM GIAOVIEN
+        WHERE MAGV = @USERNAME;
     END
 END
 GO
+
 
 PRINT N'OK: Da tao SP_LayThongTinTaiKhoan.';
 GO

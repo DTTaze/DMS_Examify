@@ -81,7 +81,14 @@ namespace DMS_Examify.Controllers
             }
             catch (SqlException ex)
             {
-                ViewData["Error"] = "Lỗi kết nối cơ sở dữ liệu: " + ex.Message;
+                if (ex.Number == 18456)
+                {
+                    ViewData["Error"] = "Tên đăng nhập hoặc mật khẩu giảng viên không đúng.";
+                }
+                else
+                {
+                    ViewData["Error"] = "Lỗi kết nối cơ sở dữ liệu: " + ex.Message;
+                }
                 return View(model);
             }
             catch (Exception ex)
@@ -97,7 +104,7 @@ namespace DMS_Examify.Controllers
 
             using var conn = new SqlConnection(connStr);
             conn.Open();
-            using var cmd = new SqlCommand("dbo.usp_LayThongTinTaiKhoan", conn)
+            using var cmd = new SqlCommand("dbo.SP_LayThongTinTaiKhoan", conn)
             {
                 CommandType = CommandType.StoredProcedure
             };
