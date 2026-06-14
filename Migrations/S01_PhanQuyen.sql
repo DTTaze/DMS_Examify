@@ -1,16 +1,7 @@
 -- ============================================================
--- FILE: S-01_PhanQuyen.sql
--- THU TU CHAY: S-01 / S-12  (chay DAU TIEN, truoc moi SP va Migration khac)
+-- FILE: S01_PhanQuyen.sql
+-- THU TU CHAY: S01 (chay DAU TIEN, truoc moi SP va Migration khac)
 -- MUC DICH: Tao 3 Role va phan quyen tren tung bang + SP cho tung nhom
--- LY DO: SQL Server yeu cau Role phai ton tai truoc khi GRANT EXECUTE
---        cho cac SP. Neu chay PhanQuyen.sql sau cac SP thi lenh GRANT
---        trong cac SP do se loi vi Role chua ton tai.
---        3 Role: PGV (quan ly toan bo), Giangvien (CRUD BoDe),
---        Sinhvien (chi doc va INSERT BangDiem).
--- PHAN DE TAI: Tat ca cac phan (4.1 - 4.6)
--- BAI GIANG: SQL7 - Phan quyen (GRANT, DENY, ROLE)
--- CHU Y: Neu Role da ton tai -> lenh CREATE ROLE se bao loi.
---        Chay 1 lan duy nhat tren DB moi.
 -- ============================================================
 USE [THITRACNGHIEM]
 GO

@@ -1,22 +1,13 @@
 -- ============================================================
--- FILE: S-09_CreateThucHienDangKyThi.sql
--- THU TU CHAY: S-09 / S-12  (sau S-02 CRUD, can bang BODE va GIAOVIEN_DANGKY)
--- MUC DICH: Tao 2 UDF va 1 SP phuc vu chuc nang Dang ky Thi (phan 4.6)
---   1. udf_DemSoCauTrongBoDe(@MAMH, @TRINHDO) -> INT
---      Dem so cau hoi hien co trong bo de theo mon va trinh do.
---   2. udf_KiemTraDieuKienDangKy(@MAMH, @TRINHDO, @SOCAUTHI) -> NVARCHAR(255)
---      Kiem tra co du cau hoi khong truoc khi cho phep dang ky thi.
---      Tra ve chuoi rong neu hop le, tra ve thong bao loi neu khong du.
---   3. usp_ThucHienDangKyThi(...) -> SP thuc hien them de thi
---      Goi udf_KiemTraDieuKienDangKy truoc, neu hop le thi INSERT.
--- LY DO: Truoc khi GV co the dang ky lich thi, he thong phai dam bao
---        bo de co du so luong cau hoi can thiet theo trinh do:
---        - Trinh do C: phai co du SOCAUTHI cau trinhdo C.
---        - Trinh do A/B: 70% cau trinh do chinh, 30% co the lay tu trinh do thap hon.
--- PHAN DE TAI: 4.6 - Dang ky thi (GV lap lich thi)
--- BAI GIANG: SQL4 - User-defined Function (Scalar Function)
---            SQL5 - Stored Procedure (goi UDF, xu ly loi)
---            SQL5 - Transaction (BEGIN TRY/CATCH, BEGIN TRAN/COMMIT/ROLLBACK)
+-- FILE: S05_Exam_And_Class_StoredProcedures.sql
+-- THU TU CHAY: S05 (sau S02 CRUD, can bang BODE, GIAOVIEN_DANGKY, LOP)
+-- MUC DICH: Gom cac UDF va SP phuc vu dang ky thi va quan ly danh muc lop, trinh do:
+--   1. udf_DemSoCauTrongBoDe
+--   2. udf_KiemTraDieuKienDangKy
+--   3. usp_ThucHienDangKyThi
+--   4. usp_LayDanhSachDeThi
+--   5. usp_LayDanhSachLop
+--   6. usp_LayDanhSachTrinhDo
 -- ============================================================
 USE [THITRACNGHIEM]
 GO
@@ -28,8 +19,7 @@ GO
 
 -- ------------------------------------------------------------
 -- 1. udf_DemSoCauTrongBoDe
---    Dem so cau hoi trong bo de theo Mon hoc va Trinh do.
---    Duoc goi boi udf_KiemTraDieuKienDangKy (bên duoi).
+--    Dem so cau hoi trong bo de theo Mon hoc va Trinh do
 -- ------------------------------------------------------------
 CREATE FUNCTION [dbo].[udf_DemSoCauTrongBoDe]
 (
@@ -52,14 +42,7 @@ GO
 
 -- ------------------------------------------------------------
 -- 2. udf_KiemTraDieuKienDangKy
---    Kiem tra co du cau hoi de dang ky thi khong.
---    Tra ve '' (chuoi rong) = hop le.
---    Tra ve thong bao loi = khong hop le.
---
---    Quy tac kiem tra:
---    - Trinh do C: so cau trinh do C >= SOCAUTHI
---    - Trinh do A/B: so cau trinh do chinh >= 70% SOCAUTHI (CEILING)
---                    phan con thieu lay tu trinh do thap hon (B->C, A->B)
+--    Kiem tra co du cau hoi de dang ky thi khong
 -- ------------------------------------------------------------
 CREATE FUNCTION [dbo].[udf_KiemTraDieuKienDangKy]
 (
@@ -70,11 +53,10 @@ CREATE FUNCTION [dbo].[udf_KiemTraDieuKienDangKy]
 RETURNS NVARCHAR(255)
 AS
 BEGIN
-    DECLARE @ThongBao       NVARCHAR(255) = ''; -- Mac dinh la chuoi rong (Khong co loi)
+    DECLARE @ThongBao       NVARCHAR(255) = '';
     DECLARE @TongSoCauTDC   INT;
     DECLARE @SoCauTrinhDoCao INT;
 
-    -- Dem so cau co san o trinh do chon
     SELECT @TongSoCauTDC = dbo.udf_DemSoCauTrongBoDe(@MAMH, @TRINHDO);
 
     IF @TRINHDO = 'C'
@@ -85,7 +67,6 @@ BEGIN
     END
     ELSE IF @TRINHDO IN ('A', 'B')
     BEGIN
-        -- Tinh 70% so cau toi thieu can co
         SET @SoCauTrinhDoCao = CEILING(@SOCAUTHI * 0.7);
 
         IF @TongSoCauTDC < @SoCauTrinhDoCao
@@ -95,7 +76,6 @@ BEGIN
         END
         ELSE IF @TongSoCauTDC < @SOCAUTHI
         BEGIN
-            -- Neu thieu cau so voi tong yeu cau, kiem tra cap thap hon
             DECLARE @SoCauTrinhDoThap INT = @SOCAUTHI - @TongSoCauTDC;
             DECLARE @TrinhDoThap CHAR(1) = CASE WHEN @TRINHDO = 'A' THEN 'B' ELSE 'C' END;
             DECLARE @TongSoCauTDT INT;
@@ -120,10 +100,7 @@ GO
 
 -- ------------------------------------------------------------
 -- 3. usp_ThucHienDangKyThi
---    SP chinh: GV dang ky lich thi cho 1 lop, 1 mon, 1 lan thi.
---    Buoc 1: Goi udf_KiemTraDieuKienDangKy -> neu loi thi bao loi va dung.
---    Buoc 2: Kiem tra ban ghi trung lap (MALOP + MAMH + LAN).
---    Buoc 3: INSERT vao GIAOVIEN_DANGKY trong Transaction.
+--    GV dang ky lich thi cho 1 lop, 1 mon, 1 lan thi
 -- ------------------------------------------------------------
 CREATE PROCEDURE usp_ThucHienDangKyThi
     @MAGV     NCHAR(8),
@@ -138,7 +115,6 @@ AS
 BEGIN
     DECLARE @Message NVARCHAR(255);
 
-    -- Buoc 1: Kiem tra dieu kien so luong cau hoi
     SET @Message = dbo.udf_KiemTraDieuKienDangKy(@MAMH, @TRINHDO, @SOCAUTHI);
 
     IF @Message <> ''
@@ -148,7 +124,6 @@ BEGIN
     END
     ELSE
     BEGIN
-        -- Buoc 2: Kiem tra trung lap (cung Lop, Mon, Lan thi)
         IF EXISTS (
             SELECT 1 FROM dbo.GIAOVIEN_DANGKY
             WHERE MALOP = @MALOP AND MAMH = @MAMH AND LAN = @LAN
@@ -159,7 +134,6 @@ BEGIN
             RETURN;
         END
 
-        -- Buoc 3: Them moi lich thi trong Transaction
         BEGIN TRY
             BEGIN TRAN;
                 INSERT INTO GiaoVien_DangKy (MAGV, MALOP, MAMH, TRINHDO, NGAYTHI, LAN, SOCAUTHI, THOIGIAN)
@@ -181,4 +155,91 @@ END
 GO
 
 PRINT N'OK: Da tao usp_ThucHienDangKyThi.';
+GO
+
+-- ------------------------------------------------------------
+-- 4. usp_LayDanhSachDeThi
+--    GV lay danh sach cac de thi (lich thi) da dang ky theo MAGV
+-- ------------------------------------------------------------
+CREATE PROCEDURE usp_LayDanhSachDeThi
+    @MaGV NCHAR(8)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT
+        [MAMH],
+        [MALOP],
+        [TRINHDO],
+        [NGAYTHI],
+        [LAN],
+        [SOCAUTHI],
+        [THOIGIAN]
+    FROM dbo.GIAOVIEN_DANGKY
+    WHERE MAGV = @MaGV
+    ORDER BY NGAYTHI DESC;
+END
+GO
+
+GRANT EXECUTE ON dbo.usp_LayDanhSachDeThi TO [Giangvien];
+GO
+GRANT EXECUTE ON dbo.usp_LayDanhSachDeThi TO [PGV];
+GO
+
+PRINT N'OK: Da tao usp_LayDanhSachDeThi.';
+GO
+
+-- ------------------------------------------------------------
+-- 5. usp_LayDanhSachLop
+--    SinhVienController va LopController lay danh sach lop
+-- ------------------------------------------------------------
+CREATE PROCEDURE usp_LayDanhSachLop
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT
+        MALOP,
+        TENLOP
+    FROM dbo.LOP
+    ORDER BY MALOP ASC;
+END
+GO
+
+GRANT EXECUTE ON dbo.usp_LayDanhSachLop TO [PGV];
+GO
+GRANT EXECUTE ON dbo.usp_LayDanhSachLop TO [Giangvien];
+GO
+
+PRINT N'OK: Da tao usp_LayDanhSachLop.';
+GO
+
+-- ------------------------------------------------------------
+-- 6. usp_LayDanhSachTrinhDo
+--    Lay danh sach cac Trinh do dang co trong Bo de
+-- ------------------------------------------------------------
+CREATE PROCEDURE usp_LayDanhSachTrinhDo
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT DISTINCT
+        TRINHDO AS MaTrinhDo,
+        CASE TRINHDO
+            WHEN 'A' THEN N'A - Dai hoc chuyen nganh'
+            WHEN 'B' THEN N'B - Dai hoc khong chuyen nganh'
+            WHEN 'C' THEN N'C - Cao dang'
+            ELSE TRINHDO
+        END AS TenTrinhDo
+    FROM dbo.BODE
+    ORDER BY TRINHDO ASC;
+END
+GO
+
+GRANT EXECUTE ON dbo.usp_LayDanhSachTrinhDo TO [PGV];
+GO
+GRANT EXECUTE ON dbo.usp_LayDanhSachTrinhDo TO [Giangvien];
+GO
+
+PRINT N'OK: Da tao usp_LayDanhSachTrinhDo.';
 GO

@@ -66,7 +66,6 @@ namespace DMS_Examify.Controllers
             }
             return View(new LoginViewModel());
         }
-
         [HttpPost]
         public IActionResult Login(LoginViewModel model)
         {
@@ -78,24 +77,17 @@ namespace DMS_Examify.Controllers
 
             try
             {
-                bool isSuccess = model.LoginType == StudentLoginType
+                string? errorMessage = model.LoginType == StudentLoginType
                     ? ProcessStudentLogin(model)
                     : ProcessLecturerLogin(model);
 
-                if (!isSuccess)
+                if (errorMessage != null)
                 {
-                    ViewData["Error"] = model.LoginType == StudentLoginType 
-                        ? ErrorStudentNotFound 
-                        : ErrorLecturerNotFound;
+                    ViewData["Error"] = errorMessage;
                     return View(model);
                 }
 
                 return RedirectToAction("Index", "Home");
-            }
-            catch (SqlException ex) when (ex.Number == 18456)
-            {
-                ViewData["Error"] = ErrorLecturerNotFound;
-                return View(model);
             }
             catch (Exception ex)
             {
@@ -121,30 +113,47 @@ namespace DMS_Examify.Controllers
             return !string.IsNullOrEmpty(HttpContext.Session.GetString(SessionKeyUserRole));
         }
 
-        private bool ProcessStudentLogin(LoginViewModel model)
+        private string? ProcessStudentLogin(LoginViewModel model)
         {
-            var sinhVien = ValidateSinhVien(model.Login, model.Password);
-            if (sinhVien == null)
+            try
             {
-                return false;
-            }
+                var sinhVien = ValidateSinhVien(model.Login, model.Password);
+                if (sinhVien == null)
+                {
+                    return ErrorStudentNotFound;
+                }
 
-            SetStudentSession(sinhVien);
-            return true;
+                SetStudentSession(sinhVien);
+                return null;
+            }
+            catch (SqlException ex)
+            {
+                return ex.Message;
+            }
         }
 
-        private bool ProcessLecturerLogin(LoginViewModel model)
+        private string? ProcessLecturerLogin(LoginViewModel model)
         {
-            var giangVien = ValidateGiangVien(model.Login, model.Password);
-            if (giangVien == null || string.IsNullOrEmpty(giangVien.Value.Role))
+            try
             {
-                return false;
+                var giangVien = ValidateGiangVien(model.Login, model.Password);
+                if (giangVien == null || string.IsNullOrEmpty(giangVien.Value.Role))
+                {
+                    return ErrorLecturerNotFound;
+                }
+
+                SetLecturerSession(giangVien.Value, model.Login, model.Password);
+                return null;
             }
-
-            SetLecturerSession(giangVien.Value, model.Login, model.Password);
-            return true;
+            catch (SqlException ex) when (ex.Number == 18456)
+            {
+                return ErrorLecturerNotFound;
+            }
+            catch (SqlException ex)
+            {
+                return $"Lỗi kết nối cơ sở dữ liệu: {ex.Message}";
+            }
         }
-
         private void SetStudentSession(SinhVien sinhVien)
         {
             HttpContext.Session.SetString(SessionKeyUserRole, StudentRoleName);
@@ -194,9 +203,9 @@ namespace DMS_Examify.Controllers
         private (string Role, string UserName, string HoTen)? ValidateGiangVien(string login, string password)
         {
             var connStr = BuildConnectionString(login, password);
-
             using var conn = new SqlConnection(connStr);
             conn.Open();
+            
             using var cmd = new SqlCommand("dbo.usp_LayThongTinTaiKhoan", conn)
             {
                 CommandType = CommandType.StoredProcedure

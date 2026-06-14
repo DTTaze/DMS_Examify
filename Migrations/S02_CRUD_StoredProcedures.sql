@@ -1,6 +1,6 @@
 -- ============================================================
--- FILE: S-02_CreateCrudStoredProcedures.sql
--- THU TU CHAY: S-02 / S-12  (sau S-01 PhanQuyen, truoc S-08 IDENTITY Migration)
+-- FILE: S02_CRUD_StoredProcedures.sql
+-- THU TU CHAY: S02 (sau S01 PhanQuyen, truoc S04 IDENTITY Migration)
 -- MUC DICH: Tao toan bo SP CRUD goc cho MonHoc, GiaoVien, SinhVien, BoDe, Lop
 -- LY DO: Cung cap day du SP CRUD de C# goi. Cac SP nay la phien ban
 --        KHOI TAO dau tien, duoc viet dua tren schema ban dau.

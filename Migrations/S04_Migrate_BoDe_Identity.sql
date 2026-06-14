@@ -1,6 +1,6 @@
 -- ============================================================
--- FILE: S-08_MigrateBODEAddIdentityCAUHOI.sql
--- THU TU CHAY: S-08 / S-12  (sau S-02 CRUD SPs, TRUOC 002_FixBodeCrudSPs)
+-- FILE: S04_Migrate_BoDe_Identity.sql
+-- THU TU CHAY: S04 (sau S02 CRUD SPs, TRUOC 002_FixBodeCrudSPs)
 -- MUC DICH: Chuyen cot CAUHOI tu kieu so nguyen thuong sang INT IDENTITY(1,1)
 --           trong khi van giu lai du lieu cu
 -- LY DO: Schema goc dinh nghia CAUHOI la INT thuong (tu nhap tay).
