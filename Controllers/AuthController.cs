@@ -8,29 +8,59 @@ namespace DMS_Examify.Controllers
 {
     public class AuthController : Controller
     {
+        // Role Constants
+        private const string StudentLoginType = "SinhVien";
+        private const string StudentRoleName = "Sinhvien";
+
+        // Session Key Constants
+        private const string SessionKeyUserRole = "UserRole";
+        private const string SessionKeyUserName = "UserName";
+        private const string SessionKeyUserLogin = "UserLogin";
+        private const string SessionKeyMaLop = "MaLop";
+        private const string SessionKeyDbConnectionString = "DbConnectionString";
+
+        // Database Columns Constants
+        private const string ColumnTenNhom = "TENNHOM";
+        private const string ColumnUserName = "USERNAME";
+        private const string ColumnHoTen = "HOTEN";
+        private const string ColumnMaSv = "MaSV";
+        private const string ColumnHo = "Ho";
+        private const string ColumnTen = "Ten";
+        private const string ColumnMaLop = "MaLop";
+
+        // Error Message Constants
+        private const string ErrorMissingCredentials = "Vui lòng nhập đầy đủ thông tin đăng nhập.";
+        private const string ErrorStudentNotFound = "Mã SV hoặc mật khẩu không đúng.";
+        private const string ErrorLecturerNotFound = "Tên đăng nhập hoặc mật khẩu giảng viên không đúng.";
+
         private readonly IConfiguration _configuration;
-        private readonly string _masterConnectionString;
-        private readonly string _studentConnectionString;
+        private readonly string _templateConnection;
+        private readonly string _studentConnection;
 
         public AuthController(IConfiguration configuration)
         {
             _configuration = configuration;
-            _masterConnectionString = configuration.GetConnectionString("DefaultConnection") ?? string.Empty;
+            
+            _templateConnection = configuration.GetConnectionString("DatabaseTemplate")
+                ?? string.Empty;
 
-            var builder = new SqlConnectionStringBuilder(_masterConnectionString)
+            var studentUser = configuration["StudentCredentials:DefaultUser"] ?? "sv";
+            var studentPassword = configuration["StudentCredentials:DefaultPassword"] ?? "sv";
+
+            var builder = new SqlConnectionStringBuilder(_templateConnection)
             {
                 IntegratedSecurity = false,
-                UserID = "sv",
-                Password = "sv",
+                UserID = studentUser,
+                Password = studentPassword,
                 TrustServerCertificate = true,
             };
 
-            _studentConnectionString = builder.ConnectionString;
+            _studentConnection = builder.ConnectionString;
         }
 
         public IActionResult Login()
         {
-            if (!string.IsNullOrEmpty(HttpContext.Session.GetString("UserRole")))
+            if (IsUserLoggedIn())
             {
                 return RedirectToAction("Index", "Home");
             }
@@ -42,64 +72,123 @@ namespace DMS_Examify.Controllers
         {
             if (string.IsNullOrEmpty(model.Login) || string.IsNullOrEmpty(model.Password))
             {
-                ViewData["Error"] = "Vui lòng nhập đầy đủ thông tin đăng nhập.";
+                ViewData["Error"] = ErrorMissingCredentials;
                 return View(model);
             }
 
             try
             {
-                if (model.LoginType == "SinhVien")
+                bool isSuccess = model.LoginType == StudentLoginType
+                    ? ProcessStudentLogin(model)
+                    : ProcessLecturerLogin(model);
+
+                if (!isSuccess)
                 {
-                    var sv = ValidateSinhVien(model.Login, model.Password);
-                    if (sv == null)
-                    {
-                        ViewData["Error"] = "Mã SV hoặc mật khẩu không đúng.";
-                        return View(model);
-                    }
-
-                    HttpContext.Session.SetString("UserRole", "Sinhvien");
-                    HttpContext.Session.SetString("UserName", $"{sv.Ho} {sv.Ten}");
-                    HttpContext.Session.SetString("UserLogin", sv.MaSV);
-                    HttpContext.Session.SetString("MaLop", sv.MaLop);
-                    HttpContext.Session.SetString("DbConnectionString", _studentConnectionString);
-                }
-                else
-                {
-                    var user = ValidateGiangVien(model.Login, model.Password);
-
-                    if (user == null || string.IsNullOrEmpty(user.Value.Role))
-                    {
-                        ViewData["Error"] = "Tên đăng nhập hoặc mật khẩu giảng viên không đúng.";
-                        return View(model);
-                    }
-
-                    HttpContext.Session.SetString("UserRole", user.Value.Role);
-                    HttpContext.Session.SetString("UserName", user.Value.HoTen);
-                    HttpContext.Session.SetString("UserLogin", user.Value.UserName);
-
-                    var userConnStr = BuildConnectionString(model.Login, model.Password);
-                    HttpContext.Session.SetString("DbConnectionString", userConnStr);
+                    ViewData["Error"] = model.LoginType == StudentLoginType 
+                        ? ErrorStudentNotFound 
+                        : ErrorLecturerNotFound;
+                    return View(model);
                 }
 
                 return RedirectToAction("Index", "Home");
             }
-            catch (SqlException ex)
+            catch (SqlException ex) when (ex.Number == 18456)
             {
-                if (ex.Number == 18456)
-                {
-                    ViewData["Error"] = "Tên đăng nhập hoặc mật khẩu giảng viên không đúng.";
-                }
-                else
-                {
-                    ViewData["Error"] = "Lỗi kết nối cơ sở dữ liệu: " + ex.Message;
-                }
+                ViewData["Error"] = ErrorLecturerNotFound;
                 return View(model);
             }
             catch (Exception ex)
             {
-                ViewData["Error"] = "Đăng nhập thất bại: " + ex.Message;
+                ViewData["Error"] = $"Đăng nhập thất bại: {ex.Message}";
                 return View(model);
             }
+        }
+
+        public IActionResult Logout()
+        {
+            HttpContext.Session.Clear();
+            return RedirectToAction("Login");
+        }
+
+        public IActionResult AccessDenied()
+        {
+            ViewData["Title"] = "Truy cập bị từ chối";
+            return View();
+        }
+
+        private bool IsUserLoggedIn()
+        {
+            return !string.IsNullOrEmpty(HttpContext.Session.GetString(SessionKeyUserRole));
+        }
+
+        private bool ProcessStudentLogin(LoginViewModel model)
+        {
+            var sinhVien = ValidateSinhVien(model.Login, model.Password);
+            if (sinhVien == null)
+            {
+                return false;
+            }
+
+            SetStudentSession(sinhVien);
+            return true;
+        }
+
+        private bool ProcessLecturerLogin(LoginViewModel model)
+        {
+            var giangVien = ValidateGiangVien(model.Login, model.Password);
+            if (giangVien == null || string.IsNullOrEmpty(giangVien.Value.Role))
+            {
+                return false;
+            }
+
+            SetLecturerSession(giangVien.Value, model.Login, model.Password);
+            return true;
+        }
+
+        private void SetStudentSession(SinhVien sinhVien)
+        {
+            HttpContext.Session.SetString(SessionKeyUserRole, StudentRoleName);
+            HttpContext.Session.SetString(SessionKeyUserName, $"{sinhVien.Ho} {sinhVien.Ten}");
+            HttpContext.Session.SetString(SessionKeyUserLogin, sinhVien.MaSV);
+            HttpContext.Session.SetString(SessionKeyMaLop, sinhVien.MaLop);
+            HttpContext.Session.SetString(SessionKeyDbConnectionString, _studentConnection);
+        }
+
+        private void SetLecturerSession((string Role, string UserName, string HoTen) giangVien, string login, string password)
+        {
+            HttpContext.Session.SetString(SessionKeyUserRole, giangVien.Role);
+            HttpContext.Session.SetString(SessionKeyUserName, giangVien.HoTen);
+            HttpContext.Session.SetString(SessionKeyUserLogin, giangVien.UserName);
+
+            var dbConnectionString = BuildConnectionString(login, password);
+            HttpContext.Session.SetString(SessionKeyDbConnectionString, dbConnectionString);
+        }
+
+        private SinhVien? ValidateSinhVien(string maSinhVien, string matKhau)
+        {
+            using var conn = new SqlConnection(_studentConnection);
+            conn.Open();
+
+            using var cmd = new SqlCommand("dbo.usp_SinhVien_Login", conn)
+            {
+                CommandType = CommandType.StoredProcedure
+            };
+            cmd.Parameters.AddWithValue("@MASV", maSinhVien);
+            cmd.Parameters.AddWithValue("@PASSWORD", matKhau);
+
+            using var reader = cmd.ExecuteReader();
+            if (!reader.Read())
+            {
+                return null;
+            }
+
+            return new SinhVien
+            {
+                MaSV = reader[ColumnMaSv].ToString() ?? string.Empty,
+                Ho = reader[ColumnHo].ToString() ?? string.Empty,
+                Ten = reader[ColumnTen].ToString() ?? string.Empty,
+                MaLop = reader[ColumnMaLop].ToString() ?? string.Empty
+            };
         }
 
         private (string Role, string UserName, string HoTen)? ValidateGiangVien(string login, string password)
@@ -117,43 +206,20 @@ namespace DMS_Examify.Controllers
 
             using var reader = cmd.ExecuteReader();
             if (!reader.Read())
+            {
                 return null;
+            }
 
             return (
-                reader["TENNHOM"].ToString() ?? "",
-                reader["USERNAME"].ToString() ?? "",
-                reader["HOTEN"].ToString() ?? ""
+                reader[ColumnTenNhom].ToString() ?? "",
+                reader[ColumnUserName].ToString() ?? "",
+                reader[ColumnHoTen].ToString() ?? ""
             );
-        }
-
-        private SinhVien? ValidateSinhVien(string maSV, string matKhau)
-        {
-            using var conn = new SqlConnection(_studentConnectionString);
-            conn.Open();
-
-            using var cmd = new SqlCommand("dbo.usp_SinhVien_Login", conn)
-            {
-                CommandType = CommandType.StoredProcedure
-            };
-            cmd.Parameters.AddWithValue("@MASV", maSV);
-            cmd.Parameters.AddWithValue("@PASSWORD", matKhau);
-
-            using var reader = cmd.ExecuteReader();
-            if (!reader.Read())
-                return null;
-
-            return new SinhVien
-            {
-                MaSV = reader["MaSV"].ToString() ?? string.Empty,
-                Ho = reader["Ho"].ToString() ?? string.Empty,
-                Ten = reader["Ten"].ToString() ?? string.Empty,
-                MaLop = reader["MaLop"].ToString() ?? string.Empty
-            };
         }
 
         private string BuildConnectionString(string userId, string password)
         {
-            var builder = new SqlConnectionStringBuilder(_masterConnectionString)
+            var builder = new SqlConnectionStringBuilder(_templateConnection)
             {
                 IntegratedSecurity = false,
                 UserID = userId,
@@ -161,18 +227,6 @@ namespace DMS_Examify.Controllers
                 TrustServerCertificate = true
             };
             return builder.ConnectionString;
-        }
-
-        public IActionResult Logout()
-        {
-            HttpContext.Session.Clear();
-            return RedirectToAction("Login");
-        }
-
-        public IActionResult AccessDenied()
-        {
-            ViewData["Title"] = "Truy cập bị từ chối";
-            return View();
         }
     }
 }

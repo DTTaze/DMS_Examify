@@ -1,19 +1,11 @@
 using DMS_Examify.Models;
 using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics;
-using DMS_Examify.Infrastructure; // Thêm using cho ApplicationDbContext
 
 namespace DMS_Examify.Controllers
 {
-    public class HomeController : BaseController // Kế thừa BaseController
+    public class HomeController : BaseController
     {
-        private readonly ApplicationDbContext _context;
-
-        public HomeController(ApplicationDbContext context)
-        {
-            _context = context;
-        }
-
         public IActionResult Index()
         {
             ViewData["Title"] = "Dashboard";
@@ -22,7 +14,7 @@ namespace DMS_Examify.Controllers
 
         public IActionResult Privacy()
         {
-            ViewData["Title"] = "Chính sách quyền riêng tư";
+            ViewData["Title"] = "Privacy Policy";
             return View();
         }
 
