@@ -47,7 +47,7 @@ BEGIN
     END
 
     ALTER TABLE [dbo].[MONHOC]
-    ALTER COLUMN [TENMH] NVARCHAR(50) NOT NULL;
+    ALTER COLUMN [TENMH] NVARCHAR(40) NOT NULL;
     PRINT N'OK: MONHOC.TENMH đã được đặt thành NOT NULL.';
 END
 ELSE
@@ -254,3 +254,60 @@ BEGIN
     PRINT N'SKIP: Index IX_BODE_MAGV_MAMH da ton tai.';
 END
 GO
+
+-- 12. Them cot TrangThai vao MONHOC va tao Filtered Index UQ_MONHOC_TENMH_Active
+-- 12.1. Them cot TrangThai neu chua co
+IF NOT EXISTS (
+    SELECT 1
+    FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_NAME  = 'MONHOC'
+      AND COLUMN_NAME = 'TrangThai'
+)
+BEGIN
+    ALTER TABLE [dbo].[MONHOC]
+    ADD [TrangThai] BIT NOT NULL DEFAULT 1;
+    PRINT N'OK: Đã thêm cột TrangThai vào bảng MONHOC.';
+END
+ELSE
+BEGIN
+    PRINT N'SKIP: Cột TrangThai đã tồn tại trong bảng MONHOC.';
+END
+GO
+
+-- 12.2. Xoa unique constraint UQ_MONHOC_TENMH cu neu ton tai
+IF EXISTS (
+    SELECT 1
+    FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
+    WHERE TABLE_NAME       = 'MONHOC'
+      AND CONSTRAINT_NAME  = 'UQ_MONHOC_TENMH'
+      AND CONSTRAINT_TYPE  = 'UNIQUE'
+)
+BEGIN
+    ALTER TABLE [dbo].[MONHOC] DROP CONSTRAINT [UQ_MONHOC_TENMH];
+    PRINT N'OK: Đã xóa UNIQUE constraint UQ_MONHOC_TENMH cũ.';
+END
+GO
+
+-- 12.3. Tao Filtered Unique Index cho TENMH voi TrangThai = 1
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+IF NOT EXISTS (
+    SELECT 1
+    FROM sys.indexes
+    WHERE name      = 'UQ_MONHOC_TENMH_Active'
+      AND object_id = OBJECT_ID('dbo.MONHOC')
+)
+BEGIN
+    CREATE UNIQUE NONCLUSTERED INDEX [UQ_MONHOC_TENMH_Active]
+    ON [dbo].[MONHOC] ([TENMH] ASC)
+    WHERE [TrangThai] = 1;
+    PRINT N'OK: Đã tạo Filtered Unique Index UQ_MONHOC_TENMH_Active.';
+END
+ELSE
+BEGIN
+    PRINT N'SKIP: Index UQ_MONHOC_TENMH_Active đã tồn tại.';
+END
+GO
+

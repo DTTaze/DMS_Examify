@@ -416,3 +416,138 @@ GO
 
 PRINT N'OK: Da tao SP usp_BoDe_TimKiemNangCao.';
 GO
+
+-- ------------------------------------------------------------
+-- 7. Stored Procedure updates for MonHoc Soft Delete
+-- ------------------------------------------------------------
+
+-- 7.1. usp_MonHoc_GetAll (Chỉ lấy môn học đang hoạt động)
+CREATE OR ALTER PROCEDURE dbo.usp_MonHoc_GetAll
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT MaMH, TenMH
+    FROM MONHOC
+    WHERE TrangThai = 1;
+END
+GO
+GRANT EXECUTE ON [dbo].[usp_MonHoc_GetAll] TO [PGV];
+GO
+GRANT EXECUTE ON [dbo].[usp_MonHoc_GetAll] TO [Giangvien];
+GO
+GRANT EXECUTE ON [dbo].[usp_MonHoc_GetAll] TO [Sinhvien];
+GO
+
+-- 7.2. usp_MonHoc_Search (Chỉ tìm kiếm môn học đang hoạt động)
+CREATE OR ALTER PROCEDURE dbo.usp_MonHoc_Search
+    @Keyword NVARCHAR(250) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT MAMH, TENMH
+    FROM MONHOC
+    WHERE TrangThai = 1
+      AND (@Keyword IS NULL OR @Keyword = ''
+           OR MAMH LIKE '%' + @Keyword + '%'
+           OR TENMH LIKE '%' + @Keyword + '%')
+    OPTION (RECOMPILE);
+END
+GO
+GRANT EXECUTE ON dbo.usp_MonHoc_Search TO [PGV];
+GO
+GRANT EXECUTE ON dbo.usp_MonHoc_Search TO [Giangvien];
+GO
+GRANT EXECUTE ON dbo.usp_MonHoc_Search TO [Sinhvien];
+GO
+
+-- 7.3. usp_MonHoc_Delete (Xóa mềm kết hợp xóa cứng thông minh)
+CREATE OR ALTER PROCEDURE dbo.usp_MonHoc_Delete
+    @MaMH NCHAR(5)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- Kiểm tra xem môn học đã từng phát sinh dữ liệu liên kết nào chưa
+    IF EXISTS (SELECT 1 FROM [dbo].[BANGDIEM] WHERE [MAMH] = @MaMH)
+       OR EXISTS (SELECT 1 FROM [dbo].[BODE] WHERE [MAMH] = @MaMH)
+       OR EXISTS (SELECT 1 FROM [dbo].[GIAOVIEN_DANGKY] WHERE [MAMH] = @MaMH)
+    BEGIN
+        -- Đã có dữ liệu liên kết quan trọng: Chuyển sang ngưng dùng (Xóa mềm)
+        UPDATE [dbo].[MONHOC]
+        SET [TrangThai] = 0
+        WHERE [MaMH] = @MaMH;
+        PRINT N'INFO: Đã chuyển môn học sang trạng thái Ngưng dùng (Xóa mềm) do có dữ liệu liên kết.';
+    END
+    ELSE
+    BEGIN
+        -- Chưa từng sử dụng: Xóa vĩnh viễn khỏi Database (Xóa cứng)
+        DELETE FROM [dbo].[MONHOC]
+        WHERE [MaMH] = @MaMH;
+        PRINT N'INFO: Đã xóa cứng môn học hoàn toàn khỏi Database.';
+    END
+END
+GO
+GRANT EXECUTE ON [dbo].[usp_MonHoc_Delete] TO [PGV];
+GO
+
+-- 7.4. usp_LayDanhSachMonHoc (Dùng cho Dropdownlist đăng ký thi)
+CREATE OR ALTER PROCEDURE dbo.usp_LayDanhSachMonHoc
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT MAMH, TENMH
+    FROM dbo.MONHOC
+    WHERE TrangThai = 1
+    ORDER BY TENMH ASC;
+END
+GO
+GRANT EXECUTE ON dbo.usp_LayDanhSachMonHoc TO [PGV];
+GO
+GRANT EXECUTE ON dbo.usp_LayDanhSachMonHoc TO [Giangvien];
+GO
+
+-- 7.5. usp_MonHoc_Restore (Phục hồi môn học bị xóa mềm)
+CREATE OR ALTER PROCEDURE dbo.usp_MonHoc_Restore
+    @MaMH NCHAR(5)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    UPDATE [dbo].[MONHOC]
+    SET [TrangThai] = 1
+    WHERE [MaMH] = @MaMH;
+    PRINT N'OK: Đã phục hồi môn học.';
+END
+GO
+GRANT EXECUTE ON [dbo].[usp_MonHoc_Restore] TO [PGV];
+GO
+
+-- 7.6. usp_MonHoc_Insert (Hỗ trợ tự phục hồi khi trùng khóa chính đã xóa mềm)
+CREATE OR ALTER PROCEDURE dbo.usp_MonHoc_Insert
+    @MaMH NCHAR(5),
+    @TenMH NVARCHAR(40)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    IF EXISTS (SELECT 1 FROM dbo.MONHOC WHERE MaMH = @MaMH)
+    BEGIN
+        -- Phục hồi và cập nhật tên môn học mới
+        UPDATE dbo.MONHOC
+        SET TenMH = @TenMH,
+            TrangThai = 1
+        WHERE MaMH = @MaMH;
+        PRINT N'INFO: Đã phục hồi môn học đã xóa mềm trước đó.';
+    END
+    ELSE
+    BEGIN
+        INSERT INTO dbo.MONHOC (MaMH, TenMH, TrangThai)
+        VALUES (@MaMH, @TenMH, 1);
+        PRINT N'INFO: Đã thêm mới môn học.';
+    END
+END
+GO
+GRANT EXECUTE ON [dbo].[usp_MonHoc_Insert] TO [PGV];
+GO
+
+PRINT N'OK: Các stored procedure cho MonHoc đã được cập nhật.';
+GO

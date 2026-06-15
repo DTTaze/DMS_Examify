@@ -1,5 +1,9 @@
 @model List<DMS_Examify.Models.MonHoc>
 
+@section Styles {
+    <link rel="stylesheet" href="~/css/monhoc.css" asp-append-version="true" />
+}
+
 <div class="row g-4">
     <!-- FORM -->
     <div class="col-md-5">
@@ -10,19 +14,25 @@
                 <div class="mb-3">
                     <label>Mã môn học</label>
                     <input id="txtMaMH" class="form-control" />
+                    <span id="errMaMH" class="text-danger small mt-1 d-block"></span>
                 </div>
 
                 <div class="mb-3">
                     <label>Tên môn học</label>
                     <input id="txtTenMH" class="form-control" />
+                    <span id="errTenMH" class="text-danger small mt-1 d-block"></span>
                 </div>
 
                 <div class="d-flex gap-2 flex-wrap">
-                    <button type="button" class="btn btn-primary" onclick="them()">Thêm</button>
-                    <button type="button" class="btn btn-warning" onclick="sua()">Sửa</button>
-                    <button type="button" class="btn btn-danger" onclick="xoa()">Xóa</button>
-                    <button type="button" class="btn btn-info" onclick="tim()">Tìm</button>
-                    <button type="button" class="btn btn-success" onclick="ghi()">Ghi</button>
+                    <span id="wrapThem" class="d-inline-block">
+                        <button type="button" class="btn btn-primary" onclick="addSubject()" id="btnThem" disabled>Thêm</button>
+                    </span>
+                    <span id="wrapSua" class="d-inline-block">
+                        <button type="button" class="btn btn-warning" onclick="editSubject()" id="btnSua" disabled>Sửa</button>
+                    </span>
+                    <span id="wrapGhi" class="d-inline-block">
+                        <button type="button" class="btn btn-success" onclick="saveChangesToDb()" id="btnGhi" disabled>Ghi</button>
+                    </span>
                     <button type="button" class="btn btn-secondary" onclick="resetForm()">Reset</button>
                 </div>
 
@@ -33,8 +43,11 @@
     <!-- TABLE -->
     <div class="col-md-7">
         <div class="card">
-            <div class="card-header">
-                Danh sách Môn học (@Model.Count)
+            <div class="card-header d-flex justify-content-between align-items-center py-2">
+                <span>Danh sách Môn học (<span id="lblCount">@Model.Count</span>)</span>
+                <div style="width: 250px;">
+                    <input id="txtTim" class="form-control form-control-sm" placeholder="Tìm kiếm mã hoặc tên..." />
+                </div>
             </div>
 
             <div class="card-body p-0">
@@ -44,6 +57,7 @@
                             <th>STT</th>
                             <th>Mã</th>
                             <th>Tên</th>
+                            <th class="text-center" style="width: 100px;">Thao tác</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -53,6 +67,10 @@
                                 <td>@(i + 1)</td>
                                 <td>@Model[i].MaMH</td>
                                 <td>@Model[i].TenMH</td>
+                                <td class="text-center">
+                                    <button type="button" class="btn btn-link text-warning p-0 me-2 btn-edit" title="Hiệu chỉnh"><i class="bi bi-pencil-square fs-5"></i></button>
+                                    <button type="button" class="btn btn-link text-danger p-0 btn-delete" title="Xóa"><i class="bi bi-trash fs-5"></i></button>
+                                </td>
                             </tr>
                         }
                     </tbody>
@@ -60,207 +78,28 @@
             </div>
         </div>
     </div>
+<!-- Custom Modal for Notifications and Confirmations -->
+<div class="modal fade" id="customModal" tabindex="-1" aria-labelledby="customModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-3">
+            <div class="modal-header border-0 bg-light py-3">
+                <h5 class="modal-title d-flex align-items-center gap-2 fw-semibold" id="customModalLabel">
+                    <i id="customModalIcon" class="bi fs-4"></i>
+                    <span id="customModalTitle">Thông báo</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body py-4 fs-6 text-dark" id="customModalMessage">
+                Nội dung thông báo ở đây.
+            </div>
+            <div class="modal-footer border-0 bg-light py-2">
+                <button type="button" class="btn btn-secondary btn-sm px-3" id="btnCustomModalCancel" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-primary btn-sm px-3" id="btnCustomModalOk">Xác nhận</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 @section Scripts {
-    <script>
-        let newItems = [];
-        let updatedItems = [];
-        let deletedItems = [];
-        let selectedRow = null;
-        let historyStack = [];
-        let tempId = -1;
-
-        function pushState() {
-            historyStack.push({
-                html: document.querySelector("#tbl tbody").innerHTML,
-                newItems: JSON.parse(JSON.stringify(newItems)),
-                updatedItems: JSON.parse(JSON.stringify(updatedItems)),
-                deletedItems: JSON.parse(JSON.stringify(deletedItems))
-            });
-        }
-
-        function undo() {
-            if (!historyStack.length) return alert("Không có gì để undo");
-
-            const s = historyStack.pop();
-            document.querySelector("#tbl tbody").innerHTML = s.html;
-            newItems = s.newItems;
-            updatedItems = s.updatedItems;
-            deletedItems = s.deletedItems;
-
-            bindRows();
-            selectedRow = null;
-        }
-
-        function getForm() {
-            return {
-                MaMH: txtMaMH.value.trim(),
-                TenMH: txtTenMH.value.trim()
-            };
-        }
-
-        function fillForm(row) {
-            txtMaMH.value = row.dataset.mamh;
-            txtTenMH.value = row.dataset.tenmh;
-        }
-
-        function bindRows() {
-            document.querySelectorAll("#tbl tbody tr").forEach(r => {
-                r.onclick = () => {
-                    document.querySelectorAll("#tbl tbody tr")
-                        .forEach(x => x.classList.remove("table-active"));
-
-                    r.classList.add("table-active");
-                    selectedRow = r;
-                    fillForm(r);
-                };
-            });
-        }
-
-        function them() {
-            const d = getForm();
-            if (!d.MaMH || !d.TenMH) return alert("Nhập đầy đủ");
-
-            pushState();
-
-            const id = tempId--;
-
-            newItems.push({ Id: id, ...d });
-
-            const row = document.querySelector("#tbl tbody").insertRow();
-            row.dataset.id = id;
-            row.dataset.mamh = d.MaMH;
-            row.dataset.tenmh = d.TenMH;
-
-            row.innerHTML = `
-                    <td>...</td>
-                    <td>${d.MaMH}</td>
-                    <td>${d.TenMH}</td>
-                `;
-
-            bindRows();
-            resetForm();
-        }
-
-        function sua() {
-            if (!selectedRow) return alert("Chọn dòng");
-
-            const d = getForm();
-            const id = parseInt(selectedRow.dataset.id);
-
-            pushState();
-
-            selectedRow.innerHTML = `
-                    <td>${id > 0 ? id : "..."}</td>
-                    <td>${d.MaMH}</td>
-                    <td>${d.TenMH}</td>
-                `;
-
-            selectedRow.dataset.mamh = d.MaMH;
-            selectedRow.dataset.tenmh = d.TenMH;
-
-            if (id < 0) {
-                const i = newItems.findIndex(x => x.Id === id);
-                if (i >= 0) newItems[i] = { Id: id, ...d };
-            } else {
-                updatedItems = updatedItems.filter(x => x.MaMH !== d.MaMH);
-                updatedItems.push(d);
-            }
-        }
-
-        function xoa() {
-            if (!selectedRow) return alert("Chọn dòng");
-
-            const id = parseInt(selectedRow.dataset.id);
-            const maMH = selectedRow.dataset.mamh;
-
-            pushState();
-
-            if (id < 0) {
-                newItems = newItems.filter(x => x.Id !== id);
-            } else {
-                updatedItems = updatedItems.filter(x => x.MaMH !== maMH);
-
-                if (!deletedItems.some(x => x.MaMH === maMH)) {
-                    deletedItems.push({ MaMH: maMH });
-                }
-            }
-
-            selectedRow.remove();
-            selectedRow = null;
-            updateSTT();
-        }
-
-        async function ghi() {
-            // DELETE
-            for (const d of deletedItems) {
-                await fetch(`/MonHoc/Delete?maMH=${d.MaMH}`, { method: "POST" });
-            }
-
-            // UPDATE
-            for (const u of updatedItems) {
-                await fetch(`/MonHoc/Update`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(u)
-                });
-            }
-
-            // INSERT
-            for (const n of newItems) {
-                await fetch(`/MonHoc/Insert`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(n)
-                });
-            }
-
-            alert("Lưu xong");
-            location.reload();
-        }
-
-        function updateSTT() {
-            const rows = document.querySelectorAll("#tbl tbody tr");
-            rows.forEach((r, i) => {
-                r.cells[0].textContent = i + 1;
-            });
-        }
-
-        function resetForm() {
-            txtMaMH.value = "";
-            txtTenMH.value = "";
-            selectedRow = null;
-        }
-
-        function tim() {
-            const k = prompt("Nhập từ khóa");
-            if (!k) return;
-
-            fetch(`/MonHoc/Search?keyword=${k}`)
-                .then(r => r.json())
-                .then(data => {
-                    const tbody = document.querySelector("#tbl tbody");
-                    tbody.innerHTML = "";
-
-                    data.forEach((x, i) => {
-                        const row = tbody.insertRow();
-
-                        row.dataset.id = x.maMH;
-                        row.dataset.mamh = x.maMH;
-                        row.dataset.tenmh = x.tenMH;
-
-                        row.innerHTML = `
-                                <td>${i + 1}</td>
-                                <td>${x.maMH}</td>
-                                <td>${x.tenMH}</td>
-                            `;
-                    });
-
-                    bindRows();
-                });
-        }
-
-        window.onload = bindRows;
-    </script>
+    <script src="~/js/monhoc.js" asp-append-version="true"></script>
 }

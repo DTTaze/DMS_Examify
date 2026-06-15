@@ -34,6 +34,9 @@ BEGIN
 END
 GO
 
+GRANT EXECUTE ON [dbo].[usp_MonHoc_GetAll] TO [PGV];
+GO
+
 CREATE PROCEDURE dbo.usp_MonHoc_Insert
     @MaMH NVARCHAR(50),
     @TenMH NVARCHAR(250)
