@@ -41,14 +41,20 @@ BEGIN
         RETURN;
     END
 
-    -- Bước 3: Lấy nhóm quyền (Khử 1 phép JOIN bằng cách dùng trực tiếp @UID)
+    -- Bước 3: Lấy nhóm quyền (Lọc/chiếu trước trên sysmembers và sysusers rồi mới JOIN)
     SELECT TOP 1 @ROLENAME = role_user.name
-    FROM dbo.sysmembers sm
-    JOIN dbo.sysusers role_user ON sm.groupuid = role_user.uid
-    WHERE sm.memberuid = @UID
-      AND role_user.name IN ('PGV', 'Giangvien');
+    FROM (
+        SELECT groupuid 
+        FROM dbo.sysmembers 
+        WHERE memberuid = @UID
+    ) sm
+    JOIN (
+        SELECT uid, name 
+        FROM dbo.sysusers 
+        WHERE name IN ('PGV', 'Giangvien')
+    ) role_user ON sm.groupuid = role_user.uid;
 
-    -- Bước 4: Trả về kết quả (Inline ghép Họ & Tên tránh dùng Scalar UDF)
+    -- Bước 4: Trả về kết quả (Inline ghép Họ & Tên tránh dùng UDF)
     SELECT
         @USERNAME                                               AS USERNAME,
         LTRIM(RTRIM(ISNULL(HO, N'') + N' ' + ISNULL(TEN, N'')))   AS HOTEN,
