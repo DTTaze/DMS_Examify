@@ -20,27 +20,23 @@ namespace DMS_Examify.Controllers
         private const string SessionKeyDbConnectionString = "DbConnectionString";
 
         // Database Columns Constants
-        private const string ColumnTenNhom = "TENNHOM";
         private const string ColumnUserName = "USERNAME";
         private const string ColumnHoTen = "HOTEN";
+        private const string ColumnTenNhom = "ROLENAME";
         private const string ColumnMaSv = "MaSV";
         private const string ColumnHo = "Ho";
         private const string ColumnTen = "Ten";
         private const string ColumnMaLop = "MaLop";
 
         // Error Message Constants
-        private const string ErrorMissingCredentials = "Vui lòng nhập đầy đủ thông tin đăng nhập.";
         private const string ErrorStudentNotFound = "Mã SV hoặc mật khẩu không đúng.";
         private const string ErrorLecturerNotFound = "Tên đăng nhập hoặc mật khẩu giảng viên không đúng.";
 
-        private readonly IConfiguration _configuration;
         private readonly string _templateConnection;
         private readonly string _studentConnection;
 
         public AuthController(IConfiguration configuration)
         {
-            _configuration = configuration;
-            
             _templateConnection = configuration.GetConnectionString("DatabaseTemplate")
                 ?? string.Empty;
 
@@ -71,7 +67,6 @@ namespace DMS_Examify.Controllers
         {
             if (string.IsNullOrEmpty(model.Login) || string.IsNullOrEmpty(model.Password))
             {
-                ViewData["Error"] = ErrorMissingCredentials;
                 return View(model);
             }
 
@@ -206,12 +201,12 @@ namespace DMS_Examify.Controllers
             using var conn = new SqlConnection(connStr);
             conn.Open();
             
-            using var cmd = new SqlCommand("dbo.usp_LayThongTinTaiKhoan", conn)
+            using var cmd = new SqlCommand("dbo.usp_TaiKhoan_LayThongTin", conn)
             {
                 CommandType = CommandType.StoredProcedure
             };
 
-            cmd.Parameters.AddWithValue("@TENLOGIN", login);
+            cmd.Parameters.AddWithValue("@LOGINNAME", login);
 
             using var reader = cmd.ExecuteReader();
             if (!reader.Read())

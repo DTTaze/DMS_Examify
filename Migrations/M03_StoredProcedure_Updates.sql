@@ -1,7 +1,7 @@
 -- ============================================================
 -- FILE: M03_StoredProcedure_Updates.sql
 -- MUC DICH: Gom tat ca cac stored procedure duoc sua doi hoac bo sung:
---   1. SP_LayThongTinTaiKhoan (tu 000, updated o 005)
+--   1. usp_TaiKhoan_LayThongTin (tu 000, updated o 005)
 --   2. usp_SinhVien_Login (tu 000)
 --   3. Các SP CRUD của Bộ Đề (usp_BoDe_GetAll, usp_BoDe_Insert, usp_BoDe_Update, usp_BoDe_Search) (tu 002)
 --   4. Các SP bổ sung (usp_GetCauHoiByGiangVien, usp_BoDe_GetLatestCauHoi, usp_Lop_Search) (tu 003)
@@ -12,69 +12,58 @@ USE [THITRACNGHIEM]
 GO
 
 -- ------------------------------------------------------------
--- 1. SP_LayThongTinTaiKhoan
+-- 1. usp_TaiKhoan_LayThongTin
 -- ------------------------------------------------------------
--- // TODO: Chuyển từ database_role_members và database_principals sang syslogins và sysusers
--- // TODO: Không cần trả về thông tin sinh viên vì sinh viên không sử dụng SP này. 
--- // TODO: Đặt tên theo cấu trúc usp_Table_HanhDong
-CREATE OR ALTER PROCEDURE [dbo].[SP_LayThongTinTaiKhoan]
-    @TENLOGIN NVARCHAR(50) = NULL
+CREATE OR ALTER PROCEDURE [dbo].[usp_TaiKhoan_LayThongTin]
+    @LOGINNAME NVARCHAR(50) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
 
-    IF @TENLOGIN IS NULL OR @TENLOGIN = ''
-    BEGIN
-        SET @TENLOGIN = SUSER_SNAME();
-    END
+    DECLARE @USERNAME NVARCHAR(50);
+    DECLARE @UID      INT;
+    DECLARE @SID      VARBINARY(85);
+    DECLARE @ROLENAME  NVARCHAR(50);
 
-    DECLARE @USERNAME NVARCHAR(50)
-    DECLARE @TENNHOM  NVARCHAR(50)
+    -- Bước 1: Lấy SID từ master.dbo.syslogins (Chọn trước, tránh JOIN chéo DB)
+    SELECT @SID = sid 
+    FROM master.dbo.syslogins 
+    WHERE name = @LOGINNAME;
 
-    SELECT @USERNAME = name
-    FROM sys.database_principals
-    WHERE sid = SUSER_SID(@TENLOGIN)
-    
+    -- Bước 2: Lấy Username và UID từ dbo.sysusers
+    SELECT @USERNAME = name, @UID = uid
+    FROM dbo.sysusers 
+    WHERE sid = @SID;
+
     IF @USERNAME IS NULL
     BEGIN
-        RAISERROR(N'Tài khoản đăng nhập chưa được ánh xạ (map) vào Database!', 16, 1);
+        RAISERROR(N'Tài khoản giảng viên không tồn tại trong Database', 16, 1);
         RETURN;
     END
 
-    SELECT TOP 1 @TENNHOM = UserGroup.name
-    FROM sys.database_role_members DRM
-    JOIN sys.database_principals UserGroup ON DRM.role_principal_id = UserGroup.principal_id
-    JOIN sys.database_principals Users     ON DRM.member_principal_id = Users.principal_id
-    WHERE Users.name = @USERNAME
-      AND UserGroup.name IN ('PGV', 'Giangvien', 'Sinhvien');
+    -- Bước 3: Lấy nhóm quyền (Khử 1 phép JOIN bằng cách dùng trực tiếp @UID)
+    SELECT TOP 1 @ROLENAME = role_user.name
+    FROM dbo.sysmembers sm
+    JOIN dbo.sysusers role_user ON sm.groupuid = role_user.uid
+    WHERE sm.memberuid = @UID
+      AND role_user.name IN ('PGV', 'Giangvien');
 
-    IF @TENNHOM = 'Sinhvien'
-    BEGIN
-        SELECT
-            @USERNAME AS USERNAME,
-            N'Sinh Viên dùng chung' AS HOTEN,
-            @TENNHOM   AS TENNHOM
-    END
-    ELSE
-    BEGIN
-        SELECT
-            @USERNAME                         AS USERNAME,
-            dbo.udf_LayHoTen(HO, TEN)         AS HOTEN,
-            @TENNHOM                           AS TENNHOM
-        FROM GIAOVIEN
-        WHERE MAGV = @USERNAME
-    END
+    -- Bước 4: Trả về kết quả (Inline ghép Họ & Tên tránh dùng Scalar UDF)
+    SELECT
+        @USERNAME                                               AS USERNAME,
+        LTRIM(RTRIM(ISNULL(HO, N'') + N' ' + ISNULL(TEN, N'')))   AS HOTEN,
+        @ROLENAME                                               AS ROLENAME
+    FROM GIAOVIEN
+    WHERE MAGV = @USERNAME;
 END
 GO
 
-GRANT EXECUTE ON [dbo].[SP_LayThongTinTaiKhoan] TO [PGV];
+GRANT EXECUTE ON [dbo].[usp_TaiKhoan_LayThongTin] TO [PGV];
 GO
-GRANT EXECUTE ON [dbo].[SP_LayThongTinTaiKhoan] TO [Giangvien];
-GO
-GRANT EXECUTE ON [dbo].[SP_LayThongTinTaiKhoan] TO [Sinhvien];
+GRANT EXECUTE ON [dbo].[usp_TaiKhoan_LayThongTin] TO [Giangvien];
 GO
 
-PRINT N'OK: SP_LayThongTinTaiKhoan đã được cập nhật.';
+PRINT N'OK: usp_TaiKhoan_LayThongTin đã được cập nhật.';
 GO
 
 -- ------------------------------------------------------------

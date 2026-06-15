@@ -43,7 +43,7 @@
                 <label class="form-label" id="loginLabel">Login</label>
                 <div style="position: relative;">
                     <input type="text" class="form-control" name="Login" value="@Model.Login"
-                           placeholder="Nhập tên đăng nhập" style="padding-left: 40px;" id="loginInput" />
+                           placeholder="Nhập tên đăng nhập" style="padding-left: 40px;" id="loginInput" oninput="validateInputs()" />
                     <i class="bi bi-person" style="position:absolute; left:14px; top:50%; transform:translateY(-50%); color:rgba(255,255,255,0.3);"></i>
                 </div>
             </div>
@@ -53,12 +53,12 @@
                 <label class="form-label">Password</label>
                 <div style="position: relative;">
                     <input type="password" class="form-control" name="Password" value="@Model.Password"
-                           placeholder="Nhập mật khẩu" style="padding-left: 40px;" />
+                           placeholder="Nhập mật khẩu" style="padding-left: 40px;" id="passwordInput" oninput="validateInputs()" />
                     <i class="bi bi-lock" style="position:absolute; left:14px; top:50%; transform:translateY(-50%); color:rgba(255,255,255,0.3);"></i>
                 </div>
             </div>
 
-            <button type="submit" class="btn btn-primary">
+            <button type="submit" class="btn btn-primary" id="loginBtn" disabled>
                 <i class="bi bi-box-arrow-in-right"></i> Đăng nhập
             </button>
         </form>
@@ -79,7 +79,16 @@
                 input.placeholder = 'Nhập tên đăng nhập';
             }
         }
+
+        function validateInputs() {
+            const loginVal = document.getElementById('loginInput').value.trim();
+            const passwordVal = document.getElementById('passwordInput').value.trim();
+            const submitBtn = document.getElementById('loginBtn');
+            submitBtn.disabled = (loginVal === "" || passwordVal === "");
+        }
+
         // Init on page load
         toggleLoginType();
+        validateInputs();
     </script>
 }
