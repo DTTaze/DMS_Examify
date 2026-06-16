@@ -194,6 +194,9 @@ function themLop() {
                 <button type="button" class="btn btn-link p-0 text-warning" onclick="editLopClick(event, this.closest('li'))" title="Sửa">
                     <i class="bi bi-pencil-fill fs-6"></i>
                 </button>
+                <button type="button" class="btn btn-link p-0 text-danger" onclick="deleteLopClick(event, this.closest('li'))" title="Xóa">
+                    <i class="bi bi-trash-fill fs-6"></i>
+                </button>
             </div>
         </div>
     `;
@@ -230,6 +233,9 @@ function suaLop() {
             <div class="d-flex gap-2">
                 <button type="button" class="btn btn-link p-0 text-warning" onclick="editLopClick(event, this.closest('li'))" title="Sửa">
                     <i class="bi bi-pencil-fill fs-6"></i>
+                </button>
+                <button type="button" class="btn btn-link p-0 text-danger" onclick="deleteLopClick(event, this.closest('li'))" title="Xóa">
+                    <i class="bi bi-trash-fill fs-6"></i>
                 </button>
             </div>
         </div>
@@ -770,6 +776,9 @@ async function loadSinhVien() {
                         <button type="button" class="btn btn-link p-0 text-warning" onclick="editSVClick(event, this.closest('tr'))" title="Sửa">
                             <i class="bi bi-pencil-fill"></i>
                         </button>
+                        <button type="button" class="btn btn-link p-0 text-danger" onclick="deleteSVClick(event, this.closest('tr'))" title="Xóa">
+                            <i class="bi bi-trash-fill"></i>
+                        </button>
                     </div>
                 </td>
             `;
@@ -815,6 +824,9 @@ function themSV() {
                 <button type="button" class="btn btn-link p-0 text-warning" onclick="editSVClick(event, this.closest('tr'))" title="Sửa">
                     <i class="bi bi-pencil-fill"></i>
                 </button>
+                <button type="button" class="btn btn-link p-0 text-danger" onclick="deleteSVClick(event, this.closest('tr'))" title="Xóa">
+                    <i class="bi bi-trash-fill"></i>
+                </button>
             </div>
         </td>
     `;
@@ -846,6 +858,9 @@ function suaSV() {
             <div class="d-flex gap-2 justify-content-center">
                 <button type="button" class="btn btn-link p-0 text-warning" onclick="editSVClick(event, this.closest('tr'))" title="Sửa">
                     <i class="bi bi-pencil-fill"></i>
+                </button>
+                <button type="button" class="btn btn-link p-0 text-danger" onclick="deleteSVClick(event, this.closest('tr'))" title="Xóa">
+                    <i class="bi bi-trash-fill"></i>
                 </button>
             </div>
         </td>
@@ -1633,6 +1648,9 @@ function confirmImport() {
                     <button type="button" class="btn btn-link p-0 text-warning" onclick="editSVClick(event, this.closest('tr'))" title="Sửa">
                         <i class="bi bi-pencil-fill"></i>
                     </button>
+                    <button type="button" class="btn btn-link p-0 text-danger" onclick="deleteSVClick(event, this.closest('tr'))" title="Xóa">
+                        <i class="bi bi-trash-fill"></i>
+                    </button>
                 </div>
             </td>
         `;
@@ -1836,12 +1854,11 @@ function deleteSVClick(event, tr) {
             }
         }
 
+        tr.remove();
         if (selectedRow === tr) {
             resetStudentForm();
-        } else {
-            tr.remove();
-            updateSTT();
         }
+        updateSTT();
 
         updateSaveButtonState();
         updateUndoRedoButtonStates();
