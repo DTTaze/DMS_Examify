@@ -4,6 +4,14 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<DMS_Examify.Services.IDbConnectionFactory, DMS_Examify.Services.DbConnectionFactory>();
+builder.Services.AddScoped<DMS_Examify.Services.ILopService, DMS_Examify.Services.LopService>();
+builder.Services.AddScoped<DMS_Examify.Services.ISinhVienService, DMS_Examify.Services.SinhVienService>();
+builder.Services.AddScoped<DMS_Examify.Services.IMonHocService, DMS_Examify.Services.MonHocService>();
+builder.Services.AddScoped<DMS_Examify.Services.IBoDeService, DMS_Examify.Services.BoDeService>();
+
+
 // Thêm Session
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>

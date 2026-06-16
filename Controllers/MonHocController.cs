@@ -1,13 +1,18 @@
 using DMS_Examify.Models;
+using DMS_Examify.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
-using System.Data;
 
 namespace DMS_Examify.Controllers
 {
     public class MonHocController : BaseController
     {
-        private string _connectionString => ConnectionString;
+        private readonly IMonHocService _monHocService;
+
+        public MonHocController(IMonHocService monHocService)
+        {
+            _monHocService = monHocService;
+        }
 
         public IActionResult Index()
         {
@@ -16,8 +21,8 @@ namespace DMS_Examify.Controllers
             ViewData["Title"] = "Quản lý Môn học";
             ViewData["Subtitle"] = "Thêm, sửa, xóa môn học";
 
-            var danhSachMonHoc = GetActiveMonHocList();
-            return View(danhSachMonHoc);
+            var subjects = _monHocService.GetAll();
+            return View(subjects);
         }
 
         [HttpPost]
@@ -33,7 +38,7 @@ namespace DMS_Examify.Controllers
 
             try
             {
-                ExecuteInsert(model);
+                _monHocService.Insert(model);
                 return Ok();
             }
             catch (SqlException ex)
@@ -59,7 +64,7 @@ namespace DMS_Examify.Controllers
 
             try
             {
-                ExecuteUpdate(model);
+                _monHocService.Update(model);
                 return Ok();
             }
             catch (SqlException ex)
@@ -80,7 +85,7 @@ namespace DMS_Examify.Controllers
 
             try
             {
-                ExecuteDelete(maMH);
+                _monHocService.Delete(maMH);
                 return Ok();
             }
             catch (SqlException ex)
@@ -100,8 +105,8 @@ namespace DMS_Examify.Controllers
 
             try
             {
-                var danhSachTimKiem = ExecuteSearch(keyword);
-                return Json(danhSachTimKiem);
+                var subjects = _monHocService.Search(keyword);
+                return Json(subjects);
             }
             catch (Exception ex)
             {
@@ -114,63 +119,30 @@ namespace DMS_Examify.Controllers
         {
             if (!CheckRole("PGV")) return Denied();
 
-            bool maMHDuplicate = false;
-            bool maMHActive = false;
-            bool tenMHDuplicate = false;
-            bool tenMHActive = false;
-
             try
             {
-                using (var connection = new SqlConnection(_connectionString))
+                bool maMHDuplicate = false;
+                bool maMHActive = false;
+                if (!isEditing)
                 {
-                    connection.Open();
+                    var maCheck = _monHocService.CheckMaMHDuplicate(maMH);
+                    maMHDuplicate = maCheck.Exists;
+                    maMHActive = maCheck.IsActive;
+                }
 
-                    // 1. Kiểm tra trùng MaMH khi thêm mới (không phải sửa)
-                    if (!isEditing && !string.IsNullOrWhiteSpace(maMH))
-                    {
-                        using (var command = new SqlCommand("SELECT TrangThai FROM MONHOC WHERE MaMH = @MaMH", connection))
-                        {
-                            command.Parameters.Add("@MaMH", SqlDbType.NChar, 5).Value = maMH.Trim();
-                            using (var reader = command.ExecuteReader())
-                            {
-                                if (reader.Read())
-                                {
-                                    maMHDuplicate = true;
-                                    maMHActive = Convert.ToBoolean(reader["TrangThai"]);
-                                }
-                            }
-                        }
-                    }
-
-                    // 2. Kiểm tra trùng TenMH
-                    if (!string.IsNullOrWhiteSpace(tenMH))
-                    {
-                        // Nếu đang sửa, ta không trùng với chính môn học hiện tại (lọc theo MaMH)
-                        string query = isEditing 
-                            ? "SELECT TrangThai FROM MONHOC WHERE TenMH = @TenMH AND MaMH <> @MaMH"
-                            : "SELECT TrangThai FROM MONHOC WHERE TenMH = @TenMH";
-
-                        using (var command = new SqlCommand(query, connection))
-                        {
-                            command.Parameters.Add("@TenMH", SqlDbType.NVarChar, 40).Value = tenMH.Trim();
-                            if (isEditing)
-                            {
-                                command.Parameters.Add("@MaMH", SqlDbType.NChar, 5).Value = maMH.Trim();
-                            }
-
-                            using (var reader = command.ExecuteReader())
-                            {
-                                while (reader.Read())
-                                {
-                                    tenMHDuplicate = true;
-                                    if (Convert.ToBoolean(reader["TrangThai"]))
-                                    {
-                                        tenMHActive = true;
-                                    }
-                                }
-                            }
-                        }
-                    }
+                bool tenMHDuplicate = false;
+                bool tenMHActive = false;
+                if (isEditing)
+                {
+                    var tenCheck = _monHocService.CheckTenMHDuplicateExcludingMaMH(tenMH, maMH);
+                    tenMHDuplicate = tenCheck.Exists;
+                    tenMHActive = tenCheck.IsActive;
+                }
+                else
+                {
+                    var tenCheck = _monHocService.CheckTenMHDuplicate(tenMH);
+                    tenMHDuplicate = tenCheck.Exists;
+                    tenMHActive = tenCheck.IsActive;
                 }
 
                 return Json(new
@@ -207,7 +179,7 @@ namespace DMS_Examify.Controllers
 
         private IEnumerable<object> ValidateImportDuplicates(List<MonHoc> items)
         {
-            var activeSubjects = GetActiveMonHocList();
+            var activeSubjects = _monHocService.GetAll();
             var activeCodes = activeSubjects.Select(s => s.MaMH.Trim().ToUpper()).ToHashSet();
             var activeNames = activeSubjects.Select(s => s.TenMH.Trim().ToLower()).ToHashSet();
 
@@ -226,117 +198,5 @@ namespace DMS_Examify.Controllers
                 };
             });
         }
-
-        #region Database Operations (Data Access Helpers)
-
-        private List<MonHoc> GetActiveMonHocList()
-        {
-            var danhSachMonHoc = new List<MonHoc>();
-
-            using var connection = new SqlConnection(_connectionString);
-            connection.Open();
-
-            using var command = new SqlCommand("dbo.usp_MonHoc_GetAll", connection) 
-            { 
-                CommandType = CommandType.StoredProcedure 
-            };
-
-            using var reader = command.ExecuteReader();
-            while (reader.Read())
-            {
-                danhSachMonHoc.Add(new MonHoc
-                {
-                    MaMH = reader["MaMH"].ToString()?.Trim() ?? string.Empty,
-                    TenMH = reader["TenMH"].ToString()?.Trim() ?? string.Empty
-                });
-            }
-
-            return danhSachMonHoc;
-        }
-
-        private void ExecuteInsert(MonHoc model)
-        {
-            using var connection = new SqlConnection(_connectionString);
-            connection.Open();
-
-            using var command = new SqlCommand("dbo.usp_MonHoc_Insert", connection) 
-            { 
-                CommandType = CommandType.StoredProcedure 
-            };
-
-            var maMhParameter = command.Parameters.Add("@MaMH", SqlDbType.NChar, 5);
-            maMhParameter.Value = model.MaMH.Trim();
-
-            var tenMhParameter = command.Parameters.Add("@TenMH", SqlDbType.NVarChar, 40);
-            tenMhParameter.Value = model.TenMH.Trim();
-
-            command.ExecuteNonQuery();
-        }
-
-        private void ExecuteUpdate(MonHoc model)
-        {
-            using var connection = new SqlConnection(_connectionString);
-            connection.Open();
-
-            using var command = new SqlCommand("dbo.usp_MonHoc_Update", connection) 
-            { 
-                CommandType = CommandType.StoredProcedure 
-            };
-
-            var maMhParameter = command.Parameters.Add("@MaMH", SqlDbType.NChar, 5);
-            maMhParameter.Value = model.MaMH.Trim();
-
-            var tenMhParameter = command.Parameters.Add("@TenMH", SqlDbType.NVarChar, 40);
-            tenMhParameter.Value = model.TenMH.Trim();
-
-            command.ExecuteNonQuery();
-        }
-
-        private void ExecuteDelete(string maMH)
-        {
-            using var connection = new SqlConnection(_connectionString);
-            connection.Open();
-
-            using var command = new SqlCommand("dbo.usp_MonHoc_Delete", connection) 
-            { 
-                CommandType = CommandType.StoredProcedure 
-            };
-
-            var maMhParameter = command.Parameters.Add("@MaMH", SqlDbType.NChar, 5);
-            maMhParameter.Value = maMH.Trim();
-
-            command.ExecuteNonQuery();
-        }
-
-        private List<MonHoc> ExecuteSearch(string keyword)
-        {
-            var danhSachMonHoc = new List<MonHoc>();
-
-            using var connection = new SqlConnection(_connectionString);
-            connection.Open();
-
-            using var command = new SqlCommand("dbo.usp_MonHoc_Search", connection) 
-            { 
-                CommandType = CommandType.StoredProcedure 
-            };
-
-            var keywordParameter = command.Parameters.Add("@Keyword", SqlDbType.NVarChar, 250);
-            keywordParameter.Value = string.IsNullOrEmpty(keyword) ? DBNull.Value : keyword.Trim();
-
-            using var reader = command.ExecuteReader();
-            while (reader.Read())
-            {
-                danhSachMonHoc.Add(new MonHoc
-                {
-                    MaMH = reader["MaMH"].ToString()?.Trim() ?? string.Empty,
-                    TenMH = reader["TenMH"].ToString()?.Trim() ?? string.Empty
-                });
-            }
-
-            return danhSachMonHoc;
-        }
-
-        #endregion
     }
 }
-
