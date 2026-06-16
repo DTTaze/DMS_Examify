@@ -34,6 +34,12 @@
                         <button type="button" class="btn btn-success" onclick="saveChangesToDb()" id="btnGhi" disabled>Ghi</button>
                     </span>
                     <button type="button" class="btn btn-secondary" onclick="resetForm()">Reset</button>
+                    <button type="button" class="btn btn-info text-white animate-btn" onclick="undoLastAction()" id="btnUndo" disabled>
+                        <i class="bi bi-arrow-counterclockwise"></i> Undo
+                    </button>
+                    <button type="button" class="btn btn-info text-white animate-btn" onclick="redoLastAction()" id="btnRedo" disabled>
+                        <i class="bi bi-arrow-clockwise"></i> Redo
+                    </button>
                 </div>
 
             </div>
@@ -45,8 +51,16 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center py-2">
                 <span>Danh sách Môn học (<span id="lblCount">@Model.Count</span>)</span>
-                <div style="width: 250px;">
-                    <input id="txtTim" class="form-control form-control-sm" placeholder="Tìm kiếm mã hoặc tên..." />
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-outline-success btn-sm animate-btn" onclick="exportExcel()" title="Xuất Excel">
+                        <i class="bi bi-file-earmark-excel"></i> Xuất Excel
+                    </button>
+                    <button type="button" class="btn btn-outline-primary btn-sm animate-btn" onclick="openImportModal()" title="Nhập dữ liệu từ file Excel">
+                        <i class="bi bi-file-earmark-arrow-up"></i> Nhập Excel
+                    </button>
+                    <div style="width: 200px;">
+                        <input id="txtTim" class="form-control form-control-sm" placeholder="Tìm kiếm mã hoặc tên..." />
+                    </div>
                 </div>
             </div>
 
@@ -76,6 +90,23 @@
                     </tbody>
                 </table>
             </div>
+            <div class="card-footer d-flex justify-content-between align-items-center py-2 bg-light border-top-0">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="small text-secondary fw-medium" id="lblPaginationSummary">Hiển thị từ 0 đến 0 trong tổng số 0 dòng</span>
+                    <select class="form-select form-select-sm shadow-none" id="selectPageSize" style="width: 80px;" onchange="changePageSize(this.value)">
+                        <option value="5">5</option>
+                        <option value="10" selected>10</option>
+                        <option value="20">20</option>
+                        <option value="50">50</option>
+                    </select>
+                    <span class="small text-secondary fw-medium">dòng/trang</span>
+                </div>
+                <nav aria-label="Page navigation">
+                    <ul class="pagination pagination-sm mb-0" id="ulPagination">
+                        <!-- Pagination items injected here -->
+                    </ul>
+                </nav>
+            </div>
         </div>
     </div>
 <!-- Custom Modal for Notifications and Confirmations -->
@@ -100,6 +131,66 @@
     </div>
 </div>
 
+<!-- Import Excel Modal -->
+<div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-3">
+            <div class="modal-header border-0 bg-light py-3">
+                <h5 class="modal-title d-flex align-items-center gap-2 fw-semibold" id="importModalLabel">
+                    <i class="bi bi-file-earmark-excel-fill text-success fs-4"></i>
+                    <span>Import Môn học từ Excel</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body py-4">
+                <div class="mb-3 d-flex justify-content-between align-items-center bg-light p-3 rounded-3 border border-dashed">
+                    <div>
+                        <span class="fw-medium text-secondary">Tải file cấu trúc mẫu (.xlsx):</span>
+                        <p class="mb-0 text-muted small">File gồm 2 cột: Mã môn học, Tên môn học</p>
+                    </div>
+                    <button type="button" class="btn btn-outline-success btn-sm px-3 animate-btn" onclick="downloadTemplate()">
+                        <i class="bi bi-download"></i> Tải file mẫu
+                    </button>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="importFile" class="form-label fw-medium">Chọn file Excel (.xlsx, .xls)</label>
+                    <input type="file" class="form-control shadow-none" id="importFile" accept=".xlsx, .xls" onchange="handleFileSelect(event)" />
+                    <div id="importFileFeedback" class="text-danger small mt-1"></div>
+                </div>
+
+                <div id="importPreviewSection" style="display: none;">
+                    <hr class="my-4 text-muted opacity-25" />
+                    <h6 class="fw-semibold mb-3 d-flex justify-content-between align-items-center">
+                        <span class="text-dark">Xem trước dữ liệu nhập</span>
+                        <span id="importSummary" class="badge bg-secondary rounded-pill px-3 py-1.5">...</span>
+                    </h6>
+                    <div class="table-responsive" style="max-height: 280px; overflow-y: auto;">
+                        <table class="table table-sm table-bordered table-hover align-middle mb-0" id="tblImportPreview">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th class="text-center" style="width: 50px;">STT</th>
+                                    <th style="width: 150px;">Mã môn học</th>
+                                    <th>Tên môn học</th>
+                                    <th style="width: 200px;">Trạng thái</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Preview rows will be inserted here dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0 bg-light py-2">
+                <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-primary btn-sm px-3 animate-btn" id="btnConfirmImport" onclick="confirmImport()" disabled>Xác nhận Import</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="~/js/monhoc.js" asp-append-version="true"></script>
 }

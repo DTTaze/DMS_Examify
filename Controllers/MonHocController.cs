@@ -187,6 +187,46 @@ namespace DMS_Examify.Controllers
             }
         }
 
+        [HttpPost]
+        public IActionResult CheckImport([FromBody] List<MonHoc> items)
+        {
+            if (!CheckRole("PGV")) return Denied();
+            if (items == null || items.Count == 0)
+                return Json(new List<object>());
+
+            try
+            {
+                var validationResults = ValidateImportDuplicates(items);
+                return Json(validationResults);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Lỗi hệ thống khi kiểm tra danh sách import: {ex.Message}");
+            }
+        }
+
+        private IEnumerable<object> ValidateImportDuplicates(List<MonHoc> items)
+        {
+            var activeSubjects = GetActiveMonHocList();
+            var activeCodes = activeSubjects.Select(s => s.MaMH.Trim().ToUpper()).ToHashSet();
+            var activeNames = activeSubjects.Select(s => s.TenMH.Trim().ToLower()).ToHashSet();
+
+            return items.Select((item, index) =>
+            {
+                var code = item.MaMH?.Trim().ToUpper() ?? string.Empty;
+                var name = item.TenMH?.Trim().ToLower() ?? string.Empty;
+
+                return new
+                {
+                    index,
+                    maMH = item.MaMH?.Trim() ?? string.Empty,
+                    tenMH = item.TenMH?.Trim() ?? string.Empty,
+                    codeDuplicate = activeCodes.Contains(code),
+                    nameDuplicate = activeNames.Contains(name)
+                };
+            });
+        }
+
         #region Database Operations (Data Access Helpers)
 
         private List<MonHoc> GetActiveMonHocList()
@@ -299,4 +339,4 @@ namespace DMS_Examify.Controllers
         #endregion
     }
 }
-
+
