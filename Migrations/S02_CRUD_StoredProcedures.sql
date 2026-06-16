@@ -161,6 +161,9 @@ BEGIN
 END
 GO
 
+GRANT EXECUTE ON [dbo].[usp_SinhVien_GetAll] TO [PGV]
+GO
+
 CREATE PROCEDURE dbo.usp_SinhVien_GetByLop
     @MaLop NVARCHAR(50)
 AS
@@ -170,6 +173,9 @@ BEGIN
     FROM SINHVIEN
     WHERE MaLop = @MaLop;
 END
+GO
+
+GRANT EXECUTE ON [dbo].[usp_SinhVien_GetByLop] TO [PGV]
 GO
 
 CREATE PROCEDURE dbo.usp_SinhVien_Insert
@@ -229,6 +235,7 @@ BEGIN
        OR MaLop LIKE '%' + @Keyword + '%';
 END
 GO
+
 
 -- ------------------------------------------------------------
 -- Stored Procedures for BoDe
@@ -382,6 +389,9 @@ BEGIN
     FROM LOP
     ORDER BY MALOP;
 END
+GO
+
+GRANT EXECUTE ON [dbo].[usp_Lop_GetAll] TO [PGV]
 GO
 
 PRINT N'OK: Da tao toan bo SP CRUD (MonHoc, GiaoVien, SinhVien, BoDe, Lop).';

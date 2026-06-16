@@ -1,287 +1,270 @@
 @model BoDeViewModel
+
 @{
-  ViewData["Title"] = "Nhập câu hỏi thi";
-  ViewData["Subtitle"] = "Quản lý bộ đề trắc nghiệm";
+    ViewData["Title"] = "Nhập câu hỏi thi";
+    ViewData["Subtitle"] = "Quản lý Bộ đề trắc nghiệm";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/bode.css" asp-append-version="true" />
 }
 
 <div class="row g-4">
-  <div class="col-md-6">
-    <div class="card">
-      <div class="card-header">
-        <span>Nhập câu hỏi</span>
-      </div>
-      <div class="card-body">
+    <!-- FORM (Left) -->
+    <div class="col-md-5">
+        <div class="card shadow-sm border-0 rounded-3">
+            <div class="card-header bg-white py-3 border-bottom border-light">
+                <h5 class="card-title mb-0 fw-bold text-dark">
+                    <i class="bi bi-question-circle text-primary me-2"></i> Nhập Câu hỏi thi
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label small fw-medium text-secondary">Câu hỏi số</label>
+                        <input type="number" class="form-control shadow-none" id="txtCauHoi" disabled placeholder="Tự sinh" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-medium text-secondary">Môn học</label>
+                        <select class="form-select shadow-none" id="selMaMH">
+                            @foreach (var mh in Model.MonHocList)
+                            {
+                                <option value="@mh.MaMH">@mh.TenMH</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-medium text-secondary">Trình độ</label>
+                        <select class="form-select shadow-none" id="selTrinhDo">
+                            <option value="A">A</option>
+                            <option value="B">B</option>
+                            <option value="C">C</option>
+                        </select>
+                    </div>
+                </div>
 
-        <div class="mb-3">
-          <label>Câu hỏi số</label>
-          <input type="number" class="form-control" id="txtCauHoi" disabled />
+                <div class="mb-3">
+                    <label class="form-label small fw-medium text-secondary">Nội dung câu hỏi</label>
+                    <textarea id="txtNoiDung" class="form-control shadow-none" rows="3" placeholder="Nhập câu hỏi..."></textarea>
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label small fw-medium text-secondary">Phương án A</label>
+                        <input id="txtA" class="form-control shadow-none" placeholder="Phương án A" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-medium text-secondary">Phương án B</label>
+                        <input id="txtB" class="form-control shadow-none" placeholder="Phương án B" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-medium text-secondary">Phương án C</label>
+                        <input id="txtC" class="form-control shadow-none" placeholder="Phương án C" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-medium text-secondary">Phương án D</label>
+                        <input id="txtD" class="form-control shadow-none" placeholder="Phương án D" />
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label small fw-medium text-secondary">Đáp án đúng</label>
+                    <select id="selDapAn" class="form-select shadow-none" style="width: 120px;">
+                        <option value="A">A</option>
+                        <option value="B">B</option>
+                        <option value="C">C</option>
+                        <option value="D">D</option>
+                    </select>
+                </div>
+
+                <div class="d-flex gap-2 flex-wrap">
+                    <span id="wrapThem" class="d-inline-block">
+                        <button type="button" class="btn btn-primary btn-sm px-3 animate-btn" id="btnThem" onclick="addQuestion()" disabled>
+                            <i class="bi bi-plus-lg me-1"></i> Thêm
+                        </button>
+                    </span>
+                    <span id="wrapSua" class="d-inline-block">
+                        <button type="button" class="btn btn-warning btn-sm px-3 text-white animate-btn" id="btnSua" onclick="editQuestion()" disabled>
+                            <i class="bi bi-pencil-square me-1"></i> Sửa
+                        </button>
+                    </span>
+                    <span id="wrapXoa" class="d-inline-block">
+                        <button type="button" class="btn btn-danger btn-sm px-3 animate-btn" id="btnXoa" onclick="deleteQuestion()" disabled>
+                            <i class="bi bi-trash me-1"></i> Xóa
+                        </button>
+                    </span>
+                    <button type="button" class="btn btn-secondary btn-sm px-3 animate-btn" onclick="resetQuestionForm()">
+                        <i class="bi bi-arrow-clockwise me-1"></i> Reset
+                    </button>
+                    <button type="button" class="btn btn-info btn-sm px-3 text-white animate-btn" id="btnUndo" onclick="undoBD()" disabled>
+                        <i class="bi bi-arrow-counterclockwise me-1"></i> Undo
+                    </button>
+                    <button type="button" class="btn btn-info btn-sm px-3 text-white animate-btn" id="btnRedo" onclick="redoBD()" disabled>
+                        <i class="bi bi-arrow-clockwise me-1"></i> Redo
+                    </button>
+                    <span id="wrapGhi" class="d-inline-block">
+                        <button type="button" class="btn btn-success btn-sm px-3 animate-btn" id="btnGhi" onclick="saveAll()" disabled>
+                            <i class="bi bi-check-circle me-1"></i> Ghi (Lưu CSDL)
+                        </button>
+                    </span>
+                </div>
+            </div>
         </div>
-
-        <div class="row mb-3">
-          <div class="col-md-6">
-            <label>Môn học</label>
-            <select class="form-select" id="selMaMH">
-              @foreach (var mh in Model.MonHocList)
-              {
-                <option value="@mh.MaMH">@mh.TenMH</option>
-              }
-            </select>
-          </div>
-
-          <div class="col-md-6">
-            <label>Trình độ</label>
-            <select class="form-select" id="selTrinhDo">
-              <option value="A">A</option>
-              <option value="B">B</option>
-              <option value="C">C</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="mb-3">
-          <label>Nội dung</label>
-          <textarea id="txtNoiDung" class="form-control"></textarea>
-        </div>
-
-        <div class="row mb-3">
-          <div class="col-md-6"><input id="txtA" class="form-control" placeholder="Đáp án A"></div>
-          <div class="col-md-6"><input id="txtB" class="form-control" placeholder="Đáp án B"></div>
-          <div class="col-md-6"><input id="txtC" class="form-control" placeholder="Đáp án C"></div>
-          <div class="col-md-6"><input id="txtD" class="form-control" placeholder="Đáp án D"></div>
-        </div>
-
-        <div class="mb-3">
-          <label>Đáp án đúng</label>
-          <select id="selDapAn" class="form-select" style="width:120px">
-            <option>A</option>
-            <option>B</option>
-            <option>C</option>
-            <option>D</option>
-          </select>
-        </div>
-
-        <div class="d-flex gap-2 flex-wrap">
-          <button class="btn btn-primary" onclick="addQuestion()">Thêm</button>
-          <button class="btn btn-warning" onclick="editQuestion()">Sửa</button>
-          <button class="btn btn-danger" onclick="deleteQuestion()">Xóa</button>
-          <button class="btn btn-secondary" onclick="undo()">Undo</button>
-          <button class="btn btn-info" onclick="searchQuestion()">Tìm</button>
-          <button class="btn btn-success" onclick="saveAll()">Lưu</button>
-        </div>
-
-      </div>
     </div>
-  </div>
 
-  <div class="col-md-6">
-    <input id="txtSearch" class="form-control mb-2" placeholder="Tìm kiếm...">
+    <!-- TABLE (Right) -->
+    <div class="col-md-7">
+        <div class="card shadow-sm border-0 rounded-3 text-dark">
+            <div class="card-header bg-white py-3 border-bottom border-light d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <h5 class="card-title mb-0 fw-bold text-dark">
+                    <i class="bi bi-list-task text-primary me-2"></i> Danh sách Câu hỏi (<span id="lblCount">0</span>)
+                </h5>
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-outline-success btn-sm animate-btn" onclick="exportExcel()" title="Xuất Excel">
+                        <i class="bi bi-file-earmark-excel"></i> Xuất Excel
+                    </button>
+                    <button type="button" class="btn btn-outline-primary btn-sm animate-btn" onclick="openImportModal()" title="Nhập Excel">
+                        <i class="bi bi-file-earmark-arrow-up"></i> Nhập Excel
+                    </button>
+                    <div style="width: 180px;">
+                        <input id="txtSearch" class="form-control form-control-sm shadow-none" placeholder="Tìm kiếm câu hỏi..." />
+                    </div>
+                </div>
+            </div>
 
-    <div class="card">
-      <div class="card-header">
-        Danh sách câu hỏi (@Model.BoDes.Count)
-      </div>
+            <div class="card-body p-0">
+                <div class="table-responsive border-0 mb-0" style="max-height: 520px; overflow-y: auto;">
+                    <table class="table table-hover align-middle mb-0" id="tbl">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th style="width: 70px;">Câu</th>
+                                <th>Nội dung câu hỏi</th>
+                                <th style="width: 90px;">Môn học</th>
+                                <th style="width: 80px;">Trình độ</th>
+                                <th style="width: 80px;">Đáp án</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var ch in Model.BoDes)
+                            {
+                                <tr data-id="@ch.CauHoi" data-mamh="@ch.MaMH" data-trinhdo="@ch.TrinhDo" data-noidung="@ch.NoiDung"
+                                    data-a="@ch.DapAnA" data-b="@ch.DapAnB" data-c="@ch.DapAnC" data-d="@ch.DapAnD" data-dapan="@ch.DapAn">
+                                    <td>@ch.CauHoi</td>
+                                    <td class="text-truncate" style="max-width: 250px;">@ch.NoiDung</td>
+                                    <td>@ch.MaMH</td>
+                                    <td>@ch.TrinhDo</td>
+                                    <td class="text-center"><span class="badge bg-secondary">@ch.DapAn</span></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
 
-      <div class="card-body p-0">
-        <table class="table table-hover">
-          <thead>
-            <tr>
-              <th>Câu</th>
-              <th>Nội dung</th>
-              <th>Môn</th>
-              <th>Level</th>
-              <th>ĐA</th>
-            </tr>
-          </thead>
-          <tbody>
-            @foreach (var ch in Model.BoDes)
-            {
-              <tr data-id="@ch.CauHoi" data-mamh="@ch.MaMH" data-trinhdo="@ch.TrinhDo" data-noidung="@ch.NoiDung"
-                  data-a="@ch.DapAnA" data-b="@ch.DapAnB" data-c="@ch.DapAnC" data-d="@ch.DapAnD" data-dapan="@ch.DapAn">
-                <td>@ch.CauHoi</td>
-                <td>@ch.NoiDung</td>
-                <td>@ch.MaMH</td>
-                <td>@ch.TrinhDo</td>
-                <td>@ch.DapAn</td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
+            <!-- Card Footer Pagination -->
+            <div class="card-footer d-flex justify-content-between align-items-center flex-wrap gap-2 py-2 bg-light border-top-0 rounded-bottom-3">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="small text-secondary fw-medium" id="lblPaginationSummary">Hiển thị từ 0 đến 0 trong tổng số 0 dòng</span>
+                    <select class="form-select form-select-sm shadow-none" id="selectPageSize" style="width: 80px;" onchange="changePageSize(this.value)">
+                        <option value="5">5</option>
+                        <option value="10" selected>10</option>
+                        <option value="20">20</option>
+                        <option value="50">50</option>
+                    </select>
+                    <span class="small text-secondary fw-medium">dòng/trang</span>
+                </div>
+                <nav aria-label="Page navigation">
+                    <ul class="pagination pagination-sm mb-0" id="ulPagination">
+                        <!-- Pagination links injected here -->
+                    </ul>
+                </nav>
+            </div>
+        </div>
     </div>
-  </div>
+</div>
+
+<!-- Custom Dialog Modal (Info / Confirm / Warning) -->
+<div class="modal fade" id="customModal" tabindex="-1" aria-labelledby="customModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-3">
+            <div class="modal-header border-0 bg-light py-3">
+                <h5 class="modal-title d-flex align-items-center gap-2 fw-semibold" id="customModalLabel">
+                    <i id="customModalIcon" class="bi fs-4"></i>
+                    <span id="customModalTitle">Thông báo</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body py-4 fs-6 text-dark" id="customModalMessage">
+                Nội dung thông báo ở đây.
+            </div>
+            <div class="modal-footer border-0 bg-light py-2">
+                <button type="button" class="btn btn-secondary btn-sm px-3" id="btnCustomModalCancel" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-primary btn-sm px-3" id="btnCustomModalOk">Xác nhận</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Import Excel Modal -->
+<div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-3">
+            <div class="modal-header border-0 bg-light py-3">
+                <h5 class="modal-title d-flex align-items-center gap-2 fw-semibold" id="importModalLabel">
+                    <i class="bi bi-file-earmark-excel-fill text-success fs-4"></i>
+                    <span>Import Câu hỏi trắc nghiệm từ Excel</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body py-4">
+                <div class="mb-3 d-flex justify-content-between align-items-center bg-light p-3 rounded-3 border border-dashed">
+                    <div>
+                        <span class="fw-medium text-secondary">Tải file cấu trúc mẫu (.xlsx):</span>
+                        <p class="mb-0 text-muted small">File gồm 8 cột: Mã môn học, Trình độ, Nội dung, Đáp án A, Đáp án B, Đáp án C, Đáp án D, Đáp án đúng</p>
+                    </div>
+                    <button type="button" class="btn btn-outline-success btn-sm px-3 animate-btn" onclick="downloadTemplate()">
+                        <i class="bi bi-download"></i> Tải file mẫu
+                    </button>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="importFile" class="form-label fw-medium">Chọn file Excel (.xlsx, .xls)</label>
+                    <input type="file" class="form-control shadow-none" id="importFile" accept=".xlsx, .xls" onchange="handleFileSelect(event)" />
+                    <div id="importFileFeedback" class="text-danger small mt-1"></div>
+                </div>
+
+                <div id="importPreviewSection" style="display: none;">
+                    <hr class="my-4 text-muted opacity-25" />
+                    <h6 class="fw-semibold mb-3 d-flex justify-content-between align-items-center">
+                        <span class="text-dark">Xem trước dữ liệu nhập</span>
+                        <span id="importSummary" class="badge bg-secondary rounded-pill px-3 py-1.5">...</span>
+                    </h6>
+                    <div class="table-responsive border rounded-3" style="max-height: 280px; overflow-y: auto;">
+                        <table class="table table-sm table-bordered table-hover align-middle mb-0" id="tblImportPreview">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th class="text-center" style="width: 50px;">STT</th>
+                                    <th style="width: 150px;">Môn học & Cấp</th>
+                                    <th>Nội dung câu hỏi</th>
+                                    <th style="width: 200px;">Trạng thái</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Preview rows injected here dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0 bg-light py-2">
+                <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-primary btn-sm px-3 animate-btn" id="btnConfirmImport" onclick="confirmImport()" disabled>Xác nhận Import</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 @section Scripts {
-  <script>
-    let newItems = [];
-    let updatedItems = [];
-    let deletedItems = [];
-    let selectedRow = null;
-    let historyStack = [];
-    let tempId = -1;
-
-    function pushState() {
-      historyStack.push({
-        html: document.querySelector("tbody").innerHTML,
-        newItems: JSON.parse(JSON.stringify(newItems)),
-        updatedItems: JSON.parse(JSON.stringify(updatedItems)),
-        deletedItems: JSON.parse(JSON.stringify(deletedItems))
-      });
-    }
-
-    function undo() {
-      if (!historyStack.length) return alert("Không có gì để undo");
-
-      const s = historyStack.pop();
-      document.querySelector("tbody").innerHTML = s.html;
-      newItems = s.newItems;
-      updatedItems = s.updatedItems;
-      deletedItems = s.deletedItems;
-
-      bindRows();
-      selectedRow = null;
-    }
-
-    function getForm() {
-      return {
-        MaMH: selMaMH.value,
-        TrinhDo: selTrinhDo.value,
-        NoiDung: txtNoiDung.value.trim(),
-        DapAnA: txtA.value.trim(),
-        DapAnB: txtB.value.trim(),
-        DapAnC: txtC.value.trim(),
-        DapAnD: txtD.value.trim(),
-        DapAn: selDapAn.value
-      };
-    }
-
-    function fillForm(row) {
-      txtCauHoi.value = row.dataset.id;
-      selMaMH.value = row.dataset.mamh;
-      selTrinhDo.value = row.dataset.trinhdo;
-      txtNoiDung.value = row.dataset.noidung;
-      txtA.value = row.dataset.a;
-      txtB.value = row.dataset.b;
-      txtC.value = row.dataset.c;
-      txtD.value = row.dataset.d;
-      selDapAn.value = row.dataset.dapan;
-    }
-
-    function bindRows() {
-      document.querySelectorAll("tbody tr").forEach(r => {
-        r.onclick = () => {
-          document.querySelectorAll("tr").forEach(x => x.classList.remove("table-active"));
-          r.classList.add("table-active");
-          selectedRow = r;
-          fillForm(r);
-        };
-      });
-    }
-
-    function addQuestion() {
-      const d = getForm();
-      if (!d.NoiDung) return alert("Nhập nội dung");
-
-      pushState();
-
-      const id = tempId--;
-      newItems.push({ CauHoi: id, ...d });
-
-      const row = document.querySelector("tbody").insertRow();
-      row.dataset.id = id;
-      Object.assign(row.dataset, {
-        mamh: d.MaMH, trinhdo: d.TrinhDo, noidung: d.NoiDung,
-        a: d.DapAnA, b: d.DapAnB, c: d.DapAnC, d: d.DapAnD, dapan: d.DapAn
-      });
-
-      row.innerHTML = `<td>...</td><td>${d.NoiDung}</td><td>${d.MaMH}</td><td>${d.TrinhDo}</td><td>${d.DapAn}</td>`;
-
-      bindRows();
-    }
-
-    function editQuestion() {
-      if (!selectedRow) return alert("Chọn dòng");
-
-      const d = getForm();
-      const id = parseInt(selectedRow.dataset.id);
-
-      pushState();
-
-      selectedRow.innerHTML = `<td>${id > 0 ? id : "..."}</td><td>${d.NoiDung}</td><td>${d.MaMH}</td><td>${d.TrinhDo}</td><td>${d.DapAn}</td>`;
-      Object.assign(selectedRow.dataset, {
-        mamh: d.MaMH, trinhdo: d.TrinhDo, noidung: d.NoiDung,
-        a: d.DapAnA, b: d.DapAnB, c: d.DapAnC, d: d.DapAnD, dapan: d.DapAn
-      });
-
-      if (id < 0) {
-        const i = newItems.findIndex(x => x.CauHoi === id);
-        if (i >= 0) newItems[i] = { CauHoi: id, ...d };
-      } else {
-        updatedItems = updatedItems.filter(x => x.CauHoi !== id);
-        updatedItems.push({ CauHoi: id, ...d });
-      }
-    }
-
-    function deleteQuestion() {
-      if (!selectedRow) return alert("Chọn dòng");
-
-      const id = parseInt(selectedRow.dataset.id);
-      const maMH = selectedRow.dataset.mamh;
-
-      pushState();
-
-      if (id < 0) {
-        newItems = newItems.filter(x => x.CauHoi !== id);
-      } else {
-        updatedItems = updatedItems.filter(x => x.CauHoi !== id);
-        if (!deletedItems.some(x => x.CauHoi === id))
-          deletedItems.push({ CauHoi: id, MaMH: maMH });
-      }
-
-      selectedRow.remove();
-      selectedRow = null;
-    }
-
-    async function saveAll() {
-      for (const d of deletedItems)
-        await fetch(`/BoDe/Delete?cauHoi=${d.CauHoi}&maMH=${d.MaMH}`, { method: "POST" });
-
-      for (const u of updatedItems)
-        await fetch(`/BoDe/Update`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(u) });
-
-      for (const n of newItems)
-        await fetch(`/BoDe/Insert`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(n) });
-
-      alert("Xong");
-      location.reload();
-    }
-
-    function searchQuestion() {
-      const k = prompt("Nhập từ khóa");
-      if (!k) return;
-
-      fetch(`/BoDe/Search?keyword=${k}`)
-        .then(r => r.json())
-        .then(data => {
-          const tbody = document.querySelector("tbody");
-          tbody.innerHTML = "";
-          data.forEach(x => {
-            const row = tbody.insertRow();
-            row.dataset.id = x.cauHoi;
-            Object.assign(row.dataset, x);
-            row.innerHTML = `<td>${x.cauHoi}</td><td>${x.noiDung}</td><td>${x.maMH}</td><td>${x.trinhDo}</td><td>${x.dapAn}</td>`;
-          });
-          bindRows();
-        });
-    }
-
-    txtSearch.oninput = function () {
-      const k = this.value.toLowerCase();
-      document.querySelectorAll("tbody tr").forEach(r => {
-        r.style.display = r.innerText.toLowerCase().includes(k) ? "" : "none";
-      });
-    };
-
-    window.onload = bindRows;
-  </script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="~/js/bode.js" asp-append-version="true"></script>
 }

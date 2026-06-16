@@ -5,81 +5,156 @@
     ViewData["Subtitle"] = "Quản lý Lớp & Sinh viên";
 }
 
+@section Styles {
+    <link rel="stylesheet" href="~/css/sinhvien.css" asp-append-version="true" />
+}
+
 <div class="row g-4">
+    <!-- CLASS SUBFORM (Left) -->
     <div class="col-md-4">
-        <div class="card">
-            <div class="card-header fw-bold">Quản lý Lớp</div>
+        <div class="card shadow-sm border-0 rounded-3">
+            <div class="card-header bg-white py-3 border-bottom border-light">
+                <h5 class="card-title mb-0 fw-bold text-dark">
+                    <i class="bi bi-folder text-primary me-2"></i> Danh mục Lớp
+                </h5>
+            </div>
             <div class="card-body">
-
-                <input id="txtMaLop" class="form-control mb-2" placeholder="Mã lớp" disabled />
-                <input id="txtTenLop" class="form-control mb-3" placeholder="Tên lớp" />
-
-                <div class="d-flex gap-2 mb-3 flex-wrap">
-                    <button class="btn btn-success" onclick="themLop()">Thêm</button>
-                    <button class="btn btn-warning" onclick="suaLop()">Sửa</button>
-                    <button class="btn btn-danger" onclick="xoaLop()">Xóa</button>
-                    <button class="btn btn-secondary" onclick="undoLop()">Phục hồi</button>
-                    <button class="btn btn-primary" onclick="ghiLop()">Ghi</button>
+                <div class="mb-3">
+                    <label class="form-label small fw-medium text-secondary">Mã lớp</label>
+                    <input id="txtMaLop" class="form-control shadow-none" placeholder="Mã lớp (ví dụ: D15CQCN01)" />
+                </div>
+                <div class="mb-4">
+                    <label class="form-label small fw-medium text-secondary">Tên lớp</label>
+                    <input id="txtTenLop" class="form-control shadow-none" placeholder="Tên lớp (ví dụ: Công nghệ thông tin 1)" />
                 </div>
 
-                <ul class="list-group" id="lopList">
-                    @foreach (var lop in Model)
-                    {
-                        <li class="list-group-item list-group-item-action" data-malop="@lop.MaLop" data-tenlop="@lop.TenLop"
-                            onclick="chonLop(this)">
-                            <b>@lop.TenLop</b> - @lop.MaLop
-                        </li>
-                    }
-                </ul>
+                <div class="d-flex gap-2 mb-4 flex-wrap">
+                    <button class="btn btn-primary btn-sm px-3 animate-btn" onclick="themLop()">
+                        <i class="bi bi-plus-lg me-1"></i> Thêm
+                    </button>
+                    <button class="btn btn-warning btn-sm px-3 text-white animate-btn" onclick="suaLop()">
+                        <i class="bi bi-pencil-square me-1"></i> Sửa
+                    </button>
+                    <button class="btn btn-danger btn-sm px-3 animate-btn" onclick="xoaLop()">
+                        <i class="bi bi-trash me-1"></i> Xóa
+                    </button>
+                    <button class="btn btn-info btn-sm px-3 text-white animate-btn" onclick="undoLop()">
+                        <i class="bi bi-arrow-counterclockwise me-1"></i> Phục hồi
+                    </button>
+                    <button class="btn btn-success btn-sm px-3 animate-btn" onclick="ghiLop()">
+                        <i class="bi bi-check-circle me-1"></i> Ghi
+                    </button>
+                </div>
 
+                <hr class="text-muted opacity-25 mb-3" />
+
+                <div class="class-list-container" style="max-height: 350px; overflow-y: auto;">
+                    <ul class="list-group list-group-flush rounded-3" id="lopList">
+                        @foreach (var lop in Model)
+                        {
+                            <li class="list-group-item list-group-item-action border-light" 
+                                data-malop="@lop.MaLop" 
+                                data-tenlop="@lop.TenLop"
+                                onclick="chonLop(this)">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="fw-semibold text-dark">@lop.TenLop</span>
+                                    <span class="badge bg-light text-secondary border border-light">@lop.MaLop</span>
+                                </div>
+                            </li>
+                        }
+                    </ul>
+                </div>
             </div>
         </div>
     </div>
 
+    <!-- STUDENT SUBFORM (Right) -->
     <div class="col-md-8">
-
-        <input id="txtSearchSV" class="form-control mb-2" placeholder="Tìm kiếm sinh viên..." />
-
-        <div class="card">
-            <div class="card-header fw-bold">
-                Sinh viên - <span id="currentLop" class="text-primary">Chưa chọn</span>
+        <div class="card shadow-sm border-0 rounded-3">
+            <div class="card-header bg-white py-3 border-bottom border-light d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <h5 class="card-title mb-0 fw-bold text-dark">
+                    <i class="bi bi-people text-primary me-2"></i> Danh sách Sinh viên - 
+                    <span id="currentLop" class="text-primary fw-normal">Chưa chọn lớp</span>
+                </h5>
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-outline-success btn-sm animate-btn" id="btnExport" onclick="exportExcel()" title="Xuất Excel" disabled>
+                        <i class="bi bi-file-earmark-excel"></i> Xuất Excel
+                    </button>
+                    <button type="button" class="btn btn-outline-primary btn-sm animate-btn" id="btnImport" onclick="openImportModal()" title="Nhập Excel" disabled>
+                        <i class="bi bi-file-earmark-arrow-up"></i> Nhập Excel
+                    </button>
+                    <div style="width: 200px;">
+                        <input id="txtSearchSV" class="form-control form-control-sm shadow-none" placeholder="Tìm kiếm sinh viên..." />
+                    </div>
+                </div>
             </div>
 
             <div class="card-body">
-                <div class="row g-2 mb-3">
+                <!-- Inputs Section -->
+                <div class="row g-3 mb-4">
                     <div class="col-md-4">
-                        <input id="txtMaSV" class="form-control" placeholder="Mã SV" />
+                        <label class="form-label small fw-medium text-secondary">Mã sinh viên</label>
+                        <input id="txtMaSV" class="form-control shadow-none" placeholder="Mã SV" />
                     </div>
                     <div class="col-md-4">
-                        <input id="txtHo" class="form-control" placeholder="Họ" />
+                        <label class="form-label small fw-medium text-secondary">Họ</label>
+                        <input id="txtHo" class="form-control shadow-none" placeholder="Họ đệm" />
                     </div>
                     <div class="col-md-4">
-                        <input id="txtTen" class="form-control" placeholder="Tên" />
-                    </div>
-
-                    <div class="col-md-4">
-                        <input id="txtNgaySinh" type="date" class="form-control" />
+                        <label class="form-label small fw-medium text-secondary">Tên</label>
+                        <input id="txtTen" class="form-control shadow-none" placeholder="Tên" />
                     </div>
                     <div class="col-md-4">
-                        <input id="txtDiaChi" class="form-control" placeholder="Địa chỉ" />
+                        <label class="form-label small fw-medium text-secondary">Ngày sinh</label>
+                        <input id="txtNgaySinh" type="date" class="form-control shadow-none" />
                     </div>
                     <div class="col-md-4">
-                        <input id="txtMatKhau" class="form-control" placeholder="Mật khẩu" />
+                        <label class="form-label small fw-medium text-secondary">Địa chỉ</label>
+                        <input id="txtDiaChi" class="form-control shadow-none" placeholder="Địa chỉ" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-medium text-secondary">Mật khẩu</label>
+                        <input id="txtMatKhau" type="password" class="form-control shadow-none" placeholder="Mật khẩu tài khoản" />
                     </div>
                 </div>
 
-                <div class="d-flex gap-2 flex-wrap mb-3">
-                    <button class="btn btn-success" onclick="themSV()">Thêm</button>
-                    <button class="btn btn-warning" onclick="suaSV()">Sửa</button>
-                    <button class="btn btn-danger" onclick="xoaSV()">Xóa</button>
-                    <button class="btn btn-secondary" onclick="undo()">Undo</button>
-                    <button class="btn btn-info" onclick="timSV()">Tìm</button>
-                    <button class="btn btn-primary" onclick="ghiSV()">Ghi</button>
+                <!-- Action Buttons -->
+                <div class="d-flex gap-2 flex-wrap mb-4">
+                    <span id="wrapThemSV" class="d-inline-block">
+                        <button type="button" class="btn btn-primary btn-sm px-3 animate-btn" id="btnThemSV" onclick="themSV()" disabled>
+                            <i class="bi bi-plus-lg me-1"></i> Thêm
+                        </button>
+                    </span>
+                    <span id="wrapSuaSV" class="d-inline-block">
+                        <button type="button" class="btn btn-warning btn-sm px-3 text-white animate-btn" id="btnSuaSV" onclick="suaSV()" disabled>
+                            <i class="bi bi-pencil-square me-1"></i> Sửa
+                        </button>
+                    </span>
+                    <span id="wrapXoaSV" class="d-inline-block">
+                        <button type="button" class="btn btn-danger btn-sm px-3 animate-btn" id="btnXoaSV" onclick="xoaSV()" disabled>
+                            <i class="bi bi-trash me-1"></i> Xóa
+                        </button>
+                    </span>
+                    <button type="button" class="btn btn-secondary btn-sm px-3 animate-btn" onclick="resetStudentForm()">
+                        <i class="bi bi-arrow-clockwise me-1"></i> Reset
+                    </button>
+                    <button type="button" class="btn btn-info btn-sm px-3 text-white animate-btn" id="btnUndoSV" onclick="undoSV()" disabled>
+                        <i class="bi bi-arrow-counterclockwise me-1"></i> Undo
+                    </button>
+                    <button type="button" class="btn btn-info btn-sm px-3 text-white animate-btn" id="btnRedoSV" onclick="redoSV()" disabled>
+                        <i class="bi bi-arrow-clockwise me-1"></i> Redo
+                    </button>
+                    <span id="wrapGhiSV" class="d-inline-block">
+                        <button type="button" class="btn btn-success btn-sm px-3 animate-btn" id="btnGhiSV" onclick="ghiSV()" disabled>
+                            <i class="bi bi-check-circle me-1"></i> Ghi (Lưu CSDL)
+                        </button>
+                    </span>
                 </div>
 
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle">
-                        <thead class="table-light">
+                <!-- Student Table -->
+                <div class="table-responsive border rounded-3 mb-0" style="max-height: 400px; overflow-y: auto;">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light sticky-top">
                             <tr>
                                 <th>Mã SV</th>
                                 <th>Họ</th>
@@ -88,396 +163,117 @@
                                 <th>Địa chỉ</th>
                             </tr>
                         </thead>
-                        <tbody id="svTable"></tbody>
+                        <tbody id="svTable">
+                            <!-- Injected dynamically -->
+                        </tbody>
                     </table>
                 </div>
+            </div>
 
+            <!-- Card Footer Pagination -->
+            <div class="card-footer d-flex justify-content-between align-items-center py-2 bg-light border-top-0 rounded-bottom-3">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="small text-secondary fw-medium" id="lblPaginationSummary">Hiển thị từ 0 đến 0 trong tổng số 0 dòng</span>
+                    <select class="form-select form-select-sm shadow-none" id="selectPageSize" style="width: 80px;" onchange="changePageSize(this.value)">
+                        <option value="5">5</option>
+                        <option value="10" selected>10</option>
+                        <option value="20">20</option>
+                        <option value="50">50</option>
+                    </select>
+                    <span class="small text-secondary fw-medium">dòng/trang</span>
+                </div>
+                <nav aria-label="Page navigation">
+                    <ul class="pagination pagination-sm mb-0" id="ulPagination">
+                        <!-- Pagination links injected here -->
+                    </ul>
+                </nav>
             </div>
         </div>
     </div>
+</div>
 
+<!-- Custom Dialog Modal (Info / Confirm / Warning) -->
+<div class="modal fade" id="customModal" tabindex="-1" aria-labelledby="customModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-3">
+            <div class="modal-header border-0 bg-light py-3">
+                <h5 class="modal-title d-flex align-items-center gap-2 fw-semibold" id="customModalLabel">
+                    <i id="customModalIcon" class="bi fs-4"></i>
+                    <span id="customModalTitle">Thông báo</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body py-4 fs-6 text-dark" id="customModalMessage">
+                Nội dung thông báo ở đây.
+            </div>
+            <div class="modal-footer border-0 bg-light py-2">
+                <button type="button" class="btn btn-secondary btn-sm px-3" id="btnCustomModalCancel" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-primary btn-sm px-3" id="btnCustomModalOk">Xác nhận</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Import Excel Modal -->
+<div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-3">
+            <div class="modal-header border-0 bg-light py-3">
+                <h5 class="modal-title d-flex align-items-center gap-2 fw-semibold" id="importModalLabel">
+                    <i class="bi bi-file-earmark-excel-fill text-success fs-4"></i>
+                    <span>Import Sinh viên từ Excel</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body py-4">
+                <div class="mb-3 d-flex justify-content-between align-items-center bg-light p-3 rounded-3 border border-dashed">
+                    <div>
+                        <span class="fw-medium text-secondary">Tải file cấu trúc mẫu (.xlsx):</span>
+                        <p class="mb-0 text-muted small">File gồm 6 cột: Mã SV, Họ, Tên, Ngày sinh, Địa chỉ, Mật khẩu</p>
+                    </div>
+                    <button type="button" class="btn btn-outline-success btn-sm px-3 animate-btn" onclick="downloadTemplate()">
+                        <i class="bi bi-download"></i> Tải file mẫu
+                    </button>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="importFile" class="form-label fw-medium">Chọn file Excel (.xlsx, .xls)</label>
+                    <input type="file" class="form-control shadow-none" id="importFile" accept=".xlsx, .xls" onchange="handleFileSelect(event)" />
+                    <div id="importFileFeedback" class="text-danger small mt-1"></div>
+                </div>
+
+                <div id="importPreviewSection" style="display: none;">
+                    <hr class="my-4 text-muted opacity-25" />
+                    <h6 class="fw-semibold mb-3 d-flex justify-content-between align-items-center">
+                        <span class="text-dark">Xem trước dữ liệu nhập</span>
+                        <span id="importSummary" class="badge bg-secondary rounded-pill px-3 py-1.5">...</span>
+                    </h6>
+                    <div class="table-responsive border rounded-3" style="max-height: 280px; overflow-y: auto;">
+                        <table class="table table-sm table-bordered table-hover align-middle mb-0" id="tblImportPreview">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th class="text-center" style="width: 50px;">STT</th>
+                                    <th style="width: 150px;">Mã sinh viên</th>
+                                    <th>Họ & Tên</th>
+                                    <th style="width: 200px;">Trạng thái</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Preview rows injected here dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0 bg-light py-2">
+                <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-primary btn-sm px-3 animate-btn" id="btnConfirmImport" onclick="confirmImport()" disabled>Xác nhận Import</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 @section Scripts {
-    <script>
-        let selectedLop = null;
-        let selectedLopRow = null;
-        let selectedRow = null;
-
-        let newItems = [];
-        let updatedItems = [];
-        let deletedItems = [];
-        let historyStack = [];
-        let tempId = -1;
-
-        let newLops = [];
-        let updatedLops = [];
-        let deletedLops = [];
-        let historyLop = [];
-
-        function pushStateLop() {
-            historyLop.push({
-                html: lopList.innerHTML,
-                newLops: JSON.parse(JSON.stringify(newLops)),
-                updatedLops: JSON.parse(JSON.stringify(updatedLops)),
-                deletedLops: JSON.parse(JSON.stringify(deletedLops))
-            });
-        }
-
-                
-        function undoLop() {
-            if (!historyLop.length) return alert("Không có gì để undo");
-
-            const s = historyLop.pop();
-            lopList.innerHTML = s.html;
-
-            newLops = s.newLops;
-            updatedLops = s.updatedLops;
-            deletedLops = s.deletedLops;
-
-            bindLopRows();
-        }
-
-        function bindLopRows() {
-            document.querySelectorAll("#lopList li").forEach(li => {
-                li.onclick = () => chonLop(li);
-            });
-        }
-
-        function chonLop(el) {
-
-            document.querySelectorAll("#lopList li")
-                .forEach(x => x.classList.remove("active"));
-
-            el.classList.add("active");
-
-            selectedLopRow = el;
-            selectedLop = el.dataset.malop;
-
-            txtMaLop.value = el.dataset.malop;
-            txtTenLop.value = el.dataset.tenlop;
-
-            currentLop.innerText = el.dataset.tenlop;
-
-            newItems = [];
-            updatedItems = [];
-            deletedItems = [];
-            historyStack = [];
-
-            loadSinhVien();
-        }
-
-        function themLop() {
-            const ma = txtMaLop.value.trim();
-            const ten = txtTenLop.value.trim();
-
-            if (!ma || !ten) return alert("Nhập đủ");
-
-            pushStateLop();
-
-            newLops.push({ MaLop: ma, TenLop: ten });
-
-            const li = document.createElement("li");
-            li.className = "list-group-item list-group-item-action";
-
-            li.dataset.malop = ma;
-            li.dataset.tenlop = ten;
-
-            li.innerHTML = `<b>${ten}</b> - ${ma}`;
-
-            li.onclick = () => chonLop(li);
-
-            lopList.appendChild(li);
-        }
-
-        function suaLop() {
-            if (!selectedLopRow) return alert("Chọn lớp");
-
-            const oldMa = selectedLopRow.dataset.malop; // mã cũ
-            const newMa = txtMaLop.value.trim();        // mã mới
-            const ten = txtTenLop.value.trim();
-
-            if (!newMa || !ten) return alert("Nhập đầy đủ");
-
-            pushStateLop();
-
-            selectedLopRow.dataset.malop = newMa;
-            selectedLopRow.dataset.tenlop = ten;
-
-            selectedLopRow.innerHTML = `<b>${ten}</b> - ${newMa}`;
-
-            if (oldMa < 0) {
-                const i = newLops.findIndex(x => x.MaLop == oldMa);
-                if (i >= 0) {
-                    newLops[i].MaLop = newMa;
-                    newLops[i].TenLop = ten;
-                }
-            } else {
-                updatedLops = updatedLops.filter(x => x.MaLop != oldMa);
-                updatedLops.push({
-                    OldMaLop: oldMa,
-                    MaLop: newMa,
-                    TenLop: ten
-                });
-            }
-        }
-
-        function xoaLop() {
-
-            if (!selectedLopRow) return alert("Chọn lớp");
-
-            const ma = selectedLopRow.dataset.malop;
-
-            pushStateLop();
-
-            if (ma < 0) {
-                newLops = newLops.filter(x => x.MaLop != ma);
-            } else {
-                updatedLops = updatedLops.filter(x => x.MaLop != ma);
-
-                if (!deletedLops.some(x => x.MaLop == ma))
-                    deletedLops.push({ MaLop: ma });
-            }
-
-            selectedLopRow.remove();
-            selectedLopRow = null;
-        }
-
-        async function ghiLop() {
-
-            for (const d of deletedLops)
-                await fetch(`/SinhVien/DeleteLop?maLop=${d.MaLop}`, { method: "POST" });
-
-            for (const u of updatedLops)
-                await fetch(`/SinhVien/UpdateLop`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(u)
-                });
-
-            for (const n of newLops)
-                await fetch(`/SinhVien/InsertLop`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(n)
-                });
-
-            alert("Lưu lớp thành công");
-            location.reload();
-        }
-
-        function pushState() {
-            historyStack.push({
-                html: svTable.innerHTML,
-                newItems: JSON.parse(JSON.stringify(newItems)),
-                updatedItems: JSON.parse(JSON.stringify(updatedItems)),
-                deletedItems: JSON.parse(JSON.stringify(deletedItems))
-            });
-        }
-
-        function undo() {
-            if (!historyStack.length) return alert("Không có gì để undo");
-
-            const s = historyStack.pop();
-            svTable.innerHTML = s.html;
-
-            newItems = s.newItems;
-            updatedItems = s.updatedItems;
-            deletedItems = s.deletedItems;
-
-            bindRows();
-            selectedRow = null;
-        }
-
-
-        function getForm() {
-            return {
-                MaSV: txtMaSV.value.trim(),
-                Ho: txtHo.value.trim(),
-                Ten: txtTen.value.trim(),
-                NgaySinh: txtNgaySinh.value,
-                DiaChi: txtDiaChi.value.trim(),
-                MatKhau: txtMatKhau.value,
-                MaLop: selectedLop   // 🔥 thêm dòng này
-            };
-        }
-
-        function fillForm(row) {
-            txtMaSV.value = row.dataset.masv;
-            txtHo.value = row.dataset.ho;
-            txtTen.value = row.dataset.ten;
-            txtNgaySinh.value = row.dataset.ngaysinh;
-            txtDiaChi.value = row.dataset.diachi;
-        }
-
-
-        function bindRows() {
-            document.querySelectorAll("#svTable tr").forEach(r => {
-                r.onclick = () => {
-                    document.querySelectorAll("#svTable tr")
-                        .forEach(x => x.classList.remove("table-active"));
-
-                    r.classList.add("table-active");
-                    selectedRow = r;
-                    fillForm(r);
-                };
-            });
-        }
-
-
-        async function loadSinhVien() {
-
-            if (!selectedLop) return;
-
-            const res = await fetch('/SinhVien/GetByLop?maLop=' + selectedLop);
-            const data = await res.json();
-
-            svTable.innerHTML = "";
-
-            data.forEach(sv => {
-                const row = svTable.insertRow();
-
-                row.dataset.masv = sv.maSV;
-                row.dataset.ho = sv.ho;
-                row.dataset.ten = sv.ten;
-                row.dataset.ngaysinh = sv.ngaySinh ? sv.ngaySinh.slice(0, 10) : "";
-                row.dataset.diachi = sv.diaChi;
-
-                row.innerHTML = `
-                                <td>${sv.maSV}</td>
-                                <td>${sv.ho}</td>
-                                <td>${sv.ten}</td>
-                                <td>${sv.ngaySinh ? new Date(sv.ngaySinh).toLocaleDateString('vi-VN') : ""}</td>
-                                <td>${sv.diaChi}</td>
-                                `;
-            });
-
-            bindRows();
-        }
-
-        function themSV() {
-            if (!selectedLop) return alert("Chọn lớp trước");
-
-            const d = getForm();
-            if (!d.MaSV) return alert("Nhập mã SV");
-
-            pushState();
-
-            const id = d.MaSV;
-
-            const exists = [...svTable.rows].some(r => r.dataset.masv === id);
-            if (exists) return alert("Mã sinh viên đã tồn tại");
-
-            newItems.push({
-                ...d,
-                MaSV: id,
-                MaLop: selectedLop
-            });
-
-            const row = svTable.insertRow();
-
-            row.dataset.masv = id;
-            row.dataset.ho = d.Ho;
-            row.dataset.ten = d.Ten;
-            row.dataset.ngaysinh = d.NgaySinh;
-            row.dataset.diachi = d.DiaChi;
-
-            row.innerHTML = `
-            <td>${id}</td>
-            <td>${d.Ho}</td>
-            <td>${d.Ten}</td>
-            <td>${d.NgaySinh}</td>
-            <td>${d.DiaChi}</td>
-        `;
-
-            bindRows();
-        }
-
-
-        function suaSV() {
-            if (!selectedRow) return alert("Chọn SV");
-
-            const d = getForm();
-            console.log(d);
-            const id = selectedRow.dataset.masv;
-
-            pushState();
-
-            selectedRow.innerHTML = `
-                <td>${id > 0 ? id : "..."}</td>
-                <td>${d.Ho}</td>
-                <td>${d.Ten}</td>
-                <td>${d.NgaySinh}</td>
-                <td>${d.DiaChi}</td>
-            `;
-
-            Object.assign(selectedRow.dataset, {
-                masv: id,
-                ho: d.Ho,
-                ten: d.Ten,
-                ngaysinh: d.NgaySinh,
-                diachi: d.DiaChi
-            });
-
-            if (id < 0) {
-                const i = newItems.findIndex(x => x.MaSV == id);
-                if (i >= 0) newItems[i] = { ...d, MaSV: id, MaLop: selectedLop };
-            } else {
-                updatedItems = updatedItems.filter(x => x.MaSV != id);
-                updatedItems.push({ ...d, MaSV: id.toString(), MaLop: selectedLop });
-            }
-
-            console.log(updatedItems);
-        }
-
-
-        function xoaSV() {
-            if (!selectedRow) return alert("Chọn SV");
-
-            const id = selectedRow.dataset.masv;
-
-            pushState();
-
-            if (id < 0) {
-                newItems = newItems.filter(x => x.MaSV != id);
-            } else {
-                updatedItems = updatedItems.filter(x => x.MaSV != id);
-
-                if (!deletedItems.some(x => x.MaSV == id))
-                    deletedItems.push({ MaSV: id });
-            }
-
-            selectedRow.remove();
-            selectedRow = null;
-        }
-
-
-        async function ghiSV() {
-
-            for (const d of deletedItems)
-                await fetch(`/SinhVien/Delete?maSV=${d.MaSV}`, { method: "POST" });
-
-            for (const u of updatedItems)
-                await fetch(`/SinhVien/Update`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(u)
-                });
-
-
-            for (const n of newItems)
-                await fetch(`/SinhVien/Insert`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(n)
-                });
-
-            alert("Lưu thành công");
-            @* location.reload(); *@
-                }
-
-
-        window.onload = bindLopRows;
-
-    </script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="~/js/sinhvien.js" asp-append-version="true"></script>
 }

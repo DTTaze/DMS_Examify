@@ -1,396 +1,234 @@
 @model List<DMS_Examify.Models.GiaoVien>
-@{ ViewData["Title"] = "Quản lý Giáo viên"; }
 
-  <div class="row g-4">
-    <!-- FORM -->
-    <div class="col-md-5 animate-in animate-in-delay-1">
-      <div class="card">
-        <div class="card-header">
-          <span
-            ><i class="bi bi-person-badge me-2"></i>Thông tin Giáo viên</span
-          >
-        </div>
-        <div class="card-body">
-          <div class="mb-3">
-            <label class="form-label">Mã giáo viên</label>
-            <input
-              type="text"
-              class="form-control"
-              id="txtMaGV"
-              placeholder="VD: GV001"
-            />
-          </div>
-          <div class="row g-3 mb-3">
-            <div class="col-md-6">
-              <label class="form-label">Họ</label>
-              <input
-                type="text"
-                class="form-control"
-                id="txtHoGV"
-                placeholder="Trần Minh"
-              />
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">Tên</label>
-              <input
-                type="text"
-                class="form-control"
-                id="txtTenGV"
-                placeholder="Tuấn"
-              />
-            </div>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Số ĐT liên lạc</label>
-            <input
-              type="text"
-              class="form-control"
-              id="txtSoDTLL"
-              placeholder="0901234567"
-            />
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Địa chỉ</label>
-            <input
-              type="text"
-              class="form-control"
-              id="txtDiaChiGV"
-              placeholder="Nhập địa chỉ"
-            />
-          </div>
-
-          <div class="action-toolbar">
-            <button type="button" class="btn btn-primary" onclick="themGV()">
-              <i class="bi bi-plus-lg"></i> Thêm
-            </button>
-            <button type="button" class="btn btn-danger" onclick="xoaGV()">
-              <i class="bi bi-trash"></i> Xóa
-            </button>
-            <button
-              type="button"
-              class="btn btn-warning"
-              onclick="hieuChinhGV()"
-            >
-              <i class="bi bi-pencil-square"></i> Hiệu chỉnh
-            </button>
-            <button
-              type="button"
-              class="btn btn-outline-secondary"
-              onclick="phucHoiGV()"
-            >
-              <i class="bi bi-arrow-counterclockwise"></i> Phục hồi
-            </button>
-            <button type="button" class="btn btn-info" onclick="timGV()">
-              <i class="bi bi-search"></i> Tìm
-            </button>
-            <button type="button" class="btn btn-success" onclick="ghiGV()">
-              <i class="bi bi-floppy"></i> Ghi
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- TABLE -->
-    <div class="col-md-7">
-      <table class="table table-hover">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Mã</th>
-            <th>Họ</th>
-            <th>Tên</th>
-            <th>SĐT</th>
-            <th>Địa chỉ</th>
-          </tr>
-        </thead>
-        <tbody id="gvTable">
-          @for (int i = 0; i < Model.Count; i++) { var gv = Model[i];
-          <tr
-            data-id="@gv.MaGV"
-            data-magv="@gv.MaGV"
-            data-ho="@gv.Ho"
-            data-ten="@gv.Ten"
-            data-sdt="@gv.SoDTLL"
-            data-diachi="@gv.DiaChi"
-            onclick="
-              chonGV(
-                this,
-                '@gv.MaGV',
-                '@gv.Ho',
-                '@gv.Ten',
-                '@gv.SoDTLL',
-                '@gv.DiaChi',
-              )
-            "
-          >
-            <td>@(i + 1)</td>
-            <td>@gv.MaGV</td>
-            <td>@gv.Ho</td>
-            <td>@gv.Ten</td>
-            <td>@gv.SoDTLL</td>
-            <td>@gv.DiaChi</td>
-          </tr>
-          }
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  @section Scripts {
-  <script>
-    let newItems = [];
-    let updatedItems = [];
-    let deletedItems = [];
-    let selectedRow = null;
-    let historyStack = [];
-    let tempId = -1;
-
-    // ================= SAVE STATE (UNDO) =================
-    function pushState() {
-      historyStack.push({
-        html: document.getElementById("gvTable").innerHTML,
-        newItems: JSON.parse(JSON.stringify(newItems)),
-        updatedItems: JSON.parse(JSON.stringify(updatedItems)),
-        deletedItems: JSON.parse(JSON.stringify(deletedItems)),
-      });
-    }
-
-    // ================= UNDO =================
-    function undo() {
-      if (!historyStack.length) return alert("Không có gì để undo");
-
-      const s = historyStack.pop();
-      document.getElementById("gvTable").innerHTML = s.html;
-      newItems = s.newItems;
-      updatedItems = s.updatedItems;
-      deletedItems = s.deletedItems;
-
-      bindRows();
-      selectedRow = null;
-    }
-
-    function phucHoiGV() {
-    if (!historyStack.length) {
-        alert("Không có gì để phục hồi");
-        return;
-    }
-
-    const s = historyStack.pop();
-
-    // restore UI
-    document.getElementById("gvTable").innerHTML = s.html;
-
-    // restore data
-    newItems = s.newItems;
-    updatedItems = s.updatedItems;
-    deletedItems = s.deletedItems;
-
-    // bind lại sự kiện click
-    bindRows();
-
-    // reset trạng thái chọn
-    selectedRow = null;
-
-    // clear form (giống BoDe)
-    txtMaGV.value = '';
-    txtHoGV.value = '';
-    txtTenGV.value = '';
-    txtSoDTLL.value = '';
-    txtDiaChiGV.value = '';
+@{
+    ViewData["Title"] = "Quản lý Giáo viên";
+    ViewData["Subtitle"] = "Danh mục Giáo viên";
 }
 
-    // ================= FORM =================
-    function getForm() {
-      return {
-        MaGV: txtMaGV.value.trim(),
-        Ho: txtHoGV.value.trim(),
-        Ten: txtTenGV.value.trim(),
-        SoDTLL: txtSoDTLL.value.trim(),
-        DiaChi: txtDiaChiGV.value.trim(),
-      };
-    }
+@section Styles {
+    <link rel="stylesheet" href="~/css/giaovien.css" asp-append-version="true" />
+}
 
-    function fillForm(row) {
-      txtMaGV.value = row.dataset.magv;
-      txtHoGV.value = row.dataset.ho;
-      txtTenGV.value = row.dataset.ten;
-      txtSoDTLL.value = row.dataset.sdt;
-      txtDiaChiGV.value = row.dataset.diachi;
-    }
+<div class="row g-4">
+    <!-- FORM (Left) -->
+    <div class="col-md-5">
+        <div class="card shadow-sm border-0 rounded-3">
+            <div class="card-header bg-white py-3 border-bottom border-light">
+                <h5 class="card-title mb-0 fw-bold text-dark">
+                    <i class="bi bi-person-badge text-primary me-2"></i> Thông tin Giáo viên
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label small fw-medium text-secondary">Mã giáo viên</label>
+                    <input id="txtMaGV" class="form-control shadow-none" placeholder="VD: GV001" />
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label small fw-medium text-secondary">Họ</label>
+                        <input id="txtHoGV" class="form-control shadow-none" placeholder="VD: Nguyễn Văn" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-medium text-secondary">Tên</label>
+                        <input id="txtTenGV" class="form-control shadow-none" placeholder="VD: An" />
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-medium text-secondary">Số điện thoại liên lạc</label>
+                    <input id="txtSoDTLL" class="form-control shadow-none" placeholder="VD: 0901234567" />
+                </div>
+                <div class="mb-4">
+                    <label class="form-label small fw-medium text-secondary">Địa chỉ</label>
+                    <input id="txtDiaChiGV" class="form-control shadow-none" placeholder="VD: 123 Lê Lợi, Đà Nẵng" />
+                </div>
 
-    // ================= BIND ROW =================
-    function bindRows() {
-      document.querySelectorAll("#gvTable tr").forEach((r) => {
-        r.onclick = () => {
-          document
-            .querySelectorAll("#gvTable tr")
-            .forEach((x) => x.classList.remove("table-active"));
-          r.classList.add("table-active");
-          selectedRow = r;
-          fillForm(r);
-        };
-      });
-    }
+                <div class="d-flex gap-2 flex-wrap">
+                    <span id="wrapThemGV" class="d-inline-block">
+                        <button type="button" class="btn btn-primary btn-sm px-3 animate-btn" id="btnThemGV" onclick="themGV()" disabled>
+                            <i class="bi bi-plus-lg me-1"></i> Thêm
+                        </button>
+                    </span>
+                    <span id="wrapSuaGV" class="d-inline-block">
+                        <button type="button" class="btn btn-warning btn-sm px-3 text-white animate-btn" id="btnSuaGV" onclick="hieuChinhGV()" disabled>
+                            <i class="bi bi-pencil-square me-1"></i> Sửa
+                        </button>
+                    </span>
+                    <span id="wrapXoaGV" class="d-inline-block">
+                        <button type="button" class="btn btn-danger btn-sm px-3 animate-btn" id="btnXoaGV" onclick="xoaGV()" disabled>
+                            <i class="bi bi-trash me-1"></i> Xóa
+                        </button>
+                    </span>
+                    <button type="button" class="btn btn-secondary btn-sm px-3 animate-btn" onclick="resetGiaoVienForm()">
+                        <i class="bi bi-arrow-clockwise me-1"></i> Reset
+                    </button>
+                    <button type="button" class="btn btn-info btn-sm px-3 text-white animate-btn" id="btnUndoGV" onclick="undoGV()" disabled>
+                        <i class="bi bi-arrow-counterclockwise me-1"></i> Undo
+                    </button>
+                    <button type="button" class="btn btn-info btn-sm px-3 text-white animate-btn" id="btnRedoGV" onclick="redoGV()" disabled>
+                        <i class="bi bi-arrow-clockwise me-1"></i> Redo
+                    </button>
+                    <span id="wrapGhiGV" class="d-inline-block">
+                        <button type="button" class="btn btn-success btn-sm px-3 animate-btn" id="btnGhiGV" onclick="ghiGV()" disabled>
+                            <i class="bi bi-check-circle me-1"></i> Ghi (Lưu CSDL)
+                        </button>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
 
-    // ================= ADD =================
-    function themGV() {
-      const d = getForm();
-      if (!d.MaGV || !d.Ho || !d.Ten) return alert("Thiếu dữ liệu");
+    <!-- TABLE (Right) -->
+    <div class="col-md-7">
+        <div class="card shadow-sm border-0 rounded-3">
+            <div class="card-header bg-white py-3 border-bottom border-light d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <h5 class="card-title mb-0 fw-bold text-dark">
+                    <i class="bi bi-people text-primary me-2"></i> Danh sách Giáo viên (<span id="lblCount">0</span>)
+                </h5>
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-outline-success btn-sm animate-btn" onclick="exportExcel()" title="Xuất Excel">
+                        <i class="bi bi-file-earmark-excel"></i> Xuất Excel
+                    </button>
+                    <button type="button" class="btn btn-outline-primary btn-sm animate-btn" onclick="openImportModal()" title="Nhập Excel">
+                        <i class="bi bi-file-earmark-arrow-up"></i> Nhập Excel
+                    </button>
+                    <div style="width: 180px;">
+                        <input id="txtSearchGV" class="form-control form-control-sm shadow-none" placeholder="Tìm kiếm giáo viên..." />
+                    </div>
+                </div>
+            </div>
 
-      pushState();
+            <div class="card-body p-0">
+                <div class="table-responsive border-0 mb-0" style="max-height: 480px; overflow-y: auto;">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th>Mã GV</th>
+                                <th>Họ</th>
+                                <th>Tên</th>
+                                <th>Số ĐT</th>
+                                <th>Địa chỉ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="gvTable">
+                            @foreach (var gv in Model)
+                            {
+                                <tr data-magv="@gv.MaGV" data-ho="@gv.Ho" data-ten="@gv.Ten" data-sdt="@gv.SoDTLL" data-diachi="@gv.DiaChi">
+                                    <td>@gv.MaGV</td>
+                                    <td>@gv.Ho</td>
+                                    <td>@gv.Ten</td>
+                                    <td>@gv.SoDTLL</td>
+                                    <td>@gv.DiaChi</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
 
-      const id = tempId--;
-      newItems.push({ Id: id, ...d });
+            <!-- Card Footer Pagination -->
+            <div class="card-footer d-flex justify-content-between align-items-center py-2 bg-light border-top-0 rounded-bottom-3">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="small text-secondary fw-medium" id="lblPaginationSummary">Hiển thị từ 0 đến 0 trong tổng số 0 dòng</span>
+                    <select class="form-select form-select-sm shadow-none" id="selectPageSize" style="width: 80px;" onchange="changePageSize(this.value)">
+                        <option value="5">5</option>
+                        <option value="10" selected>10</option>
+                        <option value="20">20</option>
+                        <option value="50">50</option>
+                    </select>
+                    <span class="small text-secondary fw-medium">dòng/trang</span>
+                </div>
+                <nav aria-label="Page navigation">
+                    <ul class="pagination pagination-sm mb-0" id="ulPagination">
+                        <!-- Pagination links injected here -->
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+</div>
 
-      const row = document.getElementById("gvTable").insertRow();
-      row.dataset.id = id;
-      row.dataset.magv = d.MaGV;
-      row.dataset.ho = d.Ho;
-      row.dataset.ten = d.Ten;
-      row.dataset.sdt = d.SoDTLL;
-      row.dataset.diachi = d.DiaChi;
+<!-- Custom Dialog Modal (Info / Confirm / Warning) -->
+<div class="modal fade" id="customModal" tabindex="-1" aria-labelledby="customModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-3">
+            <div class="modal-header border-0 bg-light py-3">
+                <h5 class="modal-title d-flex align-items-center gap-2 fw-semibold" id="customModalLabel">
+                    <i id="customModalIcon" class="bi fs-4"></i>
+                    <span id="customModalTitle">Thông báo</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body py-4 fs-6 text-dark" id="customModalMessage">
+                Nội dung thông báo ở đây.
+            </div>
+            <div class="modal-footer border-0 bg-light py-2">
+                <button type="button" class="btn btn-secondary btn-sm px-3" id="btnCustomModalCancel" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-primary btn-sm px-3" id="btnCustomModalOk">Xác nhận</button>
+            </div>
+        </div>
+    </div>
+</div>
 
-      row.innerHTML = `
-        <td>...</td>
-        <td>${d.MaGV}</td>
-        <td>${d.Ho}</td>
-        <td>${d.Ten}</td>
-        <td>${d.SoDTLL}</td>
-        <td>${d.DiaChi}</td>
-    `;
+<!-- Import Excel Modal -->
+<div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-3">
+            <div class="modal-header border-0 bg-light py-3">
+                <h5 class="modal-title d-flex align-items-center gap-2 fw-semibold" id="importModalLabel">
+                    <i class="bi bi-file-earmark-excel-fill text-success fs-4"></i>
+                    <span>Import Giáo viên từ Excel</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body py-4">
+                <div class="mb-3 d-flex justify-content-between align-items-center bg-light p-3 rounded-3 border border-dashed">
+                    <div>
+                        <span class="fw-medium text-secondary">Tải file cấu trúc mẫu (.xlsx):</span>
+                        <p class="mb-0 text-muted small">File gồm 5 cột: Mã GV, Họ, Tên, Số ĐT, Địa chỉ</p>
+                    </div>
+                    <button type="button" class="btn btn-outline-success btn-sm px-3 animate-btn" onclick="downloadTemplate()">
+                        <i class="bi bi-download"></i> Tải file mẫu
+                    </button>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="importFile" class="form-label fw-medium">Chọn file Excel (.xlsx, .xls)</label>
+                    <input type="file" class="form-control shadow-none" id="importFile" accept=".xlsx, .xls" onchange="handleFileSelect(event)" />
+                    <div id="importFileFeedback" class="text-danger small mt-1"></div>
+                </div>
 
-      bindRows();
-    }
+                <div id="importPreviewSection" style="display: none;">
+                    <hr class="my-4 text-muted opacity-25" />
+                    <h6 class="fw-semibold mb-3 d-flex justify-content-between align-items-center">
+                        <span class="text-dark">Xem trước dữ liệu nhập</span>
+                        <span id="importSummary" class="badge bg-secondary rounded-pill px-3 py-1.5">...</span>
+                    </h6>
+                    <div class="table-responsive border rounded-3" style="max-height: 280px; overflow-y: auto;">
+                        <table class="table table-sm table-bordered table-hover align-middle mb-0" id="tblImportPreview">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th class="text-center" style="width: 50px;">STT</th>
+                                    <th style="width: 150px;">Mã giáo viên</th>
+                                    <th>Họ & Tên</th>
+                                    <th style="width: 200px;">Trạng thái</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Preview rows injected here dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0 bg-light py-2">
+                <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-primary btn-sm px-3 animate-btn" id="btnConfirmImport" onclick="confirmImport()" disabled>Xác nhận Import</button>
+            </div>
+        </div>
+    </div>
+</div>
 
-    // ================= EDIT =================
-    function hieuChinhGV() {
-      if (!selectedRow) return alert("Chọn giáo viên");
-
-      const d = getForm();
-
-      if (!d.MaGV || !d.Ho || !d.Ten) {
-        alert("Dữ liệu không hợp lệ (không được để trống)");
-        return;
-      }
-
-      const id = parseInt(selectedRow.dataset.id || 0);
-
-      pushState();
-
-      selectedRow.innerHTML = `
-<td>${id > 0 ? id : "..."}</td>
-<td>${d.MaGV}</td>
-<td>${d.Ho}</td>
-<td>${d.Ten}</td>
-<td>${d.SoDTLL}</td>
-<td>${d.DiaChi}</td>
-`;
-
-      Object.assign(selectedRow.dataset, {
-        magv: d.MaGV,
-        ho: d.Ho,
-        ten: d.Ten,
-        sdt: d.SoDTLL,
-        diachi: d.DiaChi,
-      });
-
-      if (id < 0) {
-        const i = newItems.findIndex((x) => x.Id === id);
-        if (i >= 0) newItems[i] = { Id: id, ...d };
-      } else {
-        updatedItems = updatedItems.filter(
-          (x) => x.MaGV !== selectedRow.dataset.magv,
-        );
-        updatedItems.push(d);
-      }
-    }
-
-    // ================= DELETE =================
-    function xoaGV() {
-      if (!selectedRow) return alert("Chọn dòng");
-
-      const id = parseInt(selectedRow.dataset.id || 0);
-      const maGV = selectedRow.dataset.magv;
-
-      pushState();
-
-      if (id < 0) {
-        newItems = newItems.filter((x) => x.Id !== id);
-      } else {
-        updatedItems = updatedItems.filter((x) => x.MaGV !== maGV);
-        if (!deletedItems.includes(maGV)) deletedItems.push(maGV);
-      }
-
-      selectedRow.remove();
-      selectedRow = null;
-    }
-
-    // ================= SAVE ALL =================
-    async function ghiGV() {
-      // DELETE
-      for (const ma of deletedItems) {
-        await fetch(`/GiaoVien/Delete?maGV=${ma}`, { method: "POST" });
-      }
-
-      // UPDATE
-      for (const u of updatedItems) {
-        await fetch(`/GiaoVien/Update`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(u),
-        });
-      }
-
-      // INSERT
-      for (const n of newItems) {
-        await fetch(`/GiaoVien/Insert`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(n),
-        });
-      }
-
-      alert("Lưu thành công");
-      location.reload();
-    }
-
-    // ================= SEARCH =================
-    async function timGV() {
-      const k = prompt("Nhập từ khóa");
-      if (!k) return;
-
-      const res = await fetch(`/GiaoVien/Search?keyword=${k}`);
-      const data = await res.json();
-
-      const tbody = document.getElementById("gvTable");
-      tbody.innerHTML = "";
-
-      data.forEach((x, i) => {
-        const row = tbody.insertRow();
-
-        row.dataset.id = x.maGV;
-        row.dataset.magv = x.maGV;
-        row.dataset.ho = x.ho;
-        row.dataset.ten = x.ten;
-        row.dataset.sdt = x.soDTLL;
-        row.dataset.diachi = x.diaChi;
-
-        row.innerHTML = `
-<td>${i + 1}</td>
-<td>${x.maGV}</td>
-<td>${x.ho}</td>
-<td>${x.ten}</td>
-<td>${x.soDTLL}</td>
-<td>${x.diaChi}</td>
-`;
-      });
-
-      bindRows();
-    }
-
-    // ================= INIT =================
-    window.onload = bindRows;
-  </script>
-  }</DMS_Examify.Models.GiaoVien
->
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="~/js/giaovien.js" asp-append-version="true"></script>
+}

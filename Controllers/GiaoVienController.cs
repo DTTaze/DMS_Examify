@@ -116,5 +116,55 @@ namespace DMS_Examify.Controllers
             }
             return Json(ds);
         }
+
+        [HttpPost]
+        public IActionResult CheckImport([FromBody] List<GiaoVien> items)
+        {
+            if (!CheckRole("PGV")) return Denied();
+            if (items == null || items.Count == 0)
+                return Json(new List<object>());
+
+            try
+            {
+                var existingIds = GetExistingGiaoVienIds();
+
+                var results = items.Select((item, index) =>
+                {
+                    var id = item.MaGV?.Trim().ToUpper() ?? string.Empty;
+                    return new
+                    {
+                        index,
+                        maGV = item.MaGV?.Trim() ?? string.Empty,
+                        ho = item.Ho?.Trim() ?? string.Empty,
+                        ten = item.Ten?.Trim() ?? string.Empty,
+                        idDuplicate = existingIds.Contains(id)
+                    };
+                });
+
+                return Json(results);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Lỗi hệ thống khi kiểm tra danh sách import: {ex.Message}");
+            }
+        }
+
+        private HashSet<string> GetExistingGiaoVienIds()
+        {
+            var ids = new HashSet<string>();
+            using var conn = new SqlConnection(_connectionString);
+            conn.Open();
+            using var cmd = new SqlCommand("SELECT MAGV FROM GIAOVIEN", conn);
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                var id = reader["MAGV"].ToString()?.Trim().ToUpper();
+                if (!string.IsNullOrEmpty(id))
+                {
+                    ids.Add(id);
+                }
+            }
+            return ids;
+        }
     }
 }

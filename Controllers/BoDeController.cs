@@ -29,6 +29,7 @@ namespace DMS_Examify.Controllers
         {
             var ds = new List<BoDe>();
             string maGV = HttpContext.Session.GetString("UserLogin") ?? string.Empty;
+            string role = HttpContext.Session.GetString("UserRole") ?? string.Empty;
 
             using var conn = new SqlConnection(_connectionString);
             conn.Open();
@@ -38,7 +39,14 @@ namespace DMS_Examify.Controllers
                 CommandType = CommandType.StoredProcedure
             };
 
-            cmd.Parameters.AddWithValue("@MAGV", maGV);
+            if (role == "PGV")
+            {
+                cmd.Parameters.AddWithValue("@MAGV", DBNull.Value);
+            }
+            else
+            {
+                cmd.Parameters.AddWithValue("@MAGV", maGV);
+            }
 
             using var reader = cmd.ExecuteReader();
 
@@ -208,6 +216,56 @@ namespace DMS_Examify.Controllers
             max = result != null ? Convert.ToInt32(result) : 0;
 
             return Json(max);
+        }
+
+        [HttpPost]
+        public IActionResult CheckImport([FromBody] List<BoDe> items)
+        {
+            if (!CheckRole("PGV", "Giangvien")) return Denied();
+            if (items == null || items.Count == 0)
+                return Json(new List<object>());
+
+            try
+            {
+                var existingSubjectCodes = GetExistingSubjectCodes();
+
+                var results = items.Select((item, index) =>
+                {
+                    var code = item.MaMH?.Trim().ToUpper() ?? string.Empty;
+                    var subjectExists = existingSubjectCodes.Contains(code);
+                    return new
+                    {
+                        index,
+                        maMH = item.MaMH?.Trim() ?? string.Empty,
+                        noiDung = item.NoiDung?.Trim() ?? string.Empty,
+                        subjectExists = subjectExists
+                    };
+                });
+
+                return Json(results);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Lỗi hệ thống khi kiểm tra danh sách import: {ex.Message}");
+            }
+        }
+
+        private HashSet<string> GetExistingSubjectCodes()
+        {
+            var codes = new HashSet<string>();
+            using var conn = new SqlConnection(_connectionString);
+            conn.Open();
+            using var cmd = new SqlCommand("SELECT MAMH FROM MONHOC", conn);
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                var code = reader["MAMH"].ToString()?.Trim().ToUpper();
+                if (!string.IsNullOrEmpty(code))
+                {
+                    codes.Add(code);
+                }
+            }
+            return codes;
         }
     }
 }
