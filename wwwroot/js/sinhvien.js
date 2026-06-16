@@ -19,6 +19,8 @@ let historyLopRedo = [];
 let currentPage = 1;
 let rowsPerPage = 10;
 let customModalBs = null;
+let classDebounceTimer = null;
+let studentDebounceTimer = null;
 
 // --- Lifecycle and Initialization ---
 window.onload = () => {
@@ -29,6 +31,14 @@ window.onload = () => {
     document.getElementById("txtMaSV").addEventListener("input", validateStudentInputs);
     document.getElementById("txtHo").addEventListener("input", validateStudentInputs);
     document.getElementById("txtTen").addEventListener("input", validateStudentInputs);
+    document.getElementById("txtNgaySinh").addEventListener("input", validateStudentInputs);
+    document.getElementById("txtNgaySinh").addEventListener("change", validateStudentInputs);
+    document.getElementById("txtDiaChi").addEventListener("input", validateStudentInputs);
+    document.getElementById("txtMatKhau").addEventListener("input", validateStudentInputs);
+
+    // Event listeners for class form inputs validation
+    document.getElementById("txtMaLop").addEventListener("input", validateClassInputs);
+    document.getElementById("txtTenLop").addEventListener("input", validateClassInputs);
     
     // Live filter search for students
     const txtSearchSV = document.getElementById("txtSearchSV");
@@ -36,12 +46,57 @@ window.onload = () => {
         txtSearchSV.addEventListener("input", triggerStudentSearch);
     }
 
+    validateClassInputs();
     validateStudentInputs();
     updateSaveButtonState();
     updateUndoRedoButtonStates();
+    updateUndoRedoLopButtonStates();
+    updateSaveLopButtonState();
 };
 
 // --- Class (Lop) Subform Management ---
+
+// --- Lọc danh sách Lớp ở Client ---
+function locLop() {
+    const keyword = document.getElementById("txtSearchLop").value.toLowerCase().trim();
+    const items = document.querySelectorAll("#lopList li");
+    const btnClear = document.getElementById("btnClearSearchLop");
+    const emptyState = document.getElementById("lopEmptyState");
+
+    if (keyword) {
+        btnClear.classList.remove("d-none");
+    } else {
+        btnClear.classList.add("d-none");
+    }
+
+    let visibleCount = 0;
+    items.forEach(li => {
+        const ma = (li.dataset.malop || "").toLowerCase();
+        const ten = (li.dataset.tenlop || "").toLowerCase();
+        
+        if (ma.includes(keyword) || ten.includes(keyword)) {
+            li.classList.remove("d-none");
+            visibleCount++;
+        } else {
+            li.classList.add("d-none");
+        }
+    });
+
+    document.getElementById("lblLopCount").innerText = `Hiển thị ${visibleCount}/${items.length} lớp`;
+
+    if (visibleCount === 0 && items.length > 0) {
+        emptyState.classList.remove("d-none");
+    } else {
+        emptyState.classList.add("d-none");
+    }
+}
+
+function clearSearchLop() {
+    const input = document.getElementById("txtSearchLop");
+    input.value = "";
+    locLop();
+    input.focus();
+}
 
 function bindLopRows() {
     document.querySelectorAll("#lopList li").forEach(li => {
@@ -57,18 +112,35 @@ function pushStateLop() {
         deletedLops: JSON.parse(JSON.stringify(deletedLops))
     });
     historyLopRedo = [];
+    updateUndoRedoLopButtonStates();
 }
 
-function chonLop(el) {
+function chonLop(el, callback) {
+    if (el.classList.contains("active")) {
+        if (callback) callback();
+        return;
+    }
+
+    const hasStudentChanges = (newItems.length > 0 || updatedItems.length > 0 || deletedItems.length > 0);
+    if (hasStudentChanges) {
+        hienXacNhan("Bạn có thay đổi chưa lưu ở danh sách sinh viên lớp hiện tại. Việc chuyển lớp sẽ làm mất các thay đổi này. Bạn có chắc chắn muốn tiếp tục?", () => {
+            executeChonLop(el);
+            if (callback) callback();
+        });
+    } else {
+        executeChonLop(el);
+        if (callback) callback();
+    }
+}
+
+function executeChonLop(el) {
     document.querySelectorAll("#lopList li").forEach(x => x.classList.remove("active"));
     el.classList.add("active");
 
     selectedLopRow = el;
     selectedLop = el.dataset.malop;
 
-    document.getElementById("txtMaLop").value = el.dataset.malop;
-    document.getElementById("txtTenLop").value = el.dataset.tenlop;
-    document.getElementById("txtMaLop").disabled = true; // Cannot edit PK
+    clearLopInputs();
 
     document.getElementById("currentLop").innerText = el.dataset.tenlop;
 
@@ -86,6 +158,7 @@ function chonLop(el) {
     document.getElementById("btnImport").removeAttribute("disabled");
 
     loadSinhVien();
+    validateClassInputs();
 }
 
 function themLop() {
@@ -108,14 +181,28 @@ function themLop() {
     newLops.push({ MaLop: ma, TenLop: ten });
 
     const li = document.createElement("li");
-    li.className = "list-group-item list-group-item-action";
+    li.className = "list-group-item list-group-item-action border-light";
     li.dataset.malop = ma;
     li.dataset.tenlop = ten;
-    li.innerHTML = `<b>${ten}</b> - ${ma}`;
+    li.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <span class="fw-semibold text-dark">${ten}</span>
+                <span class="badge bg-light text-secondary border border-light ms-2">${ma}</span>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-link p-0 text-warning" onclick="editLopClick(event, this.closest('li'))" title="Sửa">
+                    <i class="bi bi-pencil-fill fs-6"></i>
+                </button>
+            </div>
+        </div>
+    `;
     li.onclick = () => chonLop(li);
 
     document.getElementById("lopList").appendChild(li);
     resetLopForm();
+    locLop();
+    updateSaveLopButtonState();
 }
 
 function suaLop() {
@@ -134,7 +221,19 @@ function suaLop() {
 
     pushStateLop();
     selectedLopRow.dataset.tenlop = ten;
-    selectedLopRow.innerHTML = `<b>${ten}</b> - ${oldMa}`;
+    selectedLopRow.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <span class="fw-semibold text-dark">${ten}</span>
+                <span class="badge bg-light text-secondary border border-light ms-2">${oldMa}</span>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-link p-0 text-warning" onclick="editLopClick(event, this.closest('li'))" title="Sửa">
+                    <i class="bi bi-pencil-fill fs-6"></i>
+                </button>
+            </div>
+        </div>
+    `;
 
     const newIndex = newLops.findIndex(x => x.MaLop === oldMa);
     if (newIndex >= 0) {
@@ -145,6 +244,9 @@ function suaLop() {
     }
 
     document.getElementById("currentLop").innerText = ten;
+    locLop();
+    validateClassInputs();
+    updateSaveLopButtonState();
 }
 
 function xoaLop() {
@@ -152,43 +254,11 @@ function xoaLop() {
         hienThongBao("Vui lòng chọn lớp cần xóa.", "Thông báo");
         return;
     }
-
-    const ma = selectedLopRow.dataset.malop;
-
-    hienXacNhan(`Bạn có chắc chắn muốn xóa lớp <strong>"${ma}"</strong> và tất cả dữ liệu tạm thời đi kèm không?`, () => {
-        pushStateLop();
-
-        const newIndex = newLops.findIndex(x => x.MaLop === ma);
-        if (newIndex >= 0) {
-            newLops = newLops.filter(x => x.MaLop !== ma);
-        } else {
-            updatedLops = updatedLops.filter(x => x.MaLop !== ma);
-            if (!deletedLops.some(x => x.MaLop === ma)) {
-                deletedLops.push({ MaLop: ma });
-            }
-        }
-
-        selectedLopRow.remove();
-        selectedLopRow = null;
-        selectedLop = null;
-        
-        document.getElementById("currentLop").innerText = "Chưa chọn";
-        document.getElementById("svTable").innerHTML = "";
-        
-        // Disable Excel buttons
-        document.getElementById("btnExport").setAttribute("disabled", "true");
-        document.getElementById("btnImport").setAttribute("disabled", "true");
-
-        resetLopForm();
-        updateSTT();
-    });
+    deleteLopClick(null, selectedLopRow);
 }
 
 function undoLop() {
-    if (historyLopUndo.length === 0) {
-        hienThongBao("Không có gì để hoàn tác Lớp!", "Thông báo");
-        return;
-    }
+    if (historyLopUndo.length === 0) return;
 
     historyLopRedo.push({
         html: document.getElementById("lopList").innerHTML,
@@ -210,6 +280,37 @@ function undoLop() {
     document.getElementById("svTable").innerHTML = "";
     resetLopForm();
     updateSTT();
+    locLop();
+    updateUndoRedoLopButtonStates();
+    updateSaveLopButtonState();
+}
+
+function redoLop() {
+    if (historyLopRedo.length === 0) return;
+
+    historyLopUndo.push({
+        html: document.getElementById("lopList").innerHTML,
+        newLops: JSON.parse(JSON.stringify(newLops)),
+        updatedLops: JSON.parse(JSON.stringify(updatedLops)),
+        deletedLops: JSON.parse(JSON.stringify(deletedLops))
+    });
+
+    const nextState = historyLopRedo.pop();
+    document.getElementById("lopList").innerHTML = nextState.html;
+    newLops = nextState.newLops;
+    updatedLops = nextState.updatedLops;
+    deletedLops = nextState.deletedLops;
+
+    bindLopRows();
+    selectedLopRow = null;
+    selectedLop = null;
+    document.getElementById("currentLop").innerText = "Chưa chọn";
+    document.getElementById("svTable").innerHTML = "";
+    resetLopForm();
+    updateSTT();
+    locLop();
+    updateUndoRedoLopButtonStates();
+    updateSaveLopButtonState();
 }
 
 async function ghiLop() {
@@ -217,6 +318,11 @@ async function ghiLop() {
         hienThongBao("Không có thay đổi nào về Lớp cần ghi.", "Thông báo");
         return;
     }
+
+    historyLopUndo = [];
+    historyLopRedo = [];
+    updateUndoRedoLopButtonStates();
+    updateSaveLopButtonState();
 
     try {
         for (const d of deletedLops) {
@@ -262,10 +368,256 @@ async function ghiLop() {
     }
 }
 
-function resetLopForm() {
+function clickResetLop() {
+    const hasStudentChanges = (newItems.length > 0 || updatedItems.length > 0 || deletedItems.length > 0);
+    const hasClassChanges = (newLops.length > 0 || updatedLops.length > 0 || deletedLops.length > 0);
+
+    if (hasStudentChanges || hasClassChanges) {
+        hienXacNhan("Bạn có thay đổi chưa lưu ở danh mục Lớp hoặc Sinh viên. Bạn có chắc chắn muốn Reset và hủy bỏ tất cả thay đổi?", () => {
+            resetLopForm();
+        });
+    } else {
+        resetLopForm();
+    }
+}
+
+function clearLopInputs() {
     document.getElementById("txtMaLop").value = "";
     document.getElementById("txtTenLop").value = "";
     document.getElementById("txtMaLop").disabled = false;
+    
+    document.getElementById("txtMaLop").classList.remove("is-invalid");
+    document.getElementById("txtTenLop").classList.remove("is-invalid");
+    document.getElementById("errMaLop").textContent = "";
+    document.getElementById("errTenLop").textContent = "";
+
+    validateClassInputs();
+}
+
+function resetLopForm() {
+    clearLopInputs();
+    
+    // Clear selection UI
+    selectedLopRow = null;
+    selectedLop = null;
+    document.querySelectorAll("#lopList li").forEach(x => x.classList.remove("active"));
+    
+    // Clear student detail subform
+    document.getElementById("currentLop").innerText = "Chưa chọn lớp";
+    newItems = [];
+    updatedItems = [];
+    deletedItems = [];
+    undoHistoryStack = [];
+    redoHistoryStack = [];
+    selectedRow = null;
+    document.getElementById("svTable").innerHTML = "";
+    resetStudentForm();
+    
+    // Disable Excel buttons
+    document.getElementById("btnExport").setAttribute("disabled", "true");
+    document.getElementById("btnImport").setAttribute("disabled", "true");
+}
+
+function validateClassInputs() {
+    const maLop = document.getElementById("txtMaLop").value.trim().toUpperCase();
+    const tenLop = document.getElementById("txtTenLop").value.trim();
+    const isEditing = document.getElementById("txtMaLop").disabled;
+
+    const btnThemLop = document.getElementById("btnThemLop");
+    const btnSuaLop = document.getElementById("btnSuaLop");
+
+    const wrapThemLop = document.getElementById("wrapThemLop");
+    const wrapSuaLop = document.getElementById("wrapSuaLop");
+
+    const errMaLop = document.getElementById("errMaLop");
+    const errTenLop = document.getElementById("errTenLop");
+
+    const txtMaLop = document.getElementById("txtMaLop");
+    const txtTenLop = document.getElementById("txtTenLop");
+
+    // Clean old errors
+    errMaLop.textContent = "";
+    errTenLop.textContent = "";
+    txtMaLop.classList.remove("is-invalid");
+    txtTenLop.classList.remove("is-invalid");
+
+    // Check if editing and no changes
+    if (isEditing && selectedLopRow) {
+        const originalTenLop = (selectedLopRow.dataset.tenlop || "").trim();
+        if (tenLop === originalTenLop) {
+            updateClassButtonStates(
+                true, "Đang ở chế độ hiệu chỉnh (Phục hồi để thêm mới)",
+                true, "Vui lòng thay đổi tên lớp trước khi lưu hiệu chỉnh."
+            );
+            return;
+        }
+    }
+
+    // Required/length client side validation
+    let hasClientError = false;
+
+    if (maLop === "") {
+        hasClientError = true;
+    } else if (maLop.length > 20) {
+        errMaLop.textContent = "Mã lớp tối đa 20 ký tự.";
+        txtMaLop.classList.add("is-invalid");
+        hasClientError = true;
+    }
+
+    if (tenLop === "") {
+        hasClientError = true;
+    } else if (tenLop.length > 50) {
+        errTenLop.textContent = "Tên lớp tối đa 50 ký tự.";
+        txtTenLop.classList.add("is-invalid");
+        hasClientError = true;
+    }
+
+    if (hasClientError) {
+        let reasonThem = isEditing
+            ? "Đang ở chế độ hiệu chỉnh (Phục hồi để thêm mới)"
+            : "Vui lòng nhập Mã và Tên lớp để thêm.";
+        let reasonSua = isEditing
+            ? "Tên lớp không được để trống."
+            : "Vui lòng chọn lớp trong danh sách để hiệu chỉnh";
+        updateClassButtonStates(true, reasonThem, true, reasonSua);
+        return;
+    }
+
+    // Check duplicates locally
+    let isLocalDuplicate = false;
+    let localReasonMa = "";
+    let localReasonTen = "";
+
+    const listItems = document.querySelectorAll("#lopList li");
+    for (const li of listItems) {
+        if (selectedLopRow !== null && li === selectedLopRow) {
+            continue;
+        }
+
+        const existingMaLop = li.dataset.malop.trim().toUpperCase();
+        const existingTenLop = li.dataset.tenlop.trim().toLowerCase();
+
+        if (maLop !== "" && existingMaLop === maLop) {
+            errMaLop.textContent = "Mã lớp này đã tồn tại trên danh sách tạm thời.";
+            txtMaLop.classList.add("is-invalid");
+            isLocalDuplicate = true;
+            localReasonMa = "Mã lớp bị trùng lặp trên danh sách tạm thời.";
+        }
+
+        if (tenLop !== "" && existingTenLop === tenLop.toLowerCase()) {
+            errTenLop.textContent = "Tên lớp này đã tồn tại trên danh sách tạm thời.";
+            txtTenLop.classList.add("is-invalid");
+            isLocalDuplicate = true;
+            localReasonTen = "Tên lớp bị trùng lặp trên danh sách tạm thời.";
+        }
+    }
+
+    if (isLocalDuplicate) {
+        let reasonThem = isEditing
+            ? "Đang ở chế độ hiệu chỉnh (Phục hồi để thêm mới)"
+            : (localReasonMa || localReasonTen);
+        let reasonSua = isEditing
+            ? localReasonTen || "Tên lớp trùng lặp trên danh sách tạm thời."
+            : "Vui lòng chọn lớp trong danh sách để hiệu chỉnh";
+        updateClassButtonStates(true, reasonThem, true, reasonSua);
+        return;
+    }
+
+    // Debounce CSDL validation
+    clearTimeout(classDebounceTimer);
+    updateClassButtonStates(
+        true, "Đang kiểm tra trùng lặp từ cơ sở dữ liệu...",
+        true, "Đang kiểm tra trùng lặp từ cơ sở dữ liệu..."
+    );
+
+    classDebounceTimer = setTimeout(() => {
+        const checkUrl = `/SinhVien/CheckDuplicateLop?maLop=${encodeURIComponent(maLop)}&tenLop=${encodeURIComponent(tenLop)}&isEditing=${isEditing}`;
+
+        fetch(checkUrl)
+            .then(res => {
+                if (!res.ok) throw new Error("Lỗi HTTP");
+                return res.json();
+            })
+            .then(status => {
+                let dbDuplicate = false;
+                let dbReasonMa = "";
+                let dbReasonTen = "";
+
+                if (!isEditing && maLop !== "" && status.maLopDuplicate) {
+                    dbDuplicate = true;
+                    txtMaLop.classList.add("is-invalid");
+                    errMaLop.textContent = "Mã lớp này đã tồn tại trong CSDL.";
+                    dbReasonMa = "Mã lớp đã tồn tại trong CSDL.";
+                }
+
+                if (tenLop !== "" && status.tenLopDuplicate) {
+                    dbDuplicate = true;
+                    txtTenLop.classList.add("is-invalid");
+                    errTenLop.textContent = "Tên lớp này đã tồn tại trong CSDL.";
+                    dbReasonTen = "Tên lớp đã tồn tại trong CSDL.";
+                }
+
+                let reasonThem = "";
+                if (isEditing) {
+                    reasonThem = "Đang ở chế độ hiệu chỉnh (Phục hồi để thêm mới)";
+                } else if (dbDuplicate) {
+                    reasonThem = dbReasonMa || dbReasonTen || "Trùng lặp trong CSDL.";
+                }
+
+                let reasonSua = "";
+                if (!isEditing) {
+                    reasonSua = "Vui lòng chọn lớp trong danh sách để hiệu chỉnh";
+                } else if (dbDuplicate) {
+                    reasonSua = dbReasonTen || "Tên lớp đã tồn tại trong CSDL.";
+                }
+
+                if (dbDuplicate) {
+                    updateClassButtonStates(true, reasonThem, true, reasonSua);
+                } else {
+                    if (isEditing) {
+                        updateClassButtonStates(true, "Đang ở chế độ hiệu chỉnh (Phục hồi để thêm mới)", false, "");
+                    } else {
+                        updateClassButtonStates(false, "", true, "Vui lòng chọn lớp trong danh sách để hiệu chỉnh");
+                    }
+                }
+            })
+            .catch(error => {
+                console.error("Lỗi kiểm tra CSDL:", error);
+                // Fallback to offline state
+                if (isEditing) {
+                    updateClassButtonStates(true, "Đang ở chế độ hiệu chỉnh (Phục hồi để thêm mới)", false, "");
+                } else {
+                    updateClassButtonStates(false, "", true, "Vui lòng chọn lớp trong danh sách để hiệu chỉnh");
+                }
+            });
+    }, 250);
+}
+
+function updateClassButtonStates(disableThem, reasonThem, disableSua, reasonSua) {
+    const btnThemLop = document.getElementById("btnThemLop");
+    const btnSuaLop = document.getElementById("btnSuaLop");
+    const wrapThemLop = document.getElementById("wrapThemLop");
+    const wrapSuaLop = document.getElementById("wrapSuaLop");
+
+    if (btnThemLop && wrapThemLop) {
+        if (disableThem) {
+            btnThemLop.setAttribute("disabled", "true");
+            wrapThemLop.title = reasonThem || "";
+        } else {
+            btnThemLop.removeAttribute("disabled");
+            wrapThemLop.removeAttribute("title");
+        }
+    }
+
+    if (btnSuaLop && wrapSuaLop) {
+        if (disableSua) {
+            btnSuaLop.setAttribute("disabled", "true");
+            wrapSuaLop.title = reasonSua || "";
+        } else {
+            btnSuaLop.removeAttribute("disabled");
+            wrapSuaLop.removeAttribute("title");
+        }
+    }
 }
 
 // --- Student (SinhVien) Subform Management ---
@@ -351,7 +703,7 @@ function fillStudentForm(row) {
     validateStudentInputs();
 }
 
-function resetStudentForm() {
+function clearStudentInputs() {
     document.getElementById("txtMaSV").value = "";
     document.getElementById("txtHo").value = "";
     document.getElementById("txtTen").value = "";
@@ -359,19 +711,31 @@ function resetStudentForm() {
     document.getElementById("txtDiaChi").value = "";
     document.getElementById("txtMatKhau").value = "";
     document.getElementById("txtMaSV").disabled = false;
-    selectedRow = null;
+    
+    // Clear errors
+    const fields = ["txtMaSV", "txtHo", "txtTen", "txtNgaySinh", "txtDiaChi", "txtMatKhau"];
+    fields.forEach(f => document.getElementById(f).classList.remove("is-invalid"));
+    
+    const errors = ["errMaSV", "errHo", "errTen", "errNgaySinh", "errDiaChi", "errMatKhau"];
+    errors.forEach(e => document.getElementById(e).textContent = "");
 
-    document.querySelectorAll("#svTable tr").forEach(x => x.classList.remove("table-active"));
     validateStudentInputs();
+}
+
+function resetStudentForm() {
+    clearStudentInputs();
+    selectedRow = null;
+    document.querySelectorAll("#svTable tr").forEach(x => x.classList.remove("table-active"));
 }
 
 function bindRows() {
     document.querySelectorAll("#svTable tr").forEach(row => {
         row.onclick = () => {
+            if (row.classList.contains("table-active")) return;
             document.querySelectorAll("#svTable tr").forEach(x => x.classList.remove("table-active"));
             row.classList.add("table-active");
             selectedRow = row;
-            fillStudentForm(row);
+            clearStudentInputs();
         };
     });
 }
@@ -401,6 +765,13 @@ async function loadSinhVien() {
                 <td>${sv.ten}</td>
                 <td>${sv.ngaySinh ? new Date(sv.ngaySinh).toLocaleDateString('vi-VN') : ""}</td>
                 <td>${sv.diaChi}</td>
+                <td class="text-center">
+                    <div class="d-flex gap-2 justify-content-center">
+                        <button type="button" class="btn btn-link p-0 text-warning" onclick="editSVClick(event, this.closest('tr'))" title="Sửa">
+                            <i class="bi bi-pencil-fill"></i>
+                        </button>
+                    </div>
+                </td>
             `;
         });
 
@@ -439,6 +810,13 @@ function themSV() {
         <td>${d.Ten}</td>
         <td>${d.NgaySinh ? new Date(d.NgaySinh).toLocaleDateString('vi-VN') : ""}</td>
         <td>${d.DiaChi}</td>
+        <td class="text-center">
+            <div class="d-flex gap-2 justify-content-center">
+                <button type="button" class="btn btn-link p-0 text-warning" onclick="editSVClick(event, this.closest('tr'))" title="Sửa">
+                    <i class="bi bi-pencil-fill"></i>
+                </button>
+            </div>
+        </td>
     `;
 
     newItems.push(d);
@@ -464,6 +842,13 @@ function suaSV() {
         <td>${d.Ten}</td>
         <td>${d.NgaySinh ? new Date(d.NgaySinh).toLocaleDateString('vi-VN') : ""}</td>
         <td>${d.DiaChi}</td>
+        <td class="text-center">
+            <div class="d-flex gap-2 justify-content-center">
+                <button type="button" class="btn btn-link p-0 text-warning" onclick="editSVClick(event, this.closest('tr'))" title="Sửa">
+                    <i class="bi bi-pencil-fill"></i>
+                </button>
+            </div>
+        </td>
     `;
 
     Object.assign(selectedRow.dataset, {
@@ -492,30 +877,7 @@ function suaSV() {
 
 function xoaSV() {
     if (!selectedRow) return;
-
-    const id = selectedRow.dataset.masv;
-
-    hienXacNhan(`Bạn có chắc chắn muốn xóa sinh viên <strong>"${id} - ${selectedRow.dataset.ho} ${selectedRow.dataset.ten}"</strong> không?`, () => {
-        pushState();
-
-        const newIdx = newItems.findIndex(x => x.MaSV === id);
-        if (newIdx >= 0) {
-            newItems = newItems.filter(x => x.MaSV !== id);
-        } else {
-            updatedItems = updatedItems.filter(x => x.MaSV !== id);
-            if (!deletedItems.some(x => x.MaSV === id)) {
-                deletedItems.push({ MaSV: id });
-            }
-        }
-
-        selectedRow.remove();
-        selectedRow = null;
-
-        updateSTT();
-        resetStudentForm();
-        updateSaveButtonState();
-        updateUndoRedoButtonStates();
-    });
+    deleteSVClick(null, selectedRow);
 }
 
 async function ghiSV() {
@@ -600,78 +962,203 @@ function validateStudentInputs() {
 
     const btnThemSV = document.getElementById("btnThemSV");
     const btnSuaSV = document.getElementById("btnSuaSV");
-    const btnXoaSV = document.getElementById("btnXoaSV");
 
     const wrapThemSV = document.getElementById("wrapThemSV");
     const wrapSuaSV = document.getElementById("wrapSuaSV");
-    const wrapXoaSV = document.getElementById("wrapXoaSV");
 
-    let valid = true;
-    let message = "";
+    const txtMaSV = document.getElementById("txtMaSV");
+    const txtHo = document.getElementById("txtHo");
+    const txtTen = document.getElementById("txtTen");
+    const txtNgaySinh = document.getElementById("txtNgaySinh");
+    const txtDiaChi = document.getElementById("txtDiaChi");
+    const txtMatKhau = document.getElementById("txtMatKhau");
 
+    const errMaSV = document.getElementById("errMaSV");
+    const errHo = document.getElementById("errHo");
+    const errTen = document.getElementById("errTen");
+    const errNgaySinh = document.getElementById("errNgaySinh");
+    const errDiaChi = document.getElementById("errDiaChi");
+    const errMatKhau = document.getElementById("errMatKhau");
+
+    // Reset old validation errors and styling
+    errMaSV.textContent = "";
+    errHo.textContent = "";
+    errTen.textContent = "";
+    errNgaySinh.textContent = "";
+    errDiaChi.textContent = "";
+    errMatKhau.textContent = "";
+
+    txtMaSV.classList.remove("is-invalid");
+    txtHo.classList.remove("is-invalid");
+    txtTen.classList.remove("is-invalid");
+    txtNgaySinh.classList.remove("is-invalid");
+    txtDiaChi.classList.remove("is-invalid");
+    txtMatKhau.classList.remove("is-invalid");
+
+    // Check class selected first
     if (!selectedLop) {
-        valid = false;
-        message = "Vui lòng chọn lớp học trước.";
-    } else if (!d.MaSV) {
-        valid = false;
-        message = "Mã sinh viên không được rỗng.";
-    } else if (d.MaSV.length > 8) {
-        valid = false;
-        message = "Mã sinh viên tối đa 8 ký tự.";
-    } else if (!d.Ho) {
-        valid = false;
-        message = "Họ sinh viên không được rỗng.";
-    } else if (d.Ho.length > 50) {
-        valid = false;
-        message = "Họ tối đa 50 ký tự.";
-    } else if (!d.Ten) {
-        valid = false;
-        message = "Tên sinh viên không được rỗng.";
-    } else if (d.Ten.length > 10) {
-        valid = false;
-        message = "Tên tối đa 10 ký tự.";
-    } else if (d.DiaChi && d.DiaChi.length > 40) {
-        valid = false;
-        message = "Địa chỉ tối đa 40 ký tự.";
-    } else if (d.MatKhau && d.MatKhau.length > 20) {
-        valid = false;
-        message = "Mật khẩu tối đa 20 ký tự.";
+        updateStudentButtonStates(
+            true, "Vui lòng chọn lớp học trước.",
+            true, "Vui lòng chọn lớp học trước."
+        );
+        return;
     }
 
-    // Check code duplicates locally
-    if (!isEditing && valid) {
-        const exists = [...document.querySelectorAll("#svTable tr")].some(r => r.dataset.masv === d.MaSV);
-        if (exists) {
-            valid = false;
-            message = "Mã SV này đã trùng trong danh sách.";
+    // Check if editing and no changes
+    if (isEditing && selectedRow) {
+        const hasChanges = (
+            d.Ho !== (selectedRow.dataset.ho || "").trim() ||
+            d.Ten !== (selectedRow.dataset.ten || "").trim() ||
+            d.NgaySinh !== (selectedRow.dataset.ngaysinh || "") ||
+            d.DiaChi !== (selectedRow.dataset.diachi || "").trim() ||
+            d.MatKhau !== (selectedRow.dataset.matkhau || "")
+        );
+        if (!hasChanges) {
+            updateStudentButtonStates(
+                true, "Đang ở chế độ hiệu chỉnh (Reset để thêm mới)",
+                true, "Vui lòng thay đổi thông tin sinh viên trước khi lưu hiệu chỉnh."
+            );
+            return;
         }
     }
 
-    if (valid) {
-        if (isEditing) {
+    let hasClientError = false;
+
+    // Validate MaSV
+    if (!d.MaSV) {
+        hasClientError = true;
+    } else if (d.MaSV.length > 8) {
+        errMaSV.textContent = "Mã sinh viên tối đa 8 ký tự.";
+        txtMaSV.classList.add("is-invalid");
+        hasClientError = true;
+    }
+
+    // Validate Ho
+    if (!d.Ho) {
+        hasClientError = true;
+    } else if (d.Ho.length > 50) {
+        errHo.textContent = "Họ tối đa 50 ký tự.";
+        txtHo.classList.add("is-invalid");
+        hasClientError = true;
+    }
+
+    // Validate Ten
+    if (!d.Ten) {
+        hasClientError = true;
+    } else if (d.Ten.length > 10) {
+        errTen.textContent = "Tên tối đa 10 ký tự.";
+        txtTen.classList.add("is-invalid");
+        hasClientError = true;
+    }
+
+    // Validate NgaySinh
+    if (!d.NgaySinh) {
+        hasClientError = true;
+    }
+
+    // Validate DiaChi
+    if (!d.DiaChi) {
+        hasClientError = true;
+    } else if (d.DiaChi.length > 40) {
+        errDiaChi.textContent = "Địa chỉ tối đa 40 ký tự.";
+        txtDiaChi.classList.add("is-invalid");
+        hasClientError = true;
+    }
+
+    // Validate MatKhau
+    if (!d.MatKhau) {
+        hasClientError = true;
+    } else if (d.MatKhau.length > 20) {
+        errMatKhau.textContent = "Mật khẩu tối đa 20 ký tự.";
+        txtMatKhau.classList.add("is-invalid");
+        hasClientError = true;
+    }
+
+    if (hasClientError) {
+        let reasonThem = isEditing ? "Đang ở chế độ hiệu chỉnh (Reset để thêm mới)" : "Thông tin sinh viên nhập không hợp lệ.";
+        let reasonSua = isEditing ? "Thông tin sinh viên nhập không hợp lệ." : "Vui lòng chọn sinh viên trên lưới để hiệu chỉnh";
+        updateStudentButtonStates(true, reasonThem, true, reasonSua);
+        return;
+    }
+
+    // Check code duplicate locally
+    if (!isEditing) {
+        const exists = [...document.querySelectorAll("#svTable tr")].some(r => r.dataset.masv === d.MaSV);
+        if (exists) {
+            errMaSV.textContent = "Mã SV này đã trùng trong danh sách tạm thời.";
+            txtMaSV.classList.add("is-invalid");
+            updateStudentButtonStates(
+                true, "Mã SV bị trùng lặp trên danh sách tạm thời.",
+                true, "Vui lòng chọn sinh viên trên lưới để hiệu chỉnh"
+            );
+            return;
+        }
+    }
+
+    // Debounce CSDL duplicate validation for MaSV (only if adding)
+    if (!isEditing) {
+        clearTimeout(studentDebounceTimer);
+        updateStudentButtonStates(
+            true, "Đang kiểm tra trùng lặp từ cơ sở dữ liệu...",
+            true, "Vui lòng chọn sinh viên trên lưới để hiệu chỉnh"
+        );
+
+        studentDebounceTimer = setTimeout(() => {
+            const checkUrl = `/SinhVien/CheckDuplicateStudent?maSV=${encodeURIComponent(d.MaSV)}&isEditing=${isEditing}`;
+
+            fetch(checkUrl)
+                .then(res => {
+                    if (!res.ok) throw new Error("Lỗi HTTP");
+                    return res.json();
+                })
+                .then(status => {
+                    if (status.maSVDuplicate) {
+                        txtMaSV.classList.add("is-invalid");
+                        errMaSV.textContent = "Mã SV này đã tồn tại trong CSDL.";
+                        updateStudentButtonStates(
+                            true, "Mã SV đã tồn tại trong CSDL.",
+                            true, "Vui lòng chọn sinh viên trên lưới để hiệu chỉnh"
+                        );
+                    } else {
+                        // Success - enable Them
+                        updateStudentButtonStates(false, "", true, "Vui lòng chọn sinh viên trên lưới để hiệu chỉnh");
+                    }
+                })
+                .catch(error => {
+                    console.error("Lỗi kiểm tra trùng SV:", error);
+                    updateStudentButtonStates(false, "", true, "Vui lòng chọn sinh viên trên lưới để hiệu chỉnh");
+                });
+        }, 250);
+    } else {
+        // Editing mode with changes - can save immediately
+        updateStudentButtonStates(true, "Đang ở chế độ hiệu chỉnh (Reset để thêm mới)", false, "");
+    }
+}
+
+function updateStudentButtonStates(disableThem, reasonThem, disableSua, reasonSua) {
+    const btnThemSV = document.getElementById("btnThemSV");
+    const btnSuaSV = document.getElementById("btnSuaSV");
+    const wrapThemSV = document.getElementById("wrapThemSV");
+    const wrapSuaSV = document.getElementById("wrapSuaSV");
+
+    if (btnThemSV && wrapThemSV) {
+        if (disableThem) {
             btnThemSV.setAttribute("disabled", "true");
-            wrapThemSV.title = "Đang ở chế độ hiệu chỉnh (Reset để thêm mới)";
-            btnSuaSV.removeAttribute("disabled");
-            wrapSuaSV.removeAttribute("title");
+            wrapThemSV.title = reasonThem || "";
         } else {
             btnThemSV.removeAttribute("disabled");
             wrapThemSV.removeAttribute("title");
-            btnSuaSV.setAttribute("disabled", "true");
-            wrapSuaSV.title = "Vui lòng chọn sinh viên trên lưới để hiệu chỉnh";
         }
-    } else {
-        btnThemSV.setAttribute("disabled", "true");
-        btnSuaSV.setAttribute("disabled", "true");
-        wrapThemSV.title = message;
-        wrapSuaSV.title = message;
     }
 
-    if (selectedRow) {
-        btnXoaSV.removeAttribute("disabled");
-        wrapXoaSV.removeAttribute("title");
-    } else {
-        btnXoaSV.setAttribute("disabled", "true");
-        wrapXoaSV.title = "Vui lòng chọn sinh viên cần xóa";
+    if (btnSuaSV && wrapSuaSV) {
+        if (disableSua) {
+            btnSuaSV.setAttribute("disabled", "true");
+            wrapSuaSV.title = reasonSua || "";
+        } else {
+            btnSuaSV.removeAttribute("disabled");
+            wrapSuaSV.removeAttribute("title");
+        }
     }
 }
 
@@ -689,6 +1176,22 @@ function updateSaveButtonState() {
     }
 }
 
+function updateSaveLopButtonState() {
+    const btnGhiLop = document.getElementById("btnGhiLop");
+    const wrapGhiLop = document.getElementById("wrapGhiLop");
+    const hasChanges = (newLops.length > 0 || updatedLops.length > 0 || deletedLops.length > 0);
+
+    if (btnGhiLop) {
+        if (hasChanges) {
+            btnGhiLop.removeAttribute("disabled");
+            if (wrapGhiLop) wrapGhiLop.removeAttribute("title");
+        } else {
+            btnGhiLop.setAttribute("disabled", "true");
+            if (wrapGhiLop) wrapGhiLop.title = "Không có thay đổi nào về Lớp cần ghi.";
+        }
+    }
+}
+
 function updateUndoRedoButtonStates() {
     const btnUndo = document.getElementById("btnUndoSV");
     const btnRedo = document.getElementById("btnRedoSV");
@@ -697,6 +1200,17 @@ function updateUndoRedoButtonStates() {
     }
     if (btnRedo) {
         btnRedo.disabled = redoHistoryStack.length === 0;
+    }
+}
+
+function updateUndoRedoLopButtonStates() {
+    const btnUndoLop = document.getElementById("btnUndoLop");
+    const btnRedoLop = document.getElementById("btnRedoLop");
+    if (btnUndoLop) {
+        btnUndoLop.disabled = historyLopUndo.length === 0;
+    }
+    if (btnRedoLop) {
+        btnRedoLop.disabled = historyLopRedo.length === 0;
     }
 }
 
@@ -1114,6 +1628,13 @@ function confirmImport() {
             <td>${item.Ten}</td>
             <td>${item.NgaySinh ? new Date(item.NgaySinh).toLocaleDateString('vi-VN') : ""}</td>
             <td>${item.DiaChi}</td>
+            <td class="text-center">
+                <div class="d-flex gap-2 justify-content-center">
+                    <button type="button" class="btn btn-link p-0 text-warning" onclick="editSVClick(event, this.closest('tr'))" title="Sửa">
+                        <i class="bi bi-pencil-fill"></i>
+                    </button>
+                </div>
+            </td>
         `;
 
         newItems.push({
@@ -1221,4 +1742,108 @@ function hienXacNhan(message, onConfirm, title = "Xác nhận") {
     modalEl.addEventListener('hidden.bs.modal', onHidden);
 
     bsModal.show();
+}
+
+window.onbeforeunload = function(e) {
+    const hasStudentChanges = (newItems.length > 0 || updatedItems.length > 0 || deletedItems.length > 0);
+    const hasClassChanges = (newLops.length > 0 || updatedLops.length > 0 || deletedLops.length > 0);
+    if (hasStudentChanges || hasClassChanges) {
+        const message = "Bạn có thay đổi chưa được ghi vào cơ sở dữ liệu. Bạn có chắc chắn muốn rời đi?";
+        e.returnValue = message;
+        return message;
+    }
+};
+
+// --- Actions Clicks ---
+
+function editLopClick(event, li) {
+    if (event) event.stopPropagation();
+    chonLop(li, () => {
+        document.getElementById("txtMaLop").value = li.dataset.malop;
+        document.getElementById("txtTenLop").value = li.dataset.tenlop;
+        document.getElementById("txtMaLop").disabled = true; // Cannot edit PK
+        validateClassInputs();
+        document.getElementById("txtTenLop").focus();
+    });
+}
+
+function deleteLopClick(event, li) {
+    if (event) event.stopPropagation();
+    
+    const ma = li.dataset.malop;
+    const ten = li.dataset.tenlop;
+    
+    hienXacNhan(`Bạn có chắc chắn muốn xóa lớp <strong>"${ma} - ${ten}"</strong> và tất cả dữ liệu tạm thời đi kèm không?`, () => {
+        pushStateLop();
+
+        const newIndex = newLops.findIndex(x => x.MaLop === ma);
+        if (newIndex >= 0) {
+            newLops = newLops.filter(x => x.MaLop !== ma);
+        } else {
+            updatedLops = updatedLops.filter(x => x.MaLop !== ma);
+            if (!deletedLops.some(x => x.MaLop === ma)) {
+                deletedLops.push({ MaLop: ma });
+            }
+        }
+
+        if (selectedLop === ma) {
+            selectedLopRow = null;
+            selectedLop = null;
+            document.getElementById("currentLop").innerText = "Chưa chọn";
+            document.getElementById("svTable").innerHTML = "";
+            
+            // Disable Excel buttons
+            document.getElementById("btnExport").setAttribute("disabled", "true");
+            document.getElementById("btnImport").setAttribute("disabled", "true");
+            
+            resetLopForm();
+        }
+        
+        li.remove();
+        updateSTT();
+        locLop();
+        updateSaveLopButtonState();
+    });
+}
+
+function editSVClick(event, tr) {
+    if (event) event.stopPropagation();
+    
+    document.querySelectorAll("#svTable tr").forEach(x => x.classList.remove("table-active"));
+    tr.classList.add("table-active");
+    selectedRow = tr;
+    
+    fillStudentForm(tr);
+    document.getElementById("txtHo").focus();
+}
+
+function deleteSVClick(event, tr) {
+    if (event) event.stopPropagation();
+
+    const id = tr.dataset.masv;
+    const name = `${tr.dataset.ho} ${tr.dataset.ten}`;
+
+    hienXacNhan(`Bạn có chắc chắn muốn xóa sinh viên <strong>"${id} - ${name}"</strong> không?`, () => {
+        pushState();
+
+        const newIdx = newItems.findIndex(x => x.MaSV === id);
+        if (newIdx >= 0) {
+            newItems = newItems.filter(x => x.MaSV !== id);
+        } else {
+            updatedItems = updatedItems.filter(x => x.MaSV !== id);
+            if (!deletedItems.some(x => x.MaSV === id)) {
+                deletedItems.push({ MaSV: id });
+            }
+        }
+
+        if (selectedRow === tr) {
+            resetStudentForm();
+        } else {
+            tr.remove();
+            updateSTT();
+        }
+
+        updateSaveButtonState();
+        updateUndoRedoButtonStates();
+    });
 }

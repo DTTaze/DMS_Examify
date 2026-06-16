@@ -22,24 +22,29 @@
                 <div class="mb-3">
                     <label class="form-label small fw-medium text-secondary">Mã giáo viên</label>
                     <input id="txtMaGV" class="form-control shadow-none" placeholder="VD: GV001" />
+                    <span id="errMaGV" class="text-danger small mt-1 d-block"></span>
                 </div>
                 <div class="row g-3 mb-3">
                     <div class="col-md-6">
                         <label class="form-label small fw-medium text-secondary">Họ</label>
                         <input id="txtHoGV" class="form-control shadow-none" placeholder="VD: Nguyễn Văn" />
+                        <span id="errHoGV" class="text-danger small mt-1 d-block"></span>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label small fw-medium text-secondary">Tên</label>
                         <input id="txtTenGV" class="form-control shadow-none" placeholder="VD: An" />
+                        <span id="errTenGV" class="text-danger small mt-1 d-block"></span>
                     </div>
                 </div>
                 <div class="mb-3">
                     <label class="form-label small fw-medium text-secondary">Số điện thoại liên lạc</label>
                     <input id="txtSoDTLL" class="form-control shadow-none" placeholder="VD: 0901234567" />
+                    <span id="errSoDTLL" class="text-danger small mt-1 d-block"></span>
                 </div>
                 <div class="mb-4">
                     <label class="form-label small fw-medium text-secondary">Địa chỉ</label>
                     <input id="txtDiaChiGV" class="form-control shadow-none" placeholder="VD: 123 Lê Lợi, Đà Nẵng" />
+                    <span id="errDiaChiGV" class="text-danger small mt-1 d-block"></span>
                 </div>
 
                 <div class="d-flex gap-2 flex-wrap">
@@ -53,11 +58,7 @@
                             <i class="bi bi-pencil-square me-1"></i> Sửa
                         </button>
                     </span>
-                    <span id="wrapXoaGV" class="d-inline-block">
-                        <button type="button" class="btn btn-danger btn-sm px-3 animate-btn" id="btnXoaGV" onclick="xoaGV()" disabled>
-                            <i class="bi bi-trash me-1"></i> Xóa
-                        </button>
-                    </span>
+
                     <button type="button" class="btn btn-secondary btn-sm px-3 animate-btn" onclick="resetGiaoVienForm()">
                         <i class="bi bi-arrow-clockwise me-1"></i> Reset
                     </button>
@@ -107,6 +108,7 @@
                                 <th>Tên</th>
                                 <th>Số ĐT</th>
                                 <th>Địa chỉ</th>
+                                <th class="text-center" style="width: 100px;">Thao tác</th>
                             </tr>
                         </thead>
                         <tbody id="gvTable">
@@ -118,6 +120,16 @@
                                     <td>@gv.Ten</td>
                                     <td>@gv.SoDTLL</td>
                                     <td>@gv.DiaChi</td>
+                                    <td class="text-center">
+                                        <div class="d-flex gap-2 justify-content-center">
+                                            <button type="button" class="btn btn-link p-0 text-warning btn-edit" title="Sửa">
+                                                <i class="bi bi-pencil-fill"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-link p-0 text-danger btn-delete" title="Xóa">
+                                                <i class="bi bi-trash-fill"></i>
+                                            </button>
+                                        </div>
+                                    </td>
                                 </tr>
                             }
                         </tbody>

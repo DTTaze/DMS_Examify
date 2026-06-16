@@ -9,6 +9,7 @@ let selectedRow = null;
 let currentPage = 1;
 let rowsPerPage = 10;
 let customModalBs = null;
+let teacherDebounceTimer = null;
 
 // --- Lifecycle and Initialization ---
 window.onload = () => {
@@ -123,18 +124,52 @@ function resetGiaoVienForm() {
     document.getElementById("txtMaGV").disabled = false;
     selectedRow = null;
 
+    // Clear errors
+    const fields = ["txtMaGV", "txtHoGV", "txtTenGV", "txtSoDTLL", "txtDiaChiGV"];
+    fields.forEach(f => document.getElementById(f).classList.remove("is-invalid"));
+    
+    const errors = ["errMaGV", "errHoGV", "errTenGV", "errSoDTLL", "errDiaChiGV"];
+    errors.forEach(e => document.getElementById(e).textContent = "");
+
     document.querySelectorAll("#gvTable tr").forEach(x => x.classList.remove("table-active"));
     validateGiaoVienInputs();
 }
 
 function bindRows() {
     document.querySelectorAll("#gvTable tr").forEach(row => {
-        row.onclick = () => {
+        row.onclick = (event) => {
+            if (event && (event.target.closest('.btn-edit') || event.target.closest('.btn-delete'))) {
+                return;
+            }
             document.querySelectorAll("#gvTable tr").forEach(x => x.classList.remove("table-active"));
             row.classList.add("table-active");
             selectedRow = row;
             fillGiaoVienForm(row);
         };
+
+        const editBtn = row.querySelector(".btn-edit");
+        if (editBtn) {
+            editBtn.onclick = (event) => {
+                if (event) event.stopPropagation();
+                document.querySelectorAll("#gvTable tr").forEach(x => x.classList.remove("table-active"));
+                row.classList.add("table-active");
+                selectedRow = row;
+                fillGiaoVienForm(row);
+                const txtHo = document.getElementById("txtHoGV");
+                if (txtHo) txtHo.focus();
+            };
+        }
+
+        const deleteBtn = row.querySelector(".btn-delete");
+        if (deleteBtn) {
+            deleteBtn.onclick = (event) => {
+                if (event) event.stopPropagation();
+                document.querySelectorAll("#gvTable tr").forEach(x => x.classList.remove("table-active"));
+                row.classList.add("table-active");
+                selectedRow = row;
+                xoaGV();
+            };
+        }
     });
 }
 
@@ -158,6 +193,16 @@ function themGV() {
         <td>${d.Ten}</td>
         <td>${d.SoDTLL}</td>
         <td>${d.DiaChi}</td>
+        <td class="text-center">
+            <div class="d-flex gap-2 justify-content-center">
+                <button type="button" class="btn btn-link p-0 text-warning btn-edit" title="Sửa">
+                    <i class="bi bi-pencil-fill"></i>
+                </button>
+                <button type="button" class="btn btn-link p-0 text-danger btn-delete" title="Xóa">
+                    <i class="bi bi-trash-fill"></i>
+                </button>
+            </div>
+        </td>
     `;
 
     newItems.push(d);
@@ -182,6 +227,16 @@ function hieuChinhGV() {
         <td>${d.Ten}</td>
         <td>${d.SoDTLL}</td>
         <td>${d.DiaChi}</td>
+        <td class="text-center">
+            <div class="d-flex gap-2 justify-content-center">
+                <button type="button" class="btn btn-link p-0 text-warning btn-edit" title="Sửa">
+                    <i class="bi bi-pencil-fill"></i>
+                </button>
+                <button type="button" class="btn btn-link p-0 text-danger btn-delete" title="Xóa">
+                    <i class="bi bi-trash-fill"></i>
+                </button>
+            </div>
+        </td>
     `;
 
     Object.assign(selectedRow.dataset, {
@@ -317,75 +372,180 @@ function validateGiaoVienInputs() {
 
     const btnThemGV = document.getElementById("btnThemGV");
     const btnSuaGV = document.getElementById("btnSuaGV");
-    const btnXoaGV = document.getElementById("btnXoaGV");
 
     const wrapThemGV = document.getElementById("wrapThemGV");
     const wrapSuaGV = document.getElementById("wrapSuaGV");
-    const wrapXoaGV = document.getElementById("wrapXoaGV");
 
-    let valid = true;
-    let message = "";
+    const txtMaGV = document.getElementById("txtMaGV");
+    const txtHoGV = document.getElementById("txtHoGV");
+    const txtTenGV = document.getElementById("txtTenGV");
+    const txtSoDTLL = document.getElementById("txtSoDTLL");
+    const txtDiaChiGV = document.getElementById("txtDiaChiGV");
 
-    if (!d.MaGV) {
-        valid = false;
-        message = "Mã giáo viên không được rỗng.";
-    } else if (d.MaGV.length > 8) {
-        valid = false;
-        message = "Mã giáo viên tối đa 8 ký tự.";
-    } else if (!d.Ho) {
-        valid = false;
-        message = "Họ giáo viên không được rỗng.";
-    } else if (d.Ho.length > 50) {
-        valid = false;
-        message = "Họ tối đa 50 ký tự.";
-    } else if (!d.Ten) {
-        valid = false;
-        message = "Tên giáo viên không được rỗng.";
-    } else if (d.Ten.length > 10) {
-        valid = false;
-        message = "Tên tối đa 10 ký tự.";
-    } else if (d.SoDTLL && d.SoDTLL.length > 15) {
-        valid = false;
-        message = "Số điện thoại tối đa 15 ký tự.";
-    } else if (d.DiaChi && d.DiaChi.length > 40) {
-        valid = false;
-        message = "Địa chỉ tối đa 40 ký tự.";
-    }
+    const errMaGV = document.getElementById("errMaGV");
+    const errHoGV = document.getElementById("errHoGV");
+    const errTenGV = document.getElementById("errTenGV");
+    const errSoDTLL = document.getElementById("errSoDTLL");
+    const errDiaChiGV = document.getElementById("errDiaChiGV");
 
-    // Check PK duplicate locally
-    if (!isEditing && valid) {
-        const exists = [...document.querySelectorAll("#gvTable tr")].some(r => r.dataset.magv === d.MaGV);
-        if (exists) {
-            valid = false;
-            message = "Mã GV này đã trùng trong danh sách.";
+    // Clear old validation errors and styling
+    errMaGV.textContent = "";
+    errHoGV.textContent = "";
+    errTenGV.textContent = "";
+    errSoDTLL.textContent = "";
+    errDiaChiGV.textContent = "";
+
+    txtMaGV.classList.remove("is-invalid");
+    txtHoGV.classList.remove("is-invalid");
+    txtTenGV.classList.remove("is-invalid");
+    txtSoDTLL.classList.remove("is-invalid");
+    txtDiaChiGV.classList.remove("is-invalid");
+
+    // Check if editing and no changes
+    if (isEditing && selectedRow) {
+        const hasChanges = (
+            d.Ho !== (selectedRow.dataset.ho || "").trim() ||
+            d.Ten !== (selectedRow.dataset.ten || "").trim() ||
+            d.SoDTLL !== (selectedRow.dataset.sdt || "").trim() ||
+            d.DiaChi !== (selectedRow.dataset.diachi || "").trim()
+        );
+        if (!hasChanges) {
+            updateTeacherButtonStates(
+                true, "Đang ở chế độ hiệu chỉnh (Reset để thêm mới)",
+                true, "Vui lòng thay đổi thông tin giáo viên trước khi lưu hiệu chỉnh."
+            );
+            return;
         }
     }
 
-    if (valid) {
-        if (isEditing) {
+    let hasClientError = false;
+
+    // Validate MaGV
+    if (!d.MaGV) {
+        hasClientError = true;
+    } else if (d.MaGV.length > 8) {
+        errMaGV.textContent = "Mã giáo viên tối đa 8 ký tự.";
+        txtMaGV.classList.add("is-invalid");
+        hasClientError = true;
+    }
+
+    // Validate Ho
+    if (!d.Ho) {
+        hasClientError = true;
+    } else if (d.Ho.length > 50) {
+        errHoGV.textContent = "Họ tối đa 50 ký tự.";
+        txtHoGV.classList.add("is-invalid");
+        hasClientError = true;
+    }
+
+    // Validate Ten
+    if (!d.Ten) {
+        hasClientError = true;
+    } else if (d.Ten.length > 10) {
+        errTenGV.textContent = "Tên tối đa 10 ký tự.";
+        txtTenGV.classList.add("is-invalid");
+        hasClientError = true;
+    }
+
+    // Validate SoDTLL
+    if (d.SoDTLL && d.SoDTLL.length > 15) {
+        errSoDTLL.textContent = "Số điện thoại tối đa 15 ký tự.";
+        txtSoDTLL.classList.add("is-invalid");
+        hasClientError = true;
+    }
+
+    // Validate DiaChi
+    if (d.DiaChi && d.DiaChi.length > 40) {
+        errDiaChiGV.textContent = "Địa chỉ tối đa 40 ký tự.";
+        txtDiaChiGV.classList.add("is-invalid");
+        hasClientError = true;
+    }
+
+    if (hasClientError) {
+        let reasonThem = isEditing ? "Đang ở chế độ hiệu chỉnh (Reset để thêm mới)" : "Thông tin giáo viên nhập không hợp lệ.";
+        let reasonSua = isEditing ? "Thông tin giáo viên nhập không hợp lệ." : "Vui lòng chọn giáo viên trên lưới để hiệu chỉnh";
+        updateTeacherButtonStates(true, reasonThem, true, reasonSua);
+        return;
+    }
+
+    // Check code duplicate locally
+    if (!isEditing) {
+        const exists = [...document.querySelectorAll("#gvTable tr")].some(r => r.dataset.magv === d.MaGV);
+        if (exists) {
+            errMaGV.textContent = "Mã GV này đã trùng trong danh sách tạm thời.";
+            txtMaGV.classList.add("is-invalid");
+            updateTeacherButtonStates(
+                true, "Mã GV bị trùng lặp trên danh sách tạm thời.",
+                true, "Vui lòng chọn giáo viên trên lưới để hiệu chỉnh"
+            );
+            return;
+        }
+    }
+
+    // Debounce CSDL duplicate validation for MaGV (only if adding)
+    if (!isEditing) {
+        clearTimeout(teacherDebounceTimer);
+        updateTeacherButtonStates(
+            true, "Đang kiểm tra trùng lặp từ cơ sở dữ liệu...",
+            true, "Vui lòng chọn giáo viên trên lưới để hiệu chỉnh"
+        );
+
+        teacherDebounceTimer = setTimeout(() => {
+            const checkUrl = `/GiaoVien/CheckDuplicateTeacher?maGV=${encodeURIComponent(d.MaGV)}&isEditing=${isEditing}`;
+
+            fetch(checkUrl)
+                .then(res => {
+                    if (!res.ok) throw new Error("Lỗi HTTP");
+                    return res.json();
+                })
+                .then(status => {
+                    if (status.maGVDuplicate) {
+                        txtMaGV.classList.add("is-invalid");
+                        errMaGV.textContent = "Mã GV này đã tồn tại trong CSDL.";
+                        updateTeacherButtonStates(
+                            true, "Mã GV đã tồn tại trong CSDL.",
+                            true, "Vui lòng chọn giáo viên trên lưới để hiệu chỉnh"
+                        );
+                    } else {
+                        // Success - enable Them
+                        updateTeacherButtonStates(false, "", true, "Vui lòng chọn giáo viên trên lưới để hiệu chỉnh");
+                    }
+                })
+                .catch(error => {
+                    console.error("Lỗi kiểm tra trùng GV:", error);
+                    updateTeacherButtonStates(false, "", true, "Vui lòng chọn giáo viên trên lưới để hiệu chỉnh");
+                });
+        }, 250);
+    } else {
+        // Editing mode with changes - can save immediately
+        updateTeacherButtonStates(true, "Đang ở chế độ hiệu chỉnh (Reset để thêm mới)", false, "");
+    }
+}
+
+function updateTeacherButtonStates(disableThem, reasonThem, disableSua, reasonSua) {
+    const btnThemGV = document.getElementById("btnThemGV");
+    const btnSuaGV = document.getElementById("btnSuaGV");
+    const wrapThemGV = document.getElementById("wrapThemGV");
+    const wrapSuaGV = document.getElementById("wrapSuaGV");
+
+    if (btnThemGV && wrapThemGV) {
+        if (disableThem) {
             btnThemGV.setAttribute("disabled", "true");
-            wrapThemGV.title = "Đang ở chế độ hiệu chỉnh (Reset để thêm mới)";
-            btnSuaGV.removeAttribute("disabled");
-            wrapSuaGV.removeAttribute("title");
+            wrapThemGV.title = reasonThem || "";
         } else {
             btnThemGV.removeAttribute("disabled");
             wrapThemGV.removeAttribute("title");
-            btnSuaGV.setAttribute("disabled", "true");
-            wrapSuaGV.title = "Vui lòng chọn giáo viên trên lưới để hiệu chỉnh";
         }
-    } else {
-        btnThemGV.setAttribute("disabled", "true");
-        btnSuaGV.setAttribute("disabled", "true");
-        wrapThemGV.title = message;
-        wrapSuaGV.title = message;
     }
 
-    if (selectedRow) {
-        btnXoaGV.removeAttribute("disabled");
-        wrapXoaGV.removeAttribute("title");
-    } else {
-        btnXoaGV.setAttribute("disabled", "true");
-        wrapXoaGV.title = "Vui lòng chọn giáo viên cần xóa";
+    if (btnSuaGV && wrapSuaGV) {
+        if (disableSua) {
+            btnSuaGV.setAttribute("disabled", "true");
+            wrapSuaGV.title = reasonSua || "";
+        } else {
+            btnSuaGV.removeAttribute("disabled");
+            wrapSuaGV.removeAttribute("title");
+        }
     }
 }
 
@@ -795,6 +955,16 @@ function confirmImport() {
             <td>${item.Ten}</td>
             <td>${item.SoDTLL}</td>
             <td>${item.DiaChi}</td>
+            <td class="text-center">
+                <div class="d-flex gap-2 justify-content-center">
+                    <button type="button" class="btn btn-link p-0 text-warning btn-edit" title="Sửa">
+                        <i class="bi bi-pencil-fill"></i>
+                    </button>
+                    <button type="button" class="btn btn-link p-0 text-danger btn-delete" title="Xóa">
+                        <i class="bi bi-trash-fill"></i>
+                    </button>
+                </div>
+            </td>
         `;
 
         newItems.push(item);

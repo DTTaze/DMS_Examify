@@ -149,6 +149,41 @@ namespace DMS_Examify.Controllers
             }
         }
 
+        [HttpGet]
+        public IActionResult CheckDuplicateTeacher(string maGV, bool isEditing)
+        {
+            if (!CheckRole("PGV")) return Denied();
+
+            bool maGVDuplicate = false;
+
+            try
+            {
+                using (var connection = new SqlConnection(_connectionString))
+                {
+                    connection.Open();
+
+                    // Check duplicate MaGV when adding
+                    if (!isEditing && !string.IsNullOrWhiteSpace(maGV))
+                    {
+                        using (var command = new SqlCommand("SELECT COUNT(1) FROM GIAOVIEN WHERE MAGV = @MAGV", connection))
+                        {
+                            command.Parameters.Add("@MAGV", SqlDbType.NChar, 8).Value = maGV.Trim();
+                            maGVDuplicate = (int)command.ExecuteScalar() > 0;
+                        }
+                    }
+                }
+
+                return Json(new
+                {
+                    maGVDuplicate
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Lỗi hệ thống khi kiểm tra trùng giáo viên: {ex.Message}");
+            }
+        }
+
         private HashSet<string> GetExistingGiaoVienIds()
         {
             var ids = new HashSet<string>();

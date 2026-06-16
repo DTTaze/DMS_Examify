@@ -307,5 +307,95 @@ namespace DMS_Examify.Controllers
             }
             return ids;
         }
+
+        [HttpGet]
+        public IActionResult CheckDuplicateLop(string maLop, string tenLop, bool isEditing)
+        {
+            if (!CheckRole("PGV")) return Denied();
+
+            bool maLopDuplicate = false;
+            bool tenLopDuplicate = false;
+
+            try
+            {
+                using (var connection = new SqlConnection(_connectionString))
+                {
+                    connection.Open();
+
+                    // 1. Check duplicate MaLop when adding
+                    if (!isEditing && !string.IsNullOrWhiteSpace(maLop))
+                    {
+                        using (var command = new SqlCommand("SELECT COUNT(1) FROM LOP WHERE MALOP = @MALOP", connection))
+                        {
+                            command.Parameters.Add("@MALOP", SqlDbType.NChar, 15).Value = maLop.Trim();
+                            maLopDuplicate = (int)command.ExecuteScalar() > 0;
+                        }
+                    }
+
+                    // 2. Check duplicate TenLop
+                    if (!string.IsNullOrWhiteSpace(tenLop))
+                    {
+                        string query = isEditing
+                            ? "SELECT COUNT(1) FROM LOP WHERE TENLOP = @TENLOP AND MALOP <> @MALOP"
+                            : "SELECT COUNT(1) FROM LOP WHERE TENLOP = @TENLOP";
+
+                        using (var command = new SqlCommand(query, connection))
+                        {
+                            command.Parameters.Add("@TENLOP", SqlDbType.NVarChar, 50).Value = tenLop.Trim();
+                            if (isEditing)
+                            {
+                                command.Parameters.Add("@MALOP", SqlDbType.NChar, 15).Value = maLop.Trim();
+                            }
+                            tenLopDuplicate = (int)command.ExecuteScalar() > 0;
+                        }
+                    }
+                }
+
+                return Json(new
+                {
+                    maLopDuplicate,
+                    tenLopDuplicate
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Lỗi hệ thống khi kiểm tra trùng lớp: {ex.Message}");
+            }
+        }
+
+        [HttpGet]
+        public IActionResult CheckDuplicateStudent(string maSV, bool isEditing)
+        {
+            if (!CheckRole("PGV")) return Denied();
+
+            bool maSVDuplicate = false;
+
+            try
+            {
+                using (var connection = new SqlConnection(_connectionString))
+                {
+                    connection.Open();
+
+                    // Check duplicate MaSV when adding
+                    if (!isEditing && !string.IsNullOrWhiteSpace(maSV))
+                    {
+                        using (var command = new SqlCommand("SELECT COUNT(1) FROM SINHVIEN WHERE MASV = @MASV", connection))
+                        {
+                            command.Parameters.Add("@MASV", SqlDbType.NChar, 8).Value = maSV.Trim();
+                            maSVDuplicate = (int)command.ExecuteScalar() > 0;
+                        }
+                    }
+                }
+
+                return Json(new
+                {
+                    maSVDuplicate
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Lỗi hệ thống khi kiểm tra trùng sinh viên: {ex.Message}");
+            }
+        }
     }
 }

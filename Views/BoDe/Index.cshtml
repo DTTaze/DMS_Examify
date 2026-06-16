@@ -46,6 +46,20 @@
                 <div class="mb-3">
                     <label class="form-label small fw-medium text-secondary">Nội dung câu hỏi</label>
                     <textarea id="txtNoiDung" class="form-control shadow-none" rows="3" placeholder="Nhập câu hỏi..."></textarea>
+                    
+                    <!-- Panel cảnh báo câu trùng -->
+                    <div id="duplicateWarningPanel" class="mt-2 p-3 border rounded-3 bg-light" style="display: none; border-left: 4px solid #ffc107 !important;">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="small fw-semibold text-warning-emphasis d-flex align-items-center gap-2">
+                                <i class="bi bi-exclamation-triangle-fill text-warning fs-5"></i> 
+                                <span class="fw-bold">Phát hiện câu hỏi trùng lặp hoặc tương tự!</span>
+                            </span>
+                            <span id="duplicateWarningCount" class="badge bg-warning text-dark rounded-pill px-2 py-1" style="font-size: 0.75rem;">0 trùng</span>
+                        </div>
+                        <div id="duplicateWarningList" class="d-flex flex-column gap-2" style="max-height: 150px; overflow-y: auto;">
+                            <!-- Danh sách câu hỏi trùng được chèn động ở đây -->
+                        </div>
+                    </div>
                 </div>
 
                 <div class="row g-3 mb-3">
@@ -88,11 +102,7 @@
                             <i class="bi bi-pencil-square me-1"></i> Sửa
                         </button>
                     </span>
-                    <span id="wrapXoa" class="d-inline-block">
-                        <button type="button" class="btn btn-danger btn-sm px-3 animate-btn" id="btnXoa" onclick="deleteQuestion()" disabled>
-                            <i class="bi bi-trash me-1"></i> Xóa
-                        </button>
-                    </span>
+
                     <button type="button" class="btn btn-secondary btn-sm px-3 animate-btn" onclick="resetQuestionForm()">
                         <i class="bi bi-arrow-clockwise me-1"></i> Reset
                     </button>
@@ -142,6 +152,7 @@
                                 <th style="width: 90px;">Môn học</th>
                                 <th style="width: 80px;">Trình độ</th>
                                 <th style="width: 80px;">Đáp án</th>
+                                <th class="text-center" style="width: 100px;">Thao tác</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -154,6 +165,16 @@
                                     <td>@ch.MaMH</td>
                                     <td>@ch.TrinhDo</td>
                                     <td class="text-center"><span class="badge bg-secondary">@ch.DapAn</span></td>
+                                    <td class="text-center">
+                                        <div class="d-flex gap-2 justify-content-center">
+                                            <button type="button" class="btn btn-link p-0 text-warning btn-edit" title="Sửa">
+                                                <i class="bi bi-pencil-fill"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-link p-0 text-danger btn-delete" title="Xóa">
+                                                <i class="bi bi-trash-fill"></i>
+                                            </button>
+                                        </div>
+                                    </td>
                                 </tr>
                             }
                         </tbody>

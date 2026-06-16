@@ -140,12 +140,39 @@ function resetQuestionForm() {
 
 function bindRows() {
     document.querySelectorAll("#tbl tbody tr").forEach(row => {
-        row.onclick = () => {
+        row.onclick = (event) => {
+            if (event && (event.target.closest('.btn-edit') || event.target.closest('.btn-delete'))) {
+                return;
+            }
             document.querySelectorAll("#tbl tbody tr").forEach(x => x.classList.remove("table-active"));
             row.classList.add("table-active");
             selectedRow = row;
             fillQuestionForm(row);
         };
+
+        const editBtn = row.querySelector(".btn-edit");
+        if (editBtn) {
+            editBtn.onclick = (event) => {
+                if (event) event.stopPropagation();
+                document.querySelectorAll("#tbl tbody tr").forEach(x => x.classList.remove("table-active"));
+                row.classList.add("table-active");
+                selectedRow = row;
+                fillQuestionForm(row);
+                const txtNoiDung = document.getElementById("txtNoiDung");
+                if (txtNoiDung) txtNoiDung.focus();
+            };
+        }
+
+        const deleteBtn = row.querySelector(".btn-delete");
+        if (deleteBtn) {
+            deleteBtn.onclick = (event) => {
+                if (event) event.stopPropagation();
+                document.querySelectorAll("#tbl tbody tr").forEach(x => x.classList.remove("table-active"));
+                row.classList.add("table-active");
+                selectedRow = row;
+                deleteQuestion();
+            };
+        }
     });
 }
 
@@ -172,10 +199,20 @@ function addQuestion() {
 
     row.innerHTML = `
         <td>...</td>
-        <td>${d.NoiDung}</td>
+        <td class="text-truncate" style="max-width: 250px;">${d.NoiDung}</td>
         <td>${d.MaMH}</td>
         <td>${d.TrinhDo}</td>
-        <td>${d.DapAn}</td>
+        <td class="text-center"><span class="badge bg-secondary">${d.DapAn}</span></td>
+        <td class="text-center">
+            <div class="d-flex gap-2 justify-content-center">
+                <button type="button" class="btn btn-link p-0 text-warning btn-edit" title="Sửa">
+                    <i class="bi bi-pencil-fill"></i>
+                </button>
+                <button type="button" class="btn btn-link p-0 text-danger btn-delete" title="Xóa">
+                    <i class="bi bi-trash-fill"></i>
+                </button>
+            </div>
+        </td>
     `;
 
     newItems.push({ CauHoi: id, ...d });
@@ -196,10 +233,20 @@ function editQuestion() {
 
     selectedRow.innerHTML = `
         <td>${id > 0 ? id : "..."}</td>
-        <td>${d.NoiDung}</td>
+        <td class="text-truncate" style="max-width: 250px;">${d.NoiDung}</td>
         <td>${d.MaMH}</td>
         <td>${d.TrinhDo}</td>
-        <td>${d.DapAn}</td>
+        <td class="text-center"><span class="badge bg-secondary">${d.DapAn}</span></td>
+        <td class="text-center">
+            <div class="d-flex gap-2 justify-content-center">
+                <button type="button" class="btn btn-link p-0 text-warning btn-edit" title="Sửa">
+                    <i class="bi bi-pencil-fill"></i>
+                </button>
+                <button type="button" class="btn btn-link p-0 text-danger btn-delete" title="Xóa">
+                    <i class="bi bi-trash-fill"></i>
+                </button>
+            </div>
+        </td>
     `;
 
     Object.assign(selectedRow.dataset, {
@@ -338,11 +385,9 @@ function validateQuestionInputs() {
 
     const btnThem = document.getElementById("btnThem");
     const btnSua = document.getElementById("btnSua");
-    const btnXoa = document.getElementById("btnXoa");
 
     const wrapThem = document.getElementById("wrapThem");
     const wrapSua = document.getElementById("wrapSua");
-    const wrapXoa = document.getElementById("wrapXoa");
 
     let valid = true;
     let message = "";
@@ -385,14 +430,7 @@ function validateQuestionInputs() {
         wrapThem.title = message;
         wrapSua.title = message;
     }
-
-    if (selectedRow) {
-        btnXoa.removeAttribute("disabled");
-        wrapXoa.removeAttribute("title");
-    } else {
-        btnXoa.setAttribute("disabled", "true");
-        wrapXoa.title = "Vui lòng chọn câu hỏi cần xóa";
-    }
+    checkDuplicateQuestions();
 }
 
 function updateSaveButtonState() {
@@ -761,6 +799,37 @@ function validateExcelData(rawData) {
                 match.error = `Môn học "${match.maMH}" không tồn tại`;
             }
         });
+
+        // Check similarity for all candidate rows
+        const existingRows = Array.from(document.querySelectorAll("#tbl tbody tr"));
+        
+        processedRows.forEach((row, i) => {
+            if (row.error) return;
+
+            // 1. Compare with existing database questions
+            for (let j = 0; j < existingRows.length; j++) {
+                const exNoiDung = existingRows[j].dataset.noidung || "";
+                const exId = existingRows[j].dataset.id;
+                const similarity = SimilarityEngine.calculateSimilarity(row.noiDung, exNoiDung);
+                if (similarity >= 0.8) {
+                    row.error = `Trùng câu hỏi ${exId > 0 ? exId : 'tạm thời'} (${Math.round(similarity * 100)}%)`;
+                    return;
+                }
+            }
+
+            // 2. Compare with other successfully validated rows in this excel import list (before this index)
+            for (let k = 0; k < i; k++) {
+                const prevRow = processedRows[k];
+                if (prevRow.error) continue;
+                
+                const similarity = SimilarityEngine.calculateSimilarity(row.noiDung, prevRow.noiDung);
+                if (similarity >= 0.8) {
+                    row.error = `Trùng với dòng ${prevRow.rowNum} trong file (${Math.round(similarity * 100)}%)`;
+                    return;
+                }
+            }
+        });
+
         renderPreview(processedRows);
     })
     .catch(err => {
@@ -847,10 +916,20 @@ function confirmImport() {
 
         row.innerHTML = `
             <td>...</td>
-            <td>${item.NoiDung}</td>
+            <td class="text-truncate" style="max-width: 250px;">${item.NoiDung}</td>
             <td>${item.MaMH}</td>
             <td>${item.TrinhDo}</td>
-            <td>${item.DapAn}</td>
+            <td class="text-center"><span class="badge bg-secondary">${item.DapAn}</span></td>
+            <td class="text-center">
+                <div class="d-flex gap-2 justify-content-center">
+                    <button type="button" class="btn btn-link p-0 text-warning btn-edit" title="Sửa">
+                        <i class="bi bi-pencil-fill"></i>
+                    </button>
+                    <button type="button" class="btn btn-link p-0 text-danger btn-delete" title="Xóa">
+                        <i class="bi bi-trash-fill"></i>
+                    </button>
+                </div>
+            </td>
         `;
 
         newItems.push({ CauHoi: id, ...item });
@@ -954,4 +1033,175 @@ function hienXacNhan(message, onConfirm, title = "Xác nhận") {
     modalEl.addEventListener('hidden.bs.modal', onHidden);
 
     bsModal.show();
+}
+
+// --- Similarity Detection Engine ---
+const SimilarityEngine = {
+    stripDiacritics(str) {
+        if (!str) return "";
+        return str
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/đ/g, "d")
+            .replace(/Đ/g, "D");
+    },
+
+    tokenize(str, removeTone = false) {
+        if (!str) return [];
+        let normalized = str.toLowerCase();
+        if (removeTone) {
+            normalized = this.stripDiacritics(normalized);
+        }
+        normalized = normalized
+            .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?"']/g, " ")
+            .replace(/\s+/g, " ")
+            .trim();
+        return normalized.split(" ").filter(t => t.length > 0);
+    },
+
+    cosine(str1, str2, removeTone = false) {
+        const tokens1 = this.tokenize(str1, removeTone);
+        const tokens2 = this.tokenize(str2, removeTone);
+        if (tokens1.length === 0 || tokens2.length === 0) return 0;
+
+        const freqMap1 = {};
+        const freqMap2 = {};
+        const allTokens = new Set([...tokens1, ...tokens2]);
+
+        tokens1.forEach(t => freqMap1[t] = (freqMap1[t] || 0) + 1);
+        tokens2.forEach(t => freqMap2[t] = (freqMap2[t] || 0) + 1);
+
+        let dotProduct = 0;
+        let mag1 = 0;
+        let mag2 = 0;
+
+        allTokens.forEach(t => {
+            const v1 = freqMap1[t] || 0;
+            const v2 = freqMap2[t] || 0;
+            dotProduct += v1 * v2;
+            mag1 += v1 * v1;
+            mag2 += v2 * v2;
+        });
+
+        if (mag1 === 0 || mag2 === 0) return 0;
+        return dotProduct / (Math.sqrt(mag1) * Math.sqrt(mag2));
+    },
+
+    calculateSimilarity(str1, str2) {
+        if (!str1 || !str2) return 0;
+        const simTone = this.cosine(str1, str2, false);
+        const simNoTone = this.cosine(str1, str2, true);
+        return Math.max(simTone, simNoTone);
+    }
+};
+
+function checkDuplicateQuestions() {
+    const inputVal = document.getElementById("txtNoiDung").value.trim();
+    const warningPanel = document.getElementById("duplicateWarningPanel");
+    const warningList = document.getElementById("duplicateWarningList");
+    const warningCount = document.getElementById("duplicateWarningCount");
+
+    if (!warningPanel || !warningList || !warningCount) return;
+
+    if (inputVal.length < 5) {
+        warningPanel.style.display = "none";
+        warningList.innerHTML = "";
+        return;
+    }
+
+    const currentId = selectedRow ? parseInt(selectedRow.dataset.id) : null;
+    const duplicates = [];
+
+    const rows = Array.from(document.querySelectorAll("#tbl tbody tr"));
+    rows.forEach(r => {
+        const id = parseInt(r.dataset.id);
+        if (currentId !== null && id === currentId) {
+            return;
+        }
+
+        const noiDung = r.dataset.noidung || "";
+        if (!noiDung) return;
+
+        const similarity = SimilarityEngine.calculateSimilarity(inputVal, noiDung);
+        if (similarity >= 0.5) {
+            duplicates.push({
+                id: id,
+                noiDung: noiDung,
+                similarity: similarity
+            });
+        }
+    });
+
+    duplicates.sort((a, b) => b.similarity - a.similarity);
+
+    if (duplicates.length === 0) {
+        warningPanel.style.display = "none";
+        warningList.innerHTML = "";
+        return;
+    }
+
+    warningCount.textContent = `${duplicates.length} trùng`;
+    warningList.innerHTML = "";
+
+    duplicates.slice(0, 5).forEach(dup => {
+        const percentage = Math.round(dup.similarity * 100);
+        let badgeClass = "bg-warning text-dark";
+        let badgeText = "Trùng vừa";
+
+        if (percentage >= 85) {
+            badgeClass = "bg-danger text-white";
+            badgeText = "Trùng rất cao";
+        } else if (percentage >= 70) {
+            badgeClass = "bg-orange text-white";
+            badgeText = "Trùng cao";
+        }
+
+        const item = document.createElement("div");
+        item.className = "duplicate-item p-2 border-bottom border-light rounded d-flex justify-content-between align-items-center bg-white shadow-sm";
+        item.onclick = () => navigateToQuestionRow(dup.id);
+        
+        const badgeStyle = percentage >= 70 && percentage < 85 ? 'style="background-color: #fd7e14; color: white;"' : '';
+
+        item.innerHTML = `
+            <div class="text-start pe-2" style="max-width: 78%;">
+                <div class="small fw-semibold text-primary">Câu ${dup.id > 0 ? dup.id : 'tạm thời'}</div>
+                <div class="small text-truncate text-secondary" style="max-width: 100%;" title="${dup.noiDung.replace(/"/g, '&quot;')}">${dup.noiDung}</div>
+            </div>
+            <div class="text-end">
+                <span class="badge ${badgeClass} rounded-pill" ${badgeStyle} style="font-size: 0.7rem;">${percentage}% - ${badgeText}</span>
+            </div>
+        `;
+        warningList.appendChild(item);
+    });
+
+    warningPanel.style.display = "block";
+}
+
+function navigateToQuestionRow(targetId) {
+    const rows = Array.from(document.querySelectorAll("#tbl tbody tr:not(.search-hidden)"));
+    const idx = rows.findIndex(r => parseInt(r.dataset.id) === parseInt(targetId));
+    if (idx >= 0) {
+        const page = Math.floor(idx / rowsPerPage) + 1;
+        currentPage = page;
+        updatePagination();
+
+        const targetRow = rows[idx];
+        document.querySelectorAll("#tbl tbody tr").forEach(x => x.classList.remove("table-active"));
+        targetRow.classList.add("table-active");
+        selectedRow = targetRow;
+        fillQuestionForm(targetRow);
+
+        targetRow.classList.remove("row-highlight-pulse");
+        void targetRow.offsetWidth;
+        targetRow.classList.add("row-highlight-pulse");
+
+        targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } else {
+        const txtSearch = document.getElementById("txtSearch");
+        if (txtSearch && txtSearch.value) {
+            txtSearch.value = "";
+            executeQuestionSearch();
+            navigateToQuestionRow(targetId);
+        }
+    }
 }

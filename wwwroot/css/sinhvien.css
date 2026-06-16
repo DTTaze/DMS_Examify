@@ -5,22 +5,26 @@
     border-color: #dee2e6 !important;
 }
 
-.table-responsive::-webkit-scrollbar {
+.table-responsive::-webkit-scrollbar,
+.class-list-container::-webkit-scrollbar {
     width: 6px;
     height: 6px;
 }
 
-.table-responsive::-webkit-scrollbar-track {
+.table-responsive::-webkit-scrollbar-track,
+.class-list-container::-webkit-scrollbar-track {
     background: #f1f3f5;
     border-radius: 4px;
 }
 
-.table-responsive::-webkit-scrollbar-thumb {
+.table-responsive::-webkit-scrollbar-thumb,
+.class-list-container::-webkit-scrollbar-thumb {
     background: #ced4da;
     border-radius: 4px;
 }
 
-.table-responsive::-webkit-scrollbar-thumb:hover {
+.table-responsive::-webkit-scrollbar-thumb:hover,
+.class-list-container::-webkit-scrollbar-thumb:hover {
     background: #adb5bd;
 }
 
@@ -124,3 +128,25 @@
     border-color: transparent;
     box-shadow: 0 2px 4px rgba(13, 110, 253, 0.2);
 }
+
+/* Gray color for disabled buttons */
+.btn:disabled,
+.btn[disabled],
+.btn.disabled {
+    background: #e9ecef !important;
+    border-color: #dee2e6 !important;
+    color: #6c757d !important;
+    opacity: 0.85 !important;
+    cursor: not-allowed !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* Lock style for disabled inputs */
+input:disabled,
+input[readonly] {
+    background-color: #e9ecef !important;
+    cursor: not-allowed !important;
+    color: #495057 !important;
+}
+

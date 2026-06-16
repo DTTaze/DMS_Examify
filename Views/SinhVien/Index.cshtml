@@ -10,8 +10,8 @@
 }
 
 <div class="row g-4">
-    <!-- CLASS SUBFORM (Left) -->
-    <div class="col-md-4">
+    <!-- CLASS SUBFORM (Top) -->
+    <div class="col-12">
         <div class="card shadow-sm border-0 rounded-3">
             <div class="card-header bg-white py-3 border-bottom border-light">
                 <h5 class="card-title mb-0 fw-bold text-dark">
@@ -19,36 +19,67 @@
                 </h5>
             </div>
             <div class="card-body">
-                <div class="mb-3">
-                    <label class="form-label small fw-medium text-secondary">Mã lớp</label>
-                    <input id="txtMaLop" class="form-control shadow-none" placeholder="Mã lớp (ví dụ: D15CQCN01)" />
-                </div>
-                <div class="mb-4">
-                    <label class="form-label small fw-medium text-secondary">Tên lớp</label>
-                    <input id="txtTenLop" class="form-control shadow-none" placeholder="Tên lớp (ví dụ: Công nghệ thông tin 1)" />
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label small fw-medium text-secondary">Mã lớp</label>
+                        <input id="txtMaLop" class="form-control shadow-none" placeholder="Mã lớp (ví dụ: D15CQCN01)" />
+                        <span id="errMaLop" class="text-danger small mt-1 d-block"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-medium text-secondary">Tên lớp</label>
+                        <input id="txtTenLop" class="form-control shadow-none" placeholder="Tên lớp (ví dụ: Công nghệ thông tin 1)" />
+                        <span id="errTenLop" class="text-danger small mt-1 d-block"></span>
+                    </div>
                 </div>
 
                 <div class="d-flex gap-2 mb-4 flex-wrap">
-                    <button class="btn btn-primary btn-sm px-3 animate-btn" onclick="themLop()">
-                        <i class="bi bi-plus-lg me-1"></i> Thêm
+                    <span id="wrapThemLop" class="d-inline-block">
+                        <button class="btn btn-primary btn-sm px-3 animate-btn" id="btnThemLop" onclick="themLop()">
+                            <i class="bi bi-plus-lg me-1"></i> Thêm
+                        </button>
+                    </span>
+                    <span id="wrapSuaLop" class="d-inline-block">
+                        <button class="btn btn-warning btn-sm px-3 text-white animate-btn" id="btnSuaLop" onclick="suaLop()">
+                            <i class="bi bi-pencil-square me-1"></i> Sửa
+                        </button>
+                    </span>
+
+                    <button type="button" class="btn btn-secondary btn-sm px-3 animate-btn" onclick="clickResetLop()">
+                        <i class="bi bi-arrow-clockwise me-1"></i> Reset
                     </button>
-                    <button class="btn btn-warning btn-sm px-3 text-white animate-btn" onclick="suaLop()">
-                        <i class="bi bi-pencil-square me-1"></i> Sửa
+                    <button type="button" class="btn btn-info btn-sm px-3 text-white animate-btn" id="btnUndoLop" onclick="undoLop()" disabled>
+                        <i class="bi bi-arrow-counterclockwise me-1"></i> Undo
                     </button>
-                    <button class="btn btn-danger btn-sm px-3 animate-btn" onclick="xoaLop()">
-                        <i class="bi bi-trash me-1"></i> Xóa
+                    <button type="button" class="btn btn-info btn-sm px-3 text-white animate-btn" id="btnRedoLop" onclick="redoLop()" disabled>
+                        <i class="bi bi-arrow-clockwise me-1"></i> Redo
                     </button>
-                    <button class="btn btn-info btn-sm px-3 text-white animate-btn" onclick="undoLop()">
-                        <i class="bi bi-arrow-counterclockwise me-1"></i> Phục hồi
-                    </button>
-                    <button class="btn btn-success btn-sm px-3 animate-btn" onclick="ghiLop()">
-                        <i class="bi bi-check-circle me-1"></i> Ghi
-                    </button>
+                    <span id="wrapGhiLop" class="d-inline-block">
+                        <button type="button" class="btn btn-success btn-sm px-3 animate-btn" id="btnGhiLop" onclick="ghiLop()" disabled>
+                            <i class="bi bi-check-circle me-1"></i> Ghi
+                        </button>
+                    </span>
                 </div>
 
                 <hr class="text-muted opacity-25 mb-3" />
 
+                <!-- Search Class Input -->
+                <div class="input-group input-group-sm mb-3">
+                    <span class="input-group-text bg-white border-end-0 text-secondary"><i class="bi bi-search"></i></span>
+                    <input id="txtSearchLop" class="form-control border-start-0 shadow-none ps-0" placeholder="Tìm nhanh lớp học..." oninput="locLop()" />
+                    <button class="btn btn-outline-secondary border-start-0 d-none" type="button" id="btnClearSearchLop" onclick="clearSearchLop()">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+                
+                <div class="d-flex justify-content-between align-items-center mb-2 px-1">
+                    <span class="small text-secondary fw-medium" id="lblLopCount">Hiển thị @Model.Count/@Model.Count lớp</span>
+                </div>
+
                 <div class="class-list-container" style="max-height: 350px; overflow-y: auto;">
+                    <div id="lopEmptyState" class="text-center py-4 text-muted small d-none">
+                        <i class="bi bi-info-circle fs-5 d-block mb-2 text-secondary"></i>
+                        Không tìm thấy lớp học nào phù hợp.
+                    </div>
                     <ul class="list-group list-group-flush rounded-3" id="lopList">
                         @foreach (var lop in Model)
                         {
@@ -57,8 +88,15 @@
                                 data-tenlop="@lop.TenLop"
                                 onclick="chonLop(this)">
                                 <div class="d-flex justify-content-between align-items-center">
-                                    <span class="fw-semibold text-dark">@lop.TenLop</span>
-                                    <span class="badge bg-light text-secondary border border-light">@lop.MaLop</span>
+                                    <div>
+                                        <span class="fw-semibold text-dark">@lop.TenLop</span>
+                                        <span class="badge bg-light text-secondary border border-light ms-2">@lop.MaLop</span>
+                                    </div>
+                                    <div class="d-flex gap-2">
+                                        <button type="button" class="btn btn-link p-0 text-warning" onclick="editLopClick(event, this.closest('li'))" title="Sửa">
+                                            <i class="bi bi-pencil-fill fs-6"></i>
+                                        </button>
+                                    </div>
                                 </div>
                             </li>
                         }
@@ -68,8 +106,8 @@
         </div>
     </div>
 
-    <!-- STUDENT SUBFORM (Right) -->
-    <div class="col-md-8">
+    <!-- STUDENT SUBFORM (Bottom) -->
+    <div class="col-12">
         <div class="card shadow-sm border-0 rounded-3">
             <div class="card-header bg-white py-3 border-bottom border-light d-flex justify-content-between align-items-center flex-wrap gap-3">
                 <h5 class="card-title mb-0 fw-bold text-dark">
@@ -95,26 +133,32 @@
                     <div class="col-md-4">
                         <label class="form-label small fw-medium text-secondary">Mã sinh viên</label>
                         <input id="txtMaSV" class="form-control shadow-none" placeholder="Mã SV" />
+                        <span id="errMaSV" class="text-danger small mt-1 d-block"></span>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label small fw-medium text-secondary">Họ</label>
                         <input id="txtHo" class="form-control shadow-none" placeholder="Họ đệm" />
+                        <span id="errHo" class="text-danger small mt-1 d-block"></span>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label small fw-medium text-secondary">Tên</label>
                         <input id="txtTen" class="form-control shadow-none" placeholder="Tên" />
+                        <span id="errTen" class="text-danger small mt-1 d-block"></span>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label small fw-medium text-secondary">Ngày sinh</label>
                         <input id="txtNgaySinh" type="date" class="form-control shadow-none" />
+                        <span id="errNgaySinh" class="text-danger small mt-1 d-block"></span>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label small fw-medium text-secondary">Địa chỉ</label>
                         <input id="txtDiaChi" class="form-control shadow-none" placeholder="Địa chỉ" />
+                        <span id="errDiaChi" class="text-danger small mt-1 d-block"></span>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label small fw-medium text-secondary">Mật khẩu</label>
                         <input id="txtMatKhau" type="password" class="form-control shadow-none" placeholder="Mật khẩu tài khoản" />
+                        <span id="errMatKhau" class="text-danger small mt-1 d-block"></span>
                     </div>
                 </div>
 
@@ -130,11 +174,7 @@
                             <i class="bi bi-pencil-square me-1"></i> Sửa
                         </button>
                     </span>
-                    <span id="wrapXoaSV" class="d-inline-block">
-                        <button type="button" class="btn btn-danger btn-sm px-3 animate-btn" id="btnXoaSV" onclick="xoaSV()" disabled>
-                            <i class="bi bi-trash me-1"></i> Xóa
-                        </button>
-                    </span>
+
                     <button type="button" class="btn btn-secondary btn-sm px-3 animate-btn" onclick="resetStudentForm()">
                         <i class="bi bi-arrow-clockwise me-1"></i> Reset
                     </button>
@@ -161,6 +201,7 @@
                                 <th>Tên</th>
                                 <th>Ngày sinh</th>
                                 <th>Địa chỉ</th>
+                                <th class="text-center" style="width: 100px;">Hành động</th>
                             </tr>
                         </thead>
                         <tbody id="svTable">

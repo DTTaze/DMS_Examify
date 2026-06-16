@@ -186,3 +186,24 @@
     background: #adb5bd;
     color: #212529;
 }
+
+/* Gray color for disabled buttons */
+.btn:disabled,
+.btn[disabled],
+.btn.disabled {
+    background: #e9ecef !important;
+    border-color: #dee2e6 !important;
+    color: #6c757d !important;
+    opacity: 0.85 !important;
+    cursor: not-allowed !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* Lock style for disabled inputs */
+input:disabled,
+input[readonly] {
+    background-color: #e9ecef !important;
+    cursor: not-allowed !important;
+    color: #495057 !important;
+}
