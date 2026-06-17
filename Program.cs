@@ -10,6 +10,7 @@ builder.Services.AddScoped<DMS_Examify.Services.ILopService, DMS_Examify.Service
 builder.Services.AddScoped<DMS_Examify.Services.ISinhVienService, DMS_Examify.Services.SinhVienService>();
 builder.Services.AddScoped<DMS_Examify.Services.IMonHocService, DMS_Examify.Services.MonHocService>();
 builder.Services.AddScoped<DMS_Examify.Services.IBoDeService, DMS_Examify.Services.BoDeService>();
+builder.Services.AddScoped<DMS_Examify.Services.IGiaoVienService, DMS_Examify.Services.GiaoVienService>();
 builder.Services.AddScoped<DMS_Examify.Services.IAuthService, DMS_Examify.Services.AuthService>();
 
 

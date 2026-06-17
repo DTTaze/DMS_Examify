@@ -213,19 +213,15 @@ PRINT N'OK: usp_BoDe_Search đã được cập nhật.';
 GO
 
 CREATE OR ALTER PROCEDURE dbo.usp_GetCauHoiByGiangVien
-    @MAGV NVARCHAR(50) = NULL
+    @MAGV NCHAR(8) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
-    DECLARE @IsGV BIT = 0;
-
-    IF EXISTS (SELECT 1 FROM GIAOVIEN WHERE MAGV = @MAGV)
-        SET @IsGV = 1;
 
     SELECT CAUHOI, MAMH, TRINHDO, NOIDUNG,
            A, B, C, D, DAP_AN, MAGV
-    FROM BODE
-    WHERE @IsGV = 0
+    FROM dbo.BODE
+    WHERE @MAGV IS NULL
        OR MAGV = @MAGV
     ORDER BY CAUHOI;
 END
@@ -369,32 +365,6 @@ GO
 PRINT N'OK: usp_SinhVien_Search đã được cập nhật.';
 GO
 
-CREATE OR ALTER PROCEDURE dbo.usp_GiaoVien_Search
-    @Keyword NVARCHAR(250) = NULL
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    SELECT MAGV, HO, TEN, SODTLL, DIACHI
-    FROM GIAOVIEN
-    WHERE @Keyword IS NULL OR @Keyword = ''
-       OR MAGV   LIKE '%' + @Keyword + '%'
-       OR HO     LIKE '%' + @Keyword + '%'
-       OR TEN    LIKE '%' + @Keyword + '%'
-       OR SODTLL LIKE '%' + @Keyword + '%'
-       OR DIACHI LIKE '%' + @Keyword + '%'
-    OPTION (RECOMPILE);
-END
-GO
-
-GRANT EXECUTE ON dbo.usp_GiaoVien_Search TO [PGV];
-GO
-GRANT EXECUTE ON dbo.usp_GiaoVien_Search TO [Giangvien];
-GO
-
-PRINT N'OK: usp_GiaoVien_Search đã được cập nhật.';
-GO
-
 CREATE OR ALTER PROCEDURE dbo.usp_MonHoc_Search
     @Keyword NVARCHAR(250) = NULL
 AS
@@ -446,11 +416,11 @@ BEGIN
         b.MAGV,
         dbo.udf_LayHoTen(gv.HO, gv.TEN)       AS TenGV
     FROM [dbo].[BODE] b
-    JOIN      [dbo].[MONHOC]   mh ON RTRIM(b.MAMH) = RTRIM(mh.MAMH)
-    LEFT JOIN [dbo].[GIAOVIEN] gv ON RTRIM(b.MAGV) = RTRIM(gv.MAGV)
+    JOIN      [dbo].[MONHOC]   mh ON b.MAMH = mh.MAMH
+    LEFT JOIN [dbo].[GIAOVIEN] gv ON b.MAGV = gv.MAGV
     WHERE
-        (RTRIM(b.MAGV) = RTRIM(@MAGV) OR @MAGV IS NULL)
-        AND (RTRIM(b.MAMH) = RTRIM(@MAMH) OR @MAMH IS NULL)
+        (b.MAGV = @MAGV OR @MAGV IS NULL)
+        AND (b.MAMH = @MAMH OR @MAMH IS NULL)
         AND (b.TRINHDO = @TRINHDO OR @TRINHDO IS NULL)
         AND (
             @Keyword IS NULL
@@ -653,67 +623,183 @@ BEGIN
 END
 GO
 
-CREATE PROCEDURE dbo.usp_GiaoVien_GetAll
-AS
+IF COL_LENGTH('dbo.GIAOVIEN', 'TrangThai') IS NULL
 BEGIN
-    SET NOCOUNT ON;
-    SELECT MaGV, Ho, Ten, SoDTLL, DiaChi
-    FROM GIAOVIEN;
+    ALTER TABLE dbo.GIAOVIEN
+    ADD TrangThai BIT NOT NULL
+        CONSTRAINT DF_GIAOVIEN_TrangThai DEFAULT (1);
 END
 GO
 
-CREATE PROCEDURE dbo.usp_GiaoVien_Insert
-    @MaGV NVARCHAR(50),
-    @Ho NVARCHAR(100),
-    @Ten NVARCHAR(100),
-    @SoDTLL NVARCHAR(20),
-    @DiaChi NVARCHAR(250)
+IF NOT EXISTS (
+    SELECT 1
+    FROM sys.indexes
+    WHERE name = N'IX_GIAOVIEN_TrangThai_HO_TEN'
+      AND object_id = OBJECT_ID(N'dbo.GIAOVIEN')
+)
+BEGIN
+    CREATE NONCLUSTERED INDEX [IX_GIAOVIEN_TrangThai_HO_TEN]
+    ON [dbo].[GIAOVIEN] ([TrangThai] ASC, [HO] ASC, [TEN] ASC, [MAGV] ASC)
+    INCLUDE ([SODTLL], [DIACHI]);
+END
+GO
+
+IF NOT EXISTS (
+    SELECT 1
+    FROM sys.indexes
+    WHERE name = N'IX_GIAOVIEN_DANGKY_MAGV'
+      AND object_id = OBJECT_ID(N'dbo.GIAOVIEN_DANGKY')
+)
+BEGIN
+    CREATE NONCLUSTERED INDEX [IX_GIAOVIEN_DANGKY_MAGV]
+    ON [dbo].[GIAOVIEN_DANGKY] ([MAGV] ASC)
+    INCLUDE ([MAMH], [MALOP], [LAN]);
+END
+GO
+
+PRINT N'OK: Index GiaoVien soft-delete da san sang.';
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_GiaoVien_GetAll
 AS
 BEGIN
     SET NOCOUNT ON;
-    INSERT INTO GIAOVIEN (MaGV, Ho, Ten, SoDTLL, DiaChi)
+
+    SELECT MAGV AS MaGV, HO AS Ho, TEN AS Ten, SODTLL AS SoDTLL, DIACHI AS DiaChi
+    FROM dbo.vw_GiaoVien_DanhSach
+    ORDER BY HO, TEN, MAGV;
+END
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_GiaoVien_Insert
+    @MaGV   NCHAR(8),
+    @Ho     NVARCHAR(40),
+    @Ten    NVARCHAR(10),
+    @SoDTLL NCHAR(15) = NULL,
+    @DiaChi NVARCHAR(50) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    INSERT INTO dbo.GIAOVIEN (MAGV, HO, TEN, SODTLL, DIACHI)
     VALUES (@MaGV, @Ho, @Ten, @SoDTLL, @DiaChi);
 END
 GO
 
-CREATE PROCEDURE dbo.usp_GiaoVien_Update
-    @MaGV NVARCHAR(50),
-    @Ho NVARCHAR(100),
-    @Ten NVARCHAR(100),
-    @SoDTLL NVARCHAR(20),
-    @DiaChi NVARCHAR(250)
+CREATE OR ALTER PROCEDURE dbo.usp_GiaoVien_Update
+    @MaGV   NCHAR(8),
+    @Ho     NVARCHAR(40),
+    @Ten    NVARCHAR(10),
+    @SoDTLL NCHAR(15) = NULL,
+    @DiaChi NVARCHAR(50) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
-    UPDATE GIAOVIEN
-    SET Ho = @Ho, Ten = @Ten, SoDTLL = @SoDTLL, DiaChi = @DiaChi
-    WHERE MaGV = @MaGV;
+
+    UPDATE dbo.GIAOVIEN
+    SET HO = @Ho,
+        TEN = @Ten,
+        SODTLL = @SoDTLL,
+        DIACHI = @DiaChi
+    WHERE MAGV = @MaGV;
 END
 GO
 
-CREATE PROCEDURE dbo.usp_GiaoVien_Delete
-    @MaGV NVARCHAR(50)
+CREATE OR ALTER PROCEDURE dbo.usp_GiaoVien_Delete
+    @MaGV NCHAR(8)
 AS
 BEGIN
     SET NOCOUNT ON;
-    DELETE FROM GIAOVIEN WHERE MaGV = @MaGV;
+
+    IF EXISTS (SELECT 1 FROM dbo.BODE WHERE MAGV = @MaGV)
+       OR EXISTS (SELECT 1 FROM dbo.GIAOVIEN_DANGKY WHERE MAGV = @MaGV)
+    BEGIN
+        UPDATE dbo.GIAOVIEN
+        SET TrangThai = 0
+        WHERE MAGV = @MaGV;
+
+        RETURN;
+    END;
+
+    DELETE FROM dbo.GIAOVIEN
+    WHERE MAGV = @MaGV;
 END
 GO
 
-CREATE PROCEDURE dbo.usp_GiaoVien_Search
-    @Keyword NVARCHAR(250)
+CREATE OR ALTER PROCEDURE dbo.usp_GiaoVien_Search
+    @Keyword NVARCHAR(250) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
-    SELECT MaGV, Ho, Ten, SoDTLL, DiaChi
-    FROM GIAOVIEN
-    WHERE @Keyword IS NULL OR @Keyword = ''
-       OR MaGV LIKE '%' + @Keyword + '%'
-       OR Ho LIKE '%' + @Keyword + '%'
-       OR Ten LIKE '%' + @Keyword + '%'
-       OR SoDTLL LIKE '%' + @Keyword + '%'
-       OR DiaChi LIKE '%' + @Keyword + '%';
+
+    DECLARE @SearchKeyword NVARCHAR(250) = NULLIF(LTRIM(RTRIM(@Keyword)), N'');
+
+    IF @SearchKeyword IS NULL
+    BEGIN
+        SELECT MAGV AS MaGV, HO AS Ho, TEN AS Ten, SODTLL AS SoDTLL, DIACHI AS DiaChi
+        FROM dbo.vw_GiaoVien_DanhSach
+        ORDER BY HO, TEN, MAGV;
+
+        RETURN;
+    END;
+
+    SELECT MAGV AS MaGV, HO AS Ho, TEN AS Ten, SODTLL AS SoDTLL, DIACHI AS DiaChi
+    FROM dbo.vw_GiaoVien_DanhSach
+    WHERE MAGV = CONVERT(NCHAR(8), @SearchKeyword)
+       OR HO LIKE @SearchKeyword + N'%'
+       OR TEN LIKE @SearchKeyword + N'%'
+       OR SODTLL LIKE @SearchKeyword + N'%'
+       OR DIACHI LIKE @SearchKeyword + N'%'
+    ORDER BY HO, TEN, MAGV
+    OPTION (RECOMPILE);
 END
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_GiaoVien_GetExistingIds
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT MAGV
+    FROM dbo.GIAOVIEN
+    ORDER BY MAGV;
+END
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_GiaoVien_ExistsMaGV
+    @MaGV NCHAR(8)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT CASE
+        WHEN EXISTS (
+            SELECT 1
+            FROM dbo.GIAOVIEN
+            WHERE MAGV = @MaGV
+        )
+        THEN 1
+        ELSE 0
+    END;
+END
+GO
+
+GRANT EXECUTE ON dbo.usp_GiaoVien_GetAll TO [PGV];
+GO
+GRANT EXECUTE ON dbo.usp_GiaoVien_Insert TO [PGV];
+GO
+GRANT EXECUTE ON dbo.usp_GiaoVien_Update TO [PGV];
+GO
+GRANT EXECUTE ON dbo.usp_GiaoVien_Delete TO [PGV];
+GO
+GRANT EXECUTE ON dbo.usp_GiaoVien_Search TO [PGV];
+GO
+GRANT EXECUTE ON dbo.usp_GiaoVien_GetExistingIds TO [PGV];
+GO
+GRANT EXECUTE ON dbo.usp_GiaoVien_ExistsMaGV TO [PGV];
+GO
+
+PRINT N'OK: Da cap nhat SP va index GiaoVien.';
 GO
 
 CREATE OR ALTER PROCEDURE dbo.usp_SinhVien_GetAll
@@ -1197,7 +1283,7 @@ GO
 PRINT N'OK: Da tao usp_LayDanhSachQuyen_TaoTaiKhoan.';
 GO
 
-CREATE PROCEDURE [dbo].[usp_LayThongTinGiaoVienTheoMa]
+CREATE OR ALTER PROCEDURE [dbo].[usp_LayThongTinGiaoVienTheoMa]
     @MAGV NCHAR(8)
 AS
 BEGIN
@@ -1209,7 +1295,7 @@ BEGIN
         TEN,
         SODTLL,
         DIACHI
-    FROM Giaovien
+    FROM dbo.GIAOVIEN
     WHERE MAGV = @MAGV;
 END
 GO
@@ -1360,7 +1446,7 @@ GO
 PRINT N'OK: Da tao usp_ThucHienDangKyThi.';
 GO
 
-CREATE PROCEDURE usp_LayDanhSachDeThi
+CREATE OR ALTER PROCEDURE dbo.usp_LayDanhSachDeThi
     @MaGV NCHAR(8)
 AS
 BEGIN

@@ -137,16 +137,6 @@ function resetGiaoVienForm() {
 
 function bindRows() {
     document.querySelectorAll("#gvTable tr").forEach(row => {
-        row.onclick = (event) => {
-            if (event && (event.target.closest('.btn-edit') || event.target.closest('.btn-delete'))) {
-                return;
-            }
-            document.querySelectorAll("#gvTable tr").forEach(x => x.classList.remove("table-active"));
-            row.classList.add("table-active");
-            selectedRow = row;
-            fillGiaoVienForm(row);
-        };
-
         const editBtn = row.querySelector(".btn-edit");
         if (editBtn) {
             editBtn.onclick = (event) => {
@@ -491,7 +481,7 @@ function validateGiaoVienInputs() {
         );
 
         teacherDebounceTimer = setTimeout(() => {
-            const checkUrl = `/GiaoVien/CheckDuplicateTeacher?maGV=${encodeURIComponent(d.MaGV)}&isEditing=${isEditing}`;
+            const checkUrl = `/GiaoVien/CheckDuplicateForCreate?maGV=${encodeURIComponent(d.MaGV)}`;
 
             fetch(checkUrl)
                 .then(res => {

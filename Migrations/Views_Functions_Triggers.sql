@@ -4,7 +4,8 @@
 --   1. Function udf_LayHoTen (tu 005)
 --   2. View vw_SinhVienTheoLop (tu 010)
 --   3. View vw_BoDeCuaGiaoVien (tu 010)
---   4. Trigger trg_BODE_KiemTraTruocKhiXoa (tu 011)
+--   4. View vw_GiaoVien_DanhSach
+--   5. Trigger trg_BODE_KiemTraTruocKhiXoa (tu 011)
 -- ============================================================
 USE [THITRACNGHIEM]
 GO
@@ -81,14 +82,42 @@ SELECT
     dbo.udf_LayHoTen(gv.HO, gv.TEN) AS TenGV
 FROM [dbo].[BODE] b
 JOIN      [dbo].[MONHOC]   mh ON b.MAMH = mh.MAMH
-LEFT JOIN [dbo].[GIAOVIEN] gv ON RTRIM(b.MAGV) = RTRIM(gv.MAGV);
+LEFT JOIN [dbo].[GIAOVIEN] gv ON b.MAGV = gv.MAGV;
 GO
 
 PRINT N'OK: Da tao View vw_BoDeCuaGiaoVien.';
 GO
 
 -- ------------------------------------------------------------
--- 4. Trigger trg_BODE_KiemTraTruocKhiXoa
+-- 4. View vw_GiaoVien_DanhSach
+--    Projection dung chung cho man hinh quan ly giao vien
+-- ------------------------------------------------------------
+IF COL_LENGTH('dbo.GIAOVIEN', 'TrangThai') IS NULL
+BEGIN
+    ALTER TABLE dbo.GIAOVIEN
+    ADD TrangThai BIT NOT NULL
+        CONSTRAINT DF_GIAOVIEN_TrangThai DEFAULT (1);
+END
+GO
+
+CREATE OR ALTER VIEW [dbo].[vw_GiaoVien_DanhSach]
+AS
+SELECT
+    gv.MAGV,
+    gv.HO,
+    gv.TEN,
+    gv.SODTLL,
+    gv.DIACHI,
+    dbo.udf_LayHoTen(gv.HO, gv.TEN) AS HOTEN
+FROM [dbo].[GIAOVIEN] gv
+WHERE gv.TrangThai = 1;
+GO
+
+PRINT N'OK: Da tao View vw_GiaoVien_DanhSach.';
+GO
+
+-- ------------------------------------------------------------
+-- 5. Trigger trg_BODE_KiemTraTruocKhiXoa
 --    Chan xoa cau hoi neu mon hoc do dang co lich thi tuong lai
 -- ------------------------------------------------------------
 CREATE OR ALTER TRIGGER [dbo].[trg_BODE_KiemTraTruocKhiXoa]
@@ -101,7 +130,7 @@ BEGIN
     IF EXISTS (
         SELECT 1
         FROM deleted d
-        JOIN [dbo].[GIAOVIEN_DANGKY] gdk ON RTRIM(d.MAMH) = RTRIM(gdk.MAMH)
+        JOIN [dbo].[GIAOVIEN_DANGKY] gdk ON d.MAMH = gdk.MAMH
         WHERE gdk.NGAYTHI >= GETDATE()
     )
     BEGIN
