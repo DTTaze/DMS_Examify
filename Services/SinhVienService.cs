@@ -114,7 +114,7 @@ namespace DMS_Examify.Services
         {
             var ids = new HashSet<string>();
             using var conn = _connectionFactory.CreateConnection();
-            using var cmd = new SqlCommand("SELECT MASV FROM SINHVIEN", conn);
+            using var cmd = new SqlCommand("SELECT MASV FROM SINHVIEN WHERE TrangThai = 1", conn);
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
             {
@@ -131,7 +131,7 @@ namespace DMS_Examify.Services
         {
             if (string.IsNullOrWhiteSpace(maSV)) return false;
             using var conn = _connectionFactory.CreateConnection();
-            using var cmd = new SqlCommand("SELECT COUNT(1) FROM SINHVIEN WHERE MASV = @MASV", conn);
+            using var cmd = new SqlCommand("SELECT COUNT(1) FROM SINHVIEN WHERE MASV = @MASV AND TrangThai = 1", conn);
             cmd.Parameters.Add("@MASV", SqlDbType.NChar, 8).Value = maSV.Trim();
             return (int)cmd.ExecuteScalar() > 0;
         }

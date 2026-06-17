@@ -93,8 +93,8 @@ namespace DMS_Examify.Services
         {
             if (string.IsNullOrWhiteSpace(maLop)) return false;
             using var conn = _connectionFactory.CreateConnection();
-            using var cmd = new SqlCommand("SELECT COUNT(1) FROM LOP WHERE MALOP = @MALOP", conn);
-            cmd.Parameters.Add("@MALOP", SqlDbType.NChar, 15).Value = maLop.Trim();
+            using var cmd = new SqlCommand("SELECT COUNT(1) FROM LOP WHERE MALOP = @MALOP AND TrangThai = 1", conn);
+            cmd.Parameters.Add("@MALOP", SqlDbType.NChar, 8).Value = maLop.Trim();
             return (int)cmd.ExecuteScalar() > 0;
         }
 
@@ -102,8 +102,8 @@ namespace DMS_Examify.Services
         {
             if (string.IsNullOrWhiteSpace(tenLop)) return false;
             using var conn = _connectionFactory.CreateConnection();
-            using var cmd = new SqlCommand("SELECT COUNT(1) FROM LOP WHERE TENLOP = @TENLOP", conn);
-            cmd.Parameters.Add("@TENLOP", SqlDbType.NVarChar, 50).Value = tenLop.Trim();
+            using var cmd = new SqlCommand("SELECT COUNT(1) FROM LOP WHERE TENLOP = @TENLOP AND TrangThai = 1", conn);
+            cmd.Parameters.Add("@TENLOP", SqlDbType.NVarChar, 40).Value = tenLop.Trim();
             return (int)cmd.ExecuteScalar() > 0;
         }
 
@@ -111,9 +111,9 @@ namespace DMS_Examify.Services
         {
             if (string.IsNullOrWhiteSpace(tenLop)) return false;
             using var conn = _connectionFactory.CreateConnection();
-            using var cmd = new SqlCommand("SELECT COUNT(1) FROM LOP WHERE TENLOP = @TENLOP AND MALOP <> @MALOP", conn);
-            cmd.Parameters.Add("@TENLOP", SqlDbType.NVarChar, 50).Value = tenLop.Trim();
-            cmd.Parameters.Add("@MALOP", SqlDbType.NChar, 15).Value = maLop.Trim();
+            using var cmd = new SqlCommand("SELECT COUNT(1) FROM LOP WHERE TENLOP = @TENLOP AND MALOP <> @MALOP AND TrangThai = 1", conn);
+            cmd.Parameters.Add("@TENLOP", SqlDbType.NVarChar, 40).Value = tenLop.Trim();
+            cmd.Parameters.Add("@MALOP", SqlDbType.NChar, 8).Value = maLop.Trim();
             return (int)cmd.ExecuteScalar() > 0;
         }
     }

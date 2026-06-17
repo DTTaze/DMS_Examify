@@ -44,7 +44,7 @@ namespace DMS_Examify.Controllers
         [HttpPost]
         public IActionResult DeleteLop(string maLop)
         {
-            if (!CheckRole("PGV", "Giangvien")) return Denied();
+            if (!CheckRole("PGV")) return Denied();
 
             _lopService.Delete(maLop);
             return Ok();
@@ -53,6 +53,8 @@ namespace DMS_Examify.Controllers
         [HttpGet]
         public IActionResult SearchLop(string keyword)
         {
+            if (!CheckRole("PGV")) return Denied();
+
             var classes = _lopService.Search(keyword);
             return Json(classes);
         }
@@ -60,6 +62,8 @@ namespace DMS_Examify.Controllers
         [HttpGet]
         public IActionResult Search(string keyword)
         {
+            if (!CheckRole("PGV")) return Denied();
+
             var students = _sinhVienService.Search(keyword);
             return Json(students);
         }
@@ -67,6 +71,8 @@ namespace DMS_Examify.Controllers
         [HttpPost]
         public IActionResult Insert([FromBody] SinhVien model)
         {
+            if (!CheckRole("PGV")) return Denied();
+
             _sinhVienService.Insert(model);
             return Ok();
         }
@@ -74,6 +80,8 @@ namespace DMS_Examify.Controllers
         [HttpPost]
         public IActionResult Update([FromBody] SinhVien model)
         {
+            if (!CheckRole("PGV")) return Denied();
+
             _sinhVienService.Update(model);
             return Ok();
         }
@@ -81,6 +89,8 @@ namespace DMS_Examify.Controllers
         [HttpPost]
         public IActionResult Delete(string maSV)
         {
+            if (!CheckRole("PGV")) return Denied();
+
             _sinhVienService.Delete(maSV);
             return Ok();
         }
@@ -88,6 +98,8 @@ namespace DMS_Examify.Controllers
         [HttpGet]
         public IActionResult GetByLop(string maLop)
         {
+            if (!CheckRole("PGV")) return Denied();
+
             var students = _sinhVienService.GetByLop(maLop);
             return Json(students);
         }

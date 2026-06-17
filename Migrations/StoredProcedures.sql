@@ -11,6 +11,22 @@
 USE [THITRACNGHIEM]
 GO
 
+IF COL_LENGTH('dbo.LOP', 'TrangThai') IS NULL
+BEGIN
+    ALTER TABLE dbo.LOP
+    ADD TrangThai BIT NOT NULL
+        CONSTRAINT DF_LOP_TrangThai DEFAULT (1);
+END
+GO
+
+IF COL_LENGTH('dbo.SINHVIEN', 'TrangThai') IS NULL
+BEGIN
+    ALTER TABLE dbo.SINHVIEN
+    ADD TrangThai BIT NOT NULL
+        CONSTRAINT DF_SINHVIEN_TrangThai DEFAULT (1);
+END
+GO
+
 -- ------------------------------------------------------------
 -- 1. usp_TaiKhoan_LayThongTin
 -- ------------------------------------------------------------
@@ -88,7 +104,13 @@ BEGIN
         RETURN;
     END
 
-    IF NOT EXISTS (SELECT 1 FROM SINHVIEN WHERE MASV = @MASV AND MATKHAU = @PASSWORD)
+    IF EXISTS (SELECT 1 FROM SINHVIEN WHERE MASV = @MASV AND TrangThai = 0)
+    BEGIN
+        RAISERROR(N'Tài khoản Sinh viên đã ngừng sử dụng!', 16, 1);
+        RETURN;
+    END
+
+    IF NOT EXISTS (SELECT 1 FROM SINHVIEN WHERE MASV = @MASV AND MATKHAU = @PASSWORD AND TrangThai = 1)
     BEGIN
         RAISERROR(N'Mật khẩu đăng nhập không chính xác!', 16, 1);
         RETURN;
@@ -96,7 +118,7 @@ BEGIN
 
     SELECT MASV, HO, TEN, MALOP
     FROM SINHVIEN
-    WHERE MASV = @MASV AND MATKHAU = @PASSWORD;
+    WHERE MASV = @MASV AND MATKHAU = @PASSWORD AND TrangThai = 1;
 END
 GO
 
@@ -269,9 +291,10 @@ BEGIN
 
     SELECT MALOP, TENLOP
     FROM LOP
-    WHERE @KEYWORD IS NULL OR @KEYWORD = ''
-       OR MALOP  LIKE '%' + @KEYWORD + '%'
-       OR TENLOP LIKE '%' + @KEYWORD + '%'
+    WHERE TrangThai = 1
+      AND (@KEYWORD IS NULL OR @KEYWORD = ''
+           OR MALOP  LIKE '%' + @KEYWORD + '%'
+           OR TENLOP LIKE '%' + @KEYWORD + '%')
     ORDER BY MALOP
     OPTION (RECOMPILE);
 END
@@ -296,19 +319,20 @@ BEGIN
 
     SELECT MASV, HO, TEN, NGAYSINH, DIACHI, MALOP, MATKHAU
     FROM SINHVIEN
-    WHERE @Keyword IS NULL OR @Keyword = ''
-       OR MASV   LIKE '%' + @Keyword + '%'
-       OR HO     LIKE '%' + @Keyword + '%'
-       OR TEN    LIKE '%' + @Keyword + '%'
-       OR DIACHI LIKE '%' + @Keyword + '%'
-       OR MALOP  LIKE '%' + @Keyword + '%'
+    WHERE TrangThai = 1
+      AND (@Keyword IS NULL OR @Keyword = ''
+           OR MASV   LIKE '%' + @Keyword + '%'
+           OR HO     LIKE '%' + @Keyword + '%'
+           OR TEN    LIKE '%' + @Keyword + '%'
+           OR DIACHI LIKE '%' + @Keyword + '%'
+           OR MALOP  LIKE '%' + @Keyword + '%')
     OPTION (RECOMPILE);
 END
 GO
 
 GRANT EXECUTE ON dbo.usp_SinhVien_Search TO [PGV];
 GO
-GRANT EXECUTE ON dbo.usp_SinhVien_Search TO [Giangvien];
+REVOKE EXECUTE ON dbo.usp_SinhVien_Search FROM [Giangvien];
 GO
 
 PRINT N'OK: usp_SinhVien_Search đã được cập nhật.';
@@ -713,7 +737,8 @@ AS
 BEGIN
     SET NOCOUNT ON;
     SELECT MaSV, Ho, Ten, NgaySinh, DiaChi, MaLop, MatKhau
-    FROM SINHVIEN;
+    FROM SINHVIEN
+    WHERE TrangThai = 1;
 END
 GO
 
@@ -721,13 +746,14 @@ GRANT EXECUTE ON [dbo].[usp_SinhVien_GetAll] TO [PGV]
 GO
 
 CREATE PROCEDURE dbo.usp_SinhVien_GetByLop
-    @MaLop NVARCHAR(50)
+    @MaLop NCHAR(8)
 AS
 BEGIN
     SET NOCOUNT ON;
     SELECT MaSV, Ho, Ten, NgaySinh, DiaChi, MaLop, MatKhau
     FROM SINHVIEN
-    WHERE MaLop = @MaLop;
+    WHERE MaLop = @MaLop
+      AND TrangThai = 1;
 END
 GO
 
@@ -735,32 +761,71 @@ GRANT EXECUTE ON [dbo].[usp_SinhVien_GetByLop] TO [PGV]
 GO
 
 CREATE PROCEDURE dbo.usp_SinhVien_Insert
-    @MaSV NVARCHAR(50),
-    @Ho NVARCHAR(100),
-    @Ten NVARCHAR(100),
+    @MaSV NCHAR(8),
+    @Ho NVARCHAR(40),
+    @Ten NVARCHAR(10),
     @NgaySinh DATE,
-    @DiaChi NVARCHAR(250),
-    @MaLop NVARCHAR(50),
+    @DiaChi NVARCHAR(100),
+    @MaLop NCHAR(8),
     @MatKhau NVARCHAR(128)
 AS
 BEGIN
     SET NOCOUNT ON;
-    INSERT INTO SINHVIEN (MaSV, Ho, Ten, NgaySinh, DiaChi, MaLop, MatKhau)
-    VALUES (@MaSV, @Ho, @Ten, @NgaySinh, @DiaChi, @MaLop, @MatKhau);
+
+    IF NOT EXISTS (SELECT 1 FROM LOP WHERE MALOP = @MaLop AND TrangThai = 1)
+    BEGIN
+        RAISERROR(N'Lop khong ton tai hoac da ngung su dung', 16, 1);
+        RETURN;
+    END
+
+    IF EXISTS (SELECT 1 FROM SINHVIEN WHERE MASV = @MaSV)
+    BEGIN
+        UPDATE SINHVIEN
+        SET Ho = @Ho,
+            Ten = @Ten,
+            NgaySinh = @NgaySinh,
+            DiaChi = @DiaChi,
+            MaLop = @MaLop,
+            MatKhau = @MatKhau,
+            TrangThai = 1
+        WHERE MASV = @MaSV
+          AND TrangThai = 0;
+
+        IF @@ROWCOUNT = 0
+            RAISERROR(N'Ma sinh vien da ton tai', 16, 1);
+
+        RETURN;
+    END
+
+    INSERT INTO SINHVIEN (MaSV, Ho, Ten, NgaySinh, DiaChi, MaLop, MatKhau, TrangThai)
+    VALUES (@MaSV, @Ho, @Ten, @NgaySinh, @DiaChi, @MaLop, @MatKhau, 1);
 END
 GO
 
 CREATE PROCEDURE dbo.usp_SinhVien_Update
-    @MaSV NVARCHAR(50),
-    @Ho NVARCHAR(100),
-    @Ten NVARCHAR(100),
+    @MaSV NCHAR(8),
+    @Ho NVARCHAR(40),
+    @Ten NVARCHAR(10),
     @NgaySinh DATE,
-    @DiaChi NVARCHAR(250),
-    @MaLop NVARCHAR(50),
+    @DiaChi NVARCHAR(100),
+    @MaLop NCHAR(8),
     @MatKhau NVARCHAR(128)
 AS
 BEGIN
     SET NOCOUNT ON;
+
+    IF NOT EXISTS (SELECT 1 FROM SINHVIEN WHERE MASV = @MaSV AND TrangThai = 1)
+    BEGIN
+        RAISERROR(N'Khong tim thay sinh vien dang hoat dong', 16, 1);
+        RETURN;
+    END
+
+    IF NOT EXISTS (SELECT 1 FROM LOP WHERE MALOP = @MaLop AND TrangThai = 1)
+    BEGIN
+        RAISERROR(N'Lop khong ton tai hoac da ngung su dung', 16, 1);
+        RETURN;
+    END
+
     UPDATE SINHVIEN
     SET Ho = @Ho, Ten = @Ten, NgaySinh = @NgaySinh, DiaChi = @DiaChi, MaLop = @MaLop, MatKhau = @MatKhau
     WHERE MaSV = @MaSV;
@@ -768,10 +833,25 @@ END
 GO
 
 CREATE PROCEDURE dbo.usp_SinhVien_Delete
-    @MaSV NVARCHAR(50)
+    @MaSV NCHAR(8)
 AS
 BEGIN
     SET NOCOUNT ON;
+
+    IF NOT EXISTS (SELECT 1 FROM SINHVIEN WHERE MASV = @MaSV AND TrangThai = 1)
+    BEGIN
+        RAISERROR(N'Khong tim thay sinh vien dang hoat dong', 16, 1);
+        RETURN;
+    END
+
+    IF EXISTS (SELECT 1 FROM BANGDIEM WHERE MASV = @MaSV)
+    BEGIN
+        UPDATE SINHVIEN
+        SET TrangThai = 0
+        WHERE MASV = @MaSV;
+        RETURN;
+    END
+
     DELETE FROM SINHVIEN WHERE MaSV = @MaSV;
 END
 GO
@@ -783,12 +863,13 @@ BEGIN
     SET NOCOUNT ON;
     SELECT MaSV, Ho, Ten, NgaySinh, DiaChi, MaLop, MatKhau
     FROM SINHVIEN
-    WHERE @Keyword IS NULL OR @Keyword = ''
-       OR MaSV LIKE '%' + @Keyword + '%'
-       OR Ho LIKE '%' + @Keyword + '%'
-       OR Ten LIKE '%' + @Keyword + '%'
-       OR DiaChi LIKE '%' + @Keyword + '%'
-       OR MaLop LIKE '%' + @Keyword + '%';
+    WHERE TrangThai = 1
+      AND (@Keyword IS NULL OR @Keyword = ''
+           OR MaSV LIKE '%' + @Keyword + '%'
+           OR Ho LIKE '%' + @Keyword + '%'
+           OR Ten LIKE '%' + @Keyword + '%'
+           OR DiaChi LIKE '%' + @Keyword + '%'
+           OR MaLop LIKE '%' + @Keyword + '%');
 END
 GO
 
@@ -881,33 +962,41 @@ GO
 -- Stored Procedures for Lop
 -- ------------------------------------------------------------
 CREATE PROCEDURE usp_Lop_Insert
-    @MALOP NCHAR(15),
-    @TENLOP NVARCHAR(50)
+    @MALOP NCHAR(8),
+    @TENLOP NVARCHAR(40)
 AS
 BEGIN
     SET NOCOUNT ON;
 
     IF EXISTS (SELECT 1 FROM LOP WHERE MALOP = @MALOP)
     BEGIN
-        RAISERROR(N'Ma lop da ton tai', 16, 1);
+        UPDATE LOP
+        SET TENLOP = @TENLOP,
+            TrangThai = 1
+        WHERE MALOP = @MALOP
+          AND TrangThai = 0;
+
+        IF @@ROWCOUNT = 0
+            RAISERROR(N'Ma lop da ton tai', 16, 1);
+
         RETURN;
     END
 
-    INSERT INTO LOP(MALOP, TENLOP)
-    VALUES(@MALOP, @TENLOP);
+    INSERT INTO LOP(MALOP, TENLOP, TrangThai)
+    VALUES(@MALOP, @TENLOP, 1);
 END
 GO
 
 CREATE PROCEDURE usp_Lop_Update
-    @MALOP NCHAR(15),
-    @TENLOP NVARCHAR(50)
+    @MALOP NCHAR(8),
+    @TENLOP NVARCHAR(40)
 AS
 BEGIN
     SET NOCOUNT ON;
 
-    IF NOT EXISTS (SELECT 1 FROM LOP WHERE MALOP = @MALOP)
+    IF NOT EXISTS (SELECT 1 FROM LOP WHERE MALOP = @MALOP AND TrangThai = 1)
     BEGIN
-        RAISERROR(N'Khong tim thay lop', 16, 1);
+        RAISERROR(N'Khong tim thay lop dang hoat dong', 16, 1);
         RETURN;
     END
 
@@ -918,14 +1007,23 @@ END
 GO
 
 CREATE PROCEDURE usp_Lop_Delete
-    @MALOP NCHAR(15)
+    @MALOP NCHAR(8)
 AS
 BEGIN
     SET NOCOUNT ON;
 
-    IF NOT EXISTS (SELECT 1 FROM LOP WHERE MALOP = @MALOP)
+    IF NOT EXISTS (SELECT 1 FROM LOP WHERE MALOP = @MALOP AND TrangThai = 1)
     BEGIN
-        RAISERROR(N'Khong tim thay lop', 16, 1);
+        RAISERROR(N'Khong tim thay lop dang hoat dong', 16, 1);
+        RETURN;
+    END
+
+    IF EXISTS (SELECT 1 FROM SINHVIEN WHERE MALOP = @MALOP)
+       OR EXISTS (SELECT 1 FROM GIAOVIEN_DANGKY WHERE MALOP = @MALOP)
+    BEGIN
+        UPDATE LOP
+        SET TrangThai = 0
+        WHERE MALOP = @MALOP;
         RETURN;
     END
 
@@ -943,11 +1041,36 @@ BEGIN
         MALOP,
         TENLOP
     FROM LOP
+    WHERE TrangThai = 1
     ORDER BY MALOP;
 END
 GO
 
 GRANT EXECUTE ON [dbo].[usp_Lop_GetAll] TO [PGV]
+GO
+GRANT EXECUTE ON [dbo].[usp_Lop_Insert] TO [PGV]
+GO
+GRANT EXECUTE ON [dbo].[usp_Lop_Update] TO [PGV]
+GO
+GRANT EXECUTE ON [dbo].[usp_Lop_Delete] TO [PGV]
+GO
+GRANT EXECUTE ON [dbo].[usp_SinhVien_Insert] TO [PGV]
+GO
+GRANT EXECUTE ON [dbo].[usp_SinhVien_Update] TO [PGV]
+GO
+GRANT EXECUTE ON [dbo].[usp_SinhVien_Delete] TO [PGV]
+GO
+REVOKE EXECUTE ON [dbo].[usp_Lop_Delete] FROM [Giangvien]
+GO
+REVOKE EXECUTE ON [dbo].[usp_SinhVien_GetAll] FROM [Giangvien]
+GO
+REVOKE EXECUTE ON [dbo].[usp_SinhVien_GetByLop] FROM [Giangvien]
+GO
+REVOKE EXECUTE ON [dbo].[usp_SinhVien_Insert] FROM [Giangvien]
+GO
+REVOKE EXECUTE ON [dbo].[usp_SinhVien_Update] FROM [Giangvien]
+GO
+REVOKE EXECUTE ON [dbo].[usp_SinhVien_Delete] FROM [Giangvien]
 GO
 
 PRINT N'OK: Da tao toan bo SP CRUD (MonHoc, GiaoVien, SinhVien, BoDe, Lop).';
@@ -1275,6 +1398,7 @@ BEGIN
         MALOP,
         TENLOP
     FROM dbo.LOP
+    WHERE TrangThai = 1
     ORDER BY MALOP ASC;
 END
 GO
