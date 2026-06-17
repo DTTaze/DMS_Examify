@@ -1,57 +1,29 @@
 using DMS_Examify.Models;
+using DMS_Examify.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
-using Microsoft.Extensions.Configuration;
-using System.Data;
 
 namespace DMS_Examify.Controllers
 {
     public class AuthController : Controller
     {
-        // Role Constants
         private const string StudentLoginType = "SinhVien";
         private const string StudentRoleName = "Sinhvien";
 
-        // Session Key Constants
         private const string SessionKeyUserRole = "UserRole";
         private const string SessionKeyUserName = "UserName";
         private const string SessionKeyUserLogin = "UserLogin";
         private const string SessionKeyMaLop = "MaLop";
         private const string SessionKeyDbConnectionString = "DbConnectionString";
 
-        // Database Columns Constants
-        private const string ColumnUserName = "USERNAME";
-        private const string ColumnHoTen = "HOTEN";
-        private const string ColumnTenNhom = "ROLENAME";
-        private const string ColumnMaSv = "MaSV";
-        private const string ColumnHo = "Ho";
-        private const string ColumnTen = "Ten";
-        private const string ColumnMaLop = "MaLop";
-
-        // Error Message Constants
         private const string ErrorStudentNotFound = "Mã SV hoặc mật khẩu không đúng.";
         private const string ErrorLecturerNotFound = "Tên đăng nhập hoặc mật khẩu giảng viên không đúng.";
 
-        private readonly string _templateConnection;
-        private readonly string _studentConnection;
+        private readonly IAuthService _authService;
 
-        public AuthController(IConfiguration configuration)
+        public AuthController(IAuthService authService)
         {
-            _templateConnection = configuration.GetConnectionString("DatabaseTemplate")
-                ?? string.Empty;
-
-            var studentUser = configuration["StudentCredentials:DefaultUser"] ?? "sv";
-            var studentPassword = configuration["StudentCredentials:DefaultPassword"] ?? "sv";
-
-            var builder = new SqlConnectionStringBuilder(_templateConnection)
-            {
-                IntegratedSecurity = false,
-                UserID = studentUser,
-                Password = studentPassword,
-                TrustServerCertificate = true,
-            };
-
-            _studentConnection = builder.ConnectionString;
+            _authService = authService;
         }
 
         public IActionResult Login()
@@ -62,6 +34,7 @@ namespace DMS_Examify.Controllers
             }
             return View(new LoginViewModel());
         }
+
         [HttpPost]
         public IActionResult Login(LoginViewModel model)
         {
@@ -105,20 +78,20 @@ namespace DMS_Examify.Controllers
 
         private bool IsUserLoggedIn()
         {
-            return !string.IsNullOrEmpty(HttpContext.Session.GetString(SessionKeyUserRole));
+            return !string.IsNullOrEmpty(GetSessionValue(SessionKeyUserRole));
         }
 
         private string? ProcessStudentLogin(LoginViewModel model)
         {
             try
             {
-                var sinhVien = ValidateSinhVien(model.Login, model.Password);
-                if (sinhVien == null)
+                var student = _authService.ValidateStudent(model.Login, model.Password);
+                if (student == null)
                 {
                     return ErrorStudentNotFound;
                 }
 
-                SetStudentSession(sinhVien);
+                SetStudentSession(student);
                 return null;
             }
             catch (SqlException ex)
@@ -131,13 +104,13 @@ namespace DMS_Examify.Controllers
         {
             try
             {
-                var giangVien = ValidateGiangVien(model.Login, model.Password);
-                if (giangVien == null || string.IsNullOrEmpty(giangVien.Value.Role))
+                var lecturer = _authService.ValidateLecturer(model.Login, model.Password);
+                if (lecturer == null || string.IsNullOrEmpty(lecturer.Role))
                 {
                     return ErrorLecturerNotFound;
                 }
 
-                SetLecturerSession(giangVien.Value, model.Login, model.Password);
+                SetLecturerSession(lecturer, model.Login, model.Password);
                 return null;
             }
             catch (SqlException ex) when (ex.Number == 18456)
@@ -149,88 +122,28 @@ namespace DMS_Examify.Controllers
                 return $"Lỗi kết nối cơ sở dữ liệu: {ex.Message}";
             }
         }
-        private void SetStudentSession(SinhVien sinhVien)
+
+        private void SetStudentSession(SinhVien student)
         {
-            HttpContext.Session.SetString(SessionKeyUserRole, StudentRoleName);
-            HttpContext.Session.SetString(SessionKeyUserName, $"{sinhVien.Ho} {sinhVien.Ten}");
-            HttpContext.Session.SetString(SessionKeyUserLogin, sinhVien.MaSV);
-            HttpContext.Session.SetString(SessionKeyMaLop, sinhVien.MaLop);
-            HttpContext.Session.SetString(SessionKeyDbConnectionString, _studentConnection);
+            SetSessionValue(SessionKeyUserRole, StudentRoleName);
+            SetSessionValue(SessionKeyUserName, $"{student.Ho} {student.Ten}");
+            SetSessionValue(SessionKeyUserLogin, student.MaSV);
+            SetSessionValue(SessionKeyMaLop, student.MaLop);
+            SetSessionValue(SessionKeyDbConnectionString, _authService.GetStudentConnectionString());
         }
 
-        private void SetLecturerSession((string Role, string UserName, string HoTen) giangVien, string login, string password)
+        private void SetLecturerSession(LecturerInfo lecturer, string login, string password)
         {
-            HttpContext.Session.SetString(SessionKeyUserRole, giangVien.Role);
-            HttpContext.Session.SetString(SessionKeyUserName, giangVien.HoTen);
-            HttpContext.Session.SetString(SessionKeyUserLogin, giangVien.UserName);
-
-            var dbConnectionString = BuildConnectionString(login, password);
-            HttpContext.Session.SetString(SessionKeyDbConnectionString, dbConnectionString);
+            SetSessionValue(SessionKeyUserRole, lecturer.Role);
+            SetSessionValue(SessionKeyUserName, lecturer.FullName);
+            SetSessionValue(SessionKeyUserLogin, lecturer.UserName);
+            SetSessionValue(SessionKeyDbConnectionString, _authService.BuildLecturerConnectionString(login, password));
         }
 
-        private SinhVien? ValidateSinhVien(string maSinhVien, string matKhau)
-        {
-            using var conn = new SqlConnection(_studentConnection);
-            conn.Open();
+        private string? GetSessionValue(string key)
+            => HttpContext.Session.GetString(key);
 
-            using var cmd = new SqlCommand("dbo.usp_SinhVien_Login", conn)
-            {
-                CommandType = CommandType.StoredProcedure
-            };
-            cmd.Parameters.AddWithValue("@MASV", maSinhVien);
-            cmd.Parameters.AddWithValue("@PASSWORD", matKhau);
-
-            using var reader = cmd.ExecuteReader();
-            if (!reader.Read())
-            {
-                return null;
-            }
-
-            return new SinhVien
-            {
-                MaSV = reader[ColumnMaSv].ToString() ?? string.Empty,
-                Ho = reader[ColumnHo].ToString() ?? string.Empty,
-                Ten = reader[ColumnTen].ToString() ?? string.Empty,
-                MaLop = reader[ColumnMaLop].ToString() ?? string.Empty
-            };
-        }
-
-        private (string Role, string UserName, string HoTen)? ValidateGiangVien(string login, string password)
-        {
-            var connStr = BuildConnectionString(login, password);
-            using var conn = new SqlConnection(connStr);
-            conn.Open();
-            
-            using var cmd = new SqlCommand("dbo.usp_TaiKhoan_LayThongTin", conn)
-            {
-                CommandType = CommandType.StoredProcedure
-            };
-
-            cmd.Parameters.AddWithValue("@LOGINNAME", login);
-
-            using var reader = cmd.ExecuteReader();
-            if (!reader.Read())
-            {
-                return null;
-            }
-
-            return (
-                reader[ColumnTenNhom].ToString() ?? "",
-                reader[ColumnUserName].ToString() ?? "",
-                reader[ColumnHoTen].ToString() ?? ""
-            );
-        }
-
-        private string BuildConnectionString(string userId, string password)
-        {
-            var builder = new SqlConnectionStringBuilder(_templateConnection)
-            {
-                IntegratedSecurity = false,
-                UserID = userId,
-                Password = password,
-                TrustServerCertificate = true
-            };
-            return builder.ConnectionString;
-        }
+        private void SetSessionValue(string key, string value)
+            => HttpContext.Session.SetString(key, value);
     }
 }

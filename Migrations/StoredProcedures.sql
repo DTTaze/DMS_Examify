@@ -792,21 +792,6 @@ BEGIN
 END
 GO
 
-
--- ------------------------------------------------------------
--- Stored Procedures for BoDe
--- !!! CANH BAO: Cac SP nay dung ten cot SAI. Da duoc fix trong 002_FixBodeCrudSPs.sql !!!
--- ------------------------------------------------------------
-CREATE PROCEDURE dbo.usp_BoDe_GetAll
-AS
-BEGIN
-    SET NOCOUNT ON;
-    -- LOI: Ten cot thuc te la A, B, C, D, DAP_AN (khong phai DapAnA, DapAnB...)
-    SELECT CauHoi, MaMH, TrinhDo, NoiDung, DapAnA, DapAnB, DapAnC, DapAnD, DapAn, MaGV
-    FROM BODE;
-END
-GO
-
 CREATE PROCEDURE dbo.usp_BoDe_Insert
     @CauHoi INT,       -- LOI: CAUHOI la IDENTITY, khong the INSERT gia tri nay
     @MaMH NVARCHAR(50),
