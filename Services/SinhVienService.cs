@@ -21,7 +21,8 @@ namespace DMS_Examify.Services
             {
                 CommandType = CommandType.StoredProcedure
             };
-            cmd.Parameters.AddWithValue("@Keyword", (object)keyword ?? DBNull.Value);
+            cmd.Parameters.Add("@Keyword", SqlDbType.NVarChar, 250).Value =
+                string.IsNullOrWhiteSpace(keyword) ? DBNull.Value : keyword.Trim();
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
             {
@@ -46,13 +47,13 @@ namespace DMS_Examify.Services
             {
                 CommandType = CommandType.StoredProcedure
             };
-            cmd.Parameters.AddWithValue("@MaSV", sinhVien.MaSV);
-            cmd.Parameters.AddWithValue("@Ho", sinhVien.Ho);
-            cmd.Parameters.AddWithValue("@Ten", sinhVien.Ten);
-            cmd.Parameters.AddWithValue("@NgaySinh", sinhVien.NgaySinh);
-            cmd.Parameters.AddWithValue("@DiaChi", sinhVien.DiaChi);
-            cmd.Parameters.AddWithValue("@MaLop", sinhVien.MaLop);
-            cmd.Parameters.AddWithValue("@MatKhau", sinhVien.MatKhau);
+            cmd.Parameters.Add("@MaSV", SqlDbType.NChar, 8).Value = sinhVien.MaSV;
+            cmd.Parameters.Add("@Ho", SqlDbType.NVarChar, 40).Value = sinhVien.Ho;
+            cmd.Parameters.Add("@Ten", SqlDbType.NVarChar, 10).Value = sinhVien.Ten;
+            cmd.Parameters.Add("@NgaySinh", SqlDbType.Date).Value = sinhVien.NgaySinh;
+            cmd.Parameters.Add("@DiaChi", SqlDbType.NVarChar, 100).Value = sinhVien.DiaChi;
+            cmd.Parameters.Add("@MaLop", SqlDbType.NChar, 8).Value = sinhVien.MaLop;
+            cmd.Parameters.Add("@MatKhau", SqlDbType.NVarChar, 128).Value = sinhVien.MatKhau;
             cmd.ExecuteNonQuery();
         }
 
@@ -63,13 +64,13 @@ namespace DMS_Examify.Services
             {
                 CommandType = CommandType.StoredProcedure
             };
-            cmd.Parameters.AddWithValue("@MaSV", sinhVien.MaSV);
-            cmd.Parameters.AddWithValue("@Ho", sinhVien.Ho);
-            cmd.Parameters.AddWithValue("@Ten", sinhVien.Ten);
-            cmd.Parameters.AddWithValue("@NgaySinh", sinhVien.NgaySinh);
-            cmd.Parameters.AddWithValue("@DiaChi", sinhVien.DiaChi);
-            cmd.Parameters.AddWithValue("@MaLop", sinhVien.MaLop);
-            cmd.Parameters.AddWithValue("@MatKhau", sinhVien.MatKhau);
+            cmd.Parameters.Add("@MaSV", SqlDbType.NChar, 8).Value = sinhVien.MaSV;
+            cmd.Parameters.Add("@Ho", SqlDbType.NVarChar, 40).Value = sinhVien.Ho;
+            cmd.Parameters.Add("@Ten", SqlDbType.NVarChar, 10).Value = sinhVien.Ten;
+            cmd.Parameters.Add("@NgaySinh", SqlDbType.Date).Value = sinhVien.NgaySinh;
+            cmd.Parameters.Add("@DiaChi", SqlDbType.NVarChar, 100).Value = sinhVien.DiaChi;
+            cmd.Parameters.Add("@MaLop", SqlDbType.NChar, 8).Value = sinhVien.MaLop;
+            cmd.Parameters.Add("@MatKhau", SqlDbType.NVarChar, 128).Value = sinhVien.MatKhau;
             cmd.ExecuteNonQuery();
         }
 
@@ -80,7 +81,7 @@ namespace DMS_Examify.Services
             {
                 CommandType = CommandType.StoredProcedure
             };
-            cmd.Parameters.AddWithValue("@MaSV", maSV);
+            cmd.Parameters.Add("@MaSV", SqlDbType.NChar, 8).Value = maSV;
             cmd.ExecuteNonQuery();
         }
 
@@ -92,7 +93,7 @@ namespace DMS_Examify.Services
             {
                 CommandType = CommandType.StoredProcedure
             };
-            cmd.Parameters.AddWithValue("@MaLop", maLop);
+            cmd.Parameters.Add("@MaLop", SqlDbType.NChar, 8).Value = maLop;
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
             {
@@ -114,7 +115,10 @@ namespace DMS_Examify.Services
         {
             var ids = new HashSet<string>();
             using var conn = _connectionFactory.CreateConnection();
-            using var cmd = new SqlCommand("SELECT MASV FROM SINHVIEN WHERE TrangThai = 1", conn);
+            using var cmd = new SqlCommand("dbo.usp_SinhVien_GetExistingIds", conn)
+            {
+                CommandType = CommandType.StoredProcedure
+            };
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
             {
@@ -162,7 +166,10 @@ namespace DMS_Examify.Services
         {
             if (string.IsNullOrWhiteSpace(maSV)) return false;
             using var conn = _connectionFactory.CreateConnection();
-            using var cmd = new SqlCommand("SELECT COUNT(1) FROM SINHVIEN WHERE MASV = @MASV AND TrangThai = 1", conn);
+            using var cmd = new SqlCommand("dbo.usp_SinhVien_ExistsMaSV", conn)
+            {
+                CommandType = CommandType.StoredProcedure
+            };
             cmd.Parameters.Add("@MASV", SqlDbType.NChar, 8).Value = maSV.Trim();
             return (int)cmd.ExecuteScalar() > 0;
         }

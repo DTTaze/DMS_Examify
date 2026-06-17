@@ -40,8 +40,8 @@ namespace DMS_Examify.Services
             {
                 CommandType = CommandType.StoredProcedure
             };
-            cmd.Parameters.AddWithValue("@MALOP", lop.MaLop);
-            cmd.Parameters.AddWithValue("@TENLOP", lop.TenLop);
+            cmd.Parameters.Add("@MALOP", SqlDbType.NChar, 8).Value = lop.MaLop;
+            cmd.Parameters.Add("@TENLOP", SqlDbType.NVarChar, 40).Value = lop.TenLop;
             cmd.ExecuteNonQuery();
         }
 
@@ -52,8 +52,8 @@ namespace DMS_Examify.Services
             {
                 CommandType = CommandType.StoredProcedure
             };
-            cmd.Parameters.AddWithValue("@MALOP", lop.MaLop);
-            cmd.Parameters.AddWithValue("@TENLOP", lop.TenLop);
+            cmd.Parameters.Add("@MALOP", SqlDbType.NChar, 8).Value = lop.MaLop;
+            cmd.Parameters.Add("@TENLOP", SqlDbType.NVarChar, 40).Value = lop.TenLop;
             cmd.ExecuteNonQuery();
         }
 
@@ -64,7 +64,7 @@ namespace DMS_Examify.Services
             {
                 CommandType = CommandType.StoredProcedure
             };
-            cmd.Parameters.AddWithValue("@MALOP", maLop);
+            cmd.Parameters.Add("@MALOP", SqlDbType.NChar, 8).Value = maLop;
             cmd.ExecuteNonQuery();
         }
 
@@ -76,7 +76,8 @@ namespace DMS_Examify.Services
             {
                 CommandType = CommandType.StoredProcedure
             };
-            cmd.Parameters.AddWithValue("@KEYWORD", (object)keyword ?? DBNull.Value);
+            cmd.Parameters.Add("@KEYWORD", SqlDbType.NVarChar, 100).Value =
+                string.IsNullOrWhiteSpace(keyword) ? DBNull.Value : keyword.Trim();
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
             {
@@ -111,7 +112,10 @@ namespace DMS_Examify.Services
         {
             if (string.IsNullOrWhiteSpace(maLop)) return false;
             using var conn = _connectionFactory.CreateConnection();
-            using var cmd = new SqlCommand("SELECT COUNT(1) FROM LOP WHERE MALOP = @MALOP AND TrangThai = 1", conn);
+            using var cmd = new SqlCommand("dbo.usp_Lop_ExistsMaLop", conn)
+            {
+                CommandType = CommandType.StoredProcedure
+            };
             cmd.Parameters.Add("@MALOP", SqlDbType.NChar, 8).Value = maLop.Trim();
             return (int)cmd.ExecuteScalar() > 0;
         }
@@ -120,7 +124,10 @@ namespace DMS_Examify.Services
         {
             if (string.IsNullOrWhiteSpace(tenLop)) return false;
             using var conn = _connectionFactory.CreateConnection();
-            using var cmd = new SqlCommand("SELECT COUNT(1) FROM LOP WHERE TENLOP = @TENLOP AND TrangThai = 1", conn);
+            using var cmd = new SqlCommand("dbo.usp_Lop_ExistsTenLop", conn)
+            {
+                CommandType = CommandType.StoredProcedure
+            };
             cmd.Parameters.Add("@TENLOP", SqlDbType.NVarChar, 40).Value = tenLop.Trim();
             return (int)cmd.ExecuteScalar() > 0;
         }
@@ -129,7 +136,10 @@ namespace DMS_Examify.Services
         {
             if (string.IsNullOrWhiteSpace(tenLop)) return false;
             using var conn = _connectionFactory.CreateConnection();
-            using var cmd = new SqlCommand("SELECT COUNT(1) FROM LOP WHERE TENLOP = @TENLOP AND MALOP <> @MALOP AND TrangThai = 1", conn);
+            using var cmd = new SqlCommand("dbo.usp_Lop_ExistsTenLopExcludingMaLop", conn)
+            {
+                CommandType = CommandType.StoredProcedure
+            };
             cmd.Parameters.Add("@TENLOP", SqlDbType.NVarChar, 40).Value = tenLop.Trim();
             cmd.Parameters.Add("@MALOP", SqlDbType.NChar, 8).Value = maLop.Trim();
             return (int)cmd.ExecuteScalar() > 0;

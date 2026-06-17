@@ -1,19 +1,6 @@
-﻿-- ============================================================
--- FILE: M03_StoredProcedure_Updates.sql
--- MUC DICH: Gom tat ca cac stored procedure duoc sua doi hoac bo sung:
---   1. usp_TaiKhoan_LayThongTin (tu 000, updated o 005)
---   2. usp_SinhVien_Login (tu 000)
---   3. Các SP CRUD của Bộ Đề (usp_BoDe_GetAll, usp_BoDe_Insert, usp_BoDe_Update, usp_BoDe_Search) (tu 002)
---   4. Các SP bổ sung (usp_GetCauHoiByGiangVien, usp_BoDe_GetLatestCauHoi, usp_Lop_Search) (tu 003)
---   5. Các SP Tìm Kiếm tối ưu RECOMPILE (usp_SinhVien_Search, usp_GiaoVien_Search, usp_MonHoc_Search) (tu 004)
---   6. SP Tìm Kiếm Nâng Cao usp_BoDe_TimKiemNangCao (tu 012)
--- ============================================================
-USE [THITRACNGHIEM]
+﻿USE THITRACNGHIEM
 GO
 
--- ------------------------------------------------------------
--- 1. usp_TaiKhoan_LayThongTin
--- ------------------------------------------------------------
 CREATE OR ALTER PROCEDURE [dbo].[usp_TaiKhoan_LayThongTin]
     @LOGINNAME NVARCHAR(50) = NULL
 AS
@@ -25,12 +12,10 @@ BEGIN
     DECLARE @SID      VARBINARY(85);
     DECLARE @ROLENAME  NVARCHAR(50);
 
-    -- Bước 1: Lấy SID từ master.dbo.syslogins (Chọn trước, tránh JOIN chéo DB)
     SELECT @SID = sid 
     FROM master.dbo.syslogins 
     WHERE name = @LOGINNAME;
 
-    -- Bước 2: Lấy Username và UID từ dbo.sysusers
     SELECT @USERNAME = name, @UID = uid
     FROM dbo.sysusers 
     WHERE sid = @SID;
@@ -41,7 +26,6 @@ BEGIN
         RETURN;
     END
 
-    -- Bước 3: Lấy nhóm quyền (Lọc/chiều trước trên sysmembers và sysusers rồi mới JOIN)
     SELECT TOP 1 @ROLENAME = role_user.name
     FROM (
         SELECT groupuid 
@@ -54,7 +38,6 @@ BEGIN
         WHERE name IN ('PGV', 'Giangvien')
     ) role_user ON sm.groupuid = role_user.uid;
 
-    -- Bước 4: Trả về kết quả (Inline ghép Họ & Tên tránh dùng UDF)
     SELECT
         @USERNAME                                               AS USERNAME,
         LTRIM(RTRIM(ISNULL(HO, N'') + N' ' + ISNULL(TEN, N'')))   AS HOTEN,
@@ -72,37 +55,49 @@ GO
 PRINT N'OK: usp_TaiKhoan_LayThongTin đã được cập nhật.';
 GO
 
--- ------------------------------------------------------------
--- 2. usp_SinhVien_Login
--- ------------------------------------------------------------
 CREATE OR ALTER PROCEDURE dbo.usp_SinhVien_Login
-    @MASV NVARCHAR(50),
+    @MASV NCHAR(8),
     @PASSWORD NVARCHAR(128)
 AS
 BEGIN
     SET NOCOUNT ON;
 
-    IF NOT EXISTS (SELECT 1 FROM SINHVIEN WHERE MASV = @MASV)
+    DECLARE @Found BIT = 0;
+    DECLARE @TrangThai BIT;
+    DECLARE @MatKhau NVARCHAR(128);
+    DECLARE @Ho NVARCHAR(40);
+    DECLARE @Ten NVARCHAR(10);
+    DECLARE @MaLop NCHAR(8);
+
+    SELECT
+        @Found = 1,
+        @TrangThai = TrangThai,
+        @MatKhau = MATKHAU,
+        @Ho = HO,
+        @Ten = TEN,
+        @MaLop = MALOP
+    FROM dbo.SINHVIEN
+    WHERE MASV = @MASV;
+
+    IF @Found = 0
     BEGIN
         RAISERROR(N'Tài khoản Sinh viên không tồn tại trong hệ thống!', 16, 1);
         RETURN;
     END
 
-    IF EXISTS (SELECT 1 FROM SINHVIEN WHERE MASV = @MASV AND TrangThai = 0)
+    IF @TrangThai = 0
     BEGIN
         RAISERROR(N'Tài khoản Sinh viên đã ngừng sử dụng!', 16, 1);
         RETURN;
     END
 
-    IF NOT EXISTS (SELECT 1 FROM SINHVIEN WHERE MASV = @MASV AND MATKHAU = @PASSWORD AND TrangThai = 1)
+    IF @MatKhau IS NULL OR @MatKhau <> @PASSWORD
     BEGIN
         RAISERROR(N'Mật khẩu đăng nhập không chính xác!', 16, 1);
         RETURN;
     END
 
-    SELECT MASV, HO, TEN, MALOP
-    FROM SINHVIEN
-    WHERE MASV = @MASV AND MATKHAU = @PASSWORD AND TrangThai = 1;
+    SELECT @MASV AS MASV, @Ho AS HO, @Ten AS TEN, @MaLop AS MALOP;
 END
 GO
 
@@ -112,9 +107,6 @@ GO
 PRINT N'OK: Da tao usp_SinhVien_Login.';
 GO
 
--- ------------------------------------------------------------
--- 3. Các SP CRUD của Bộ Đề
--- ------------------------------------------------------------
 CREATE OR ALTER PROCEDURE dbo.usp_BoDe_GetAll
 AS
 BEGIN
@@ -220,9 +212,6 @@ GO
 PRINT N'OK: usp_BoDe_Search đã được cập nhật.';
 GO
 
--- ------------------------------------------------------------
--- 4. Các SP bổ sung
--- ------------------------------------------------------------
 CREATE OR ALTER PROCEDURE dbo.usp_GetCauHoiByGiangVien
     @MAGV NVARCHAR(50) = NULL
 AS
@@ -273,12 +262,41 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
+    SET @KEYWORD = NULLIF(LTRIM(RTRIM(@KEYWORD)), N'');
+
+    IF @KEYWORD IS NULL
+    BEGIN
+        SELECT MALOP, TENLOP
+        FROM LOP
+        WHERE TrangThai = 1
+        ORDER BY MALOP
+        OPTION (RECOMPILE);
+        RETURN;
+    END
+
+    IF EXISTS (
+        SELECT 1
+        FROM LOP
+        WHERE TrangThai = 1
+          AND (MALOP LIKE @KEYWORD + N'%'
+               OR TENLOP LIKE @KEYWORD + N'%')
+    )
+    BEGIN
+        SELECT MALOP, TENLOP
+        FROM LOP
+        WHERE TrangThai = 1
+          AND (MALOP LIKE @KEYWORD + N'%'
+               OR TENLOP LIKE @KEYWORD + N'%')
+        ORDER BY MALOP
+        OPTION (RECOMPILE);
+        RETURN;
+    END
+
     SELECT MALOP, TENLOP
     FROM LOP
     WHERE TrangThai = 1
-      AND (@KEYWORD IS NULL OR @KEYWORD = ''
-           OR MALOP  LIKE '%' + @KEYWORD + '%'
-           OR TENLOP LIKE '%' + @KEYWORD + '%')
+      AND (MALOP LIKE N'%' + @KEYWORD + N'%'
+           OR TENLOP LIKE N'%' + @KEYWORD + N'%')
     ORDER BY MALOP
     OPTION (RECOMPILE);
 END
@@ -292,31 +310,60 @@ GO
 PRINT N'OK: Đã tạo usp_Lop_Search.';
 GO
 
--- ------------------------------------------------------------
--- 5. Các SP Tìm Kiếm tối ưu RECOMPILE
--- ------------------------------------------------------------
 CREATE OR ALTER PROCEDURE dbo.usp_SinhVien_Search
     @Keyword NVARCHAR(250) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
 
+    SET @Keyword = NULLIF(LTRIM(RTRIM(@Keyword)), N'');
+
+    IF @Keyword IS NULL
+    BEGIN
+        SELECT MASV, HO, TEN, NGAYSINH, DIACHI, MALOP, MATKHAU
+        FROM SINHVIEN
+        WHERE TrangThai = 1
+        ORDER BY MASV
+        OPTION (RECOMPILE);
+        RETURN;
+    END
+
+    IF EXISTS (
+        SELECT 1
+        FROM SINHVIEN
+        WHERE TrangThai = 1
+          AND (MASV  LIKE @Keyword + N'%'
+               OR MALOP LIKE @Keyword + N'%'
+               OR HO    LIKE @Keyword + N'%'
+               OR TEN   LIKE @Keyword + N'%')
+    )
+    BEGIN
+        SELECT MASV, HO, TEN, NGAYSINH, DIACHI, MALOP, MATKHAU
+        FROM SINHVIEN
+        WHERE TrangThai = 1
+          AND (MASV  LIKE @Keyword + N'%'
+               OR MALOP LIKE @Keyword + N'%'
+               OR HO    LIKE @Keyword + N'%'
+               OR TEN   LIKE @Keyword + N'%')
+        ORDER BY MASV
+        OPTION (RECOMPILE);
+        RETURN;
+    END
+
     SELECT MASV, HO, TEN, NGAYSINH, DIACHI, MALOP, MATKHAU
     FROM SINHVIEN
     WHERE TrangThai = 1
-      AND (@Keyword IS NULL OR @Keyword = ''
-           OR MASV   LIKE '%' + @Keyword + '%'
-           OR HO     LIKE '%' + @Keyword + '%'
-           OR TEN    LIKE '%' + @Keyword + '%'
-           OR DIACHI LIKE '%' + @Keyword + '%'
-           OR MALOP  LIKE '%' + @Keyword + '%')
+      AND (MASV   LIKE N'%' + @Keyword + N'%'
+           OR HO     LIKE N'%' + @Keyword + N'%'
+           OR TEN    LIKE N'%' + @Keyword + N'%'
+           OR DIACHI LIKE N'%' + @Keyword + N'%'
+           OR MALOP  LIKE N'%' + @Keyword + N'%')
+    ORDER BY MASV
     OPTION (RECOMPILE);
 END
 GO
 
 GRANT EXECUTE ON dbo.usp_SinhVien_Search TO [PGV];
-GO
-REVOKE EXECUTE ON dbo.usp_SinhVien_Search FROM [Giangvien];
 GO
 
 PRINT N'OK: usp_SinhVien_Search đã được cập nhật.';
@@ -371,9 +418,6 @@ GO
 PRINT N'OK: usp_MonHoc_Search đã được cập nhật.';
 GO
 
--- ------------------------------------------------------------
--- 6. SP Tìm Kiếm Nâng Cao
--- ------------------------------------------------------------
 CREATE OR ALTER PROCEDURE [dbo].[usp_BoDe_TimKiemNangCao]
     @MAGV    NCHAR(8)      = NULL,
     @MAMH    NCHAR(5)      = NULL,
@@ -425,11 +469,7 @@ GO
 PRINT N'OK: Da tao SP usp_BoDe_TimKiemNangCao.';
 GO
 
--- ------------------------------------------------------------
--- 7. Stored Procedure updates for MonHoc Soft Delete
--- ------------------------------------------------------------
 
--- 7.1. usp_MonHoc_GetAll (Chỉ lấy môn học đang hoạt động)
 CREATE OR ALTER PROCEDURE dbo.usp_MonHoc_GetAll
 AS
 BEGIN
@@ -446,7 +486,6 @@ GO
 GRANT EXECUTE ON [dbo].[usp_MonHoc_GetAll] TO [Sinhvien];
 GO
 
--- 7.2. usp_MonHoc_Search (Chỉ tìm kiếm môn học đang hoạt động)
 CREATE OR ALTER PROCEDURE dbo.usp_MonHoc_Search
     @Keyword NVARCHAR(250) = NULL
 AS
@@ -468,19 +507,16 @@ GO
 GRANT EXECUTE ON dbo.usp_MonHoc_Search TO [Sinhvien];
 GO
 
--- 7.3. usp_MonHoc_Delete (Xóa mềm kết hợp xóa cứng thông minh)
 CREATE OR ALTER PROCEDURE dbo.usp_MonHoc_Delete
     @MaMH NCHAR(5)
 AS
 BEGIN
     SET NOCOUNT ON;
 
-    -- Kiểm tra xem môn học đã từng phát sinh dữ liệu liên kết nào chưa
     IF EXISTS (SELECT 1 FROM [dbo].[BANGDIEM] WHERE [MAMH] = @MaMH)
        OR EXISTS (SELECT 1 FROM [dbo].[BODE] WHERE [MAMH] = @MaMH)
        OR EXISTS (SELECT 1 FROM [dbo].[GIAOVIEN_DANGKY] WHERE [MAMH] = @MaMH)
     BEGIN
-        -- Đã có dữ liệu liên kết quan trọng: Chuyển sang ngừng dùng (Xóa mềm)
         UPDATE [dbo].[MONHOC]
         SET [TrangThai] = 0
         WHERE [MaMH] = @MaMH;
@@ -488,7 +524,6 @@ BEGIN
     END
     ELSE
     BEGIN
-        -- Chưa từng sử dụng: Xóa vĩnh viễn khỏi Database (Xóa cứng)
         DELETE FROM [dbo].[MONHOC]
         WHERE [MaMH] = @MaMH;
         PRINT N'INFO: Đã xóa cứng môn học hoàn toàn khỏi Database.';
@@ -498,7 +533,6 @@ GO
 GRANT EXECUTE ON [dbo].[usp_MonHoc_Delete] TO [PGV];
 GO
 
--- 7.4. usp_LayDanhSachMonHoc (Dùng cho Dropdownlist đăng ký thi)
 CREATE OR ALTER PROCEDURE dbo.usp_LayDanhSachMonHoc
 AS
 BEGIN
@@ -514,7 +548,6 @@ GO
 GRANT EXECUTE ON dbo.usp_LayDanhSachMonHoc TO [Giangvien];
 GO
 
--- 7.5. usp_MonHoc_Restore (Phục hồi môn học bị xóa mềm)
 CREATE OR ALTER PROCEDURE dbo.usp_MonHoc_Restore
     @MaMH NCHAR(5)
 AS
@@ -529,7 +562,6 @@ GO
 GRANT EXECUTE ON [dbo].[usp_MonHoc_Restore] TO [PGV];
 GO
 
--- 7.6. usp_MonHoc_Insert (Hỗ trợ tự phục hồi khi trùng khóa chính đã xóa mềm)
 CREATE OR ALTER PROCEDURE dbo.usp_MonHoc_Insert
     @MaMH NCHAR(5),
     @TenMH NVARCHAR(40)
@@ -539,7 +571,6 @@ BEGIN
     
     IF EXISTS (SELECT 1 FROM dbo.MONHOC WHERE MaMH = @MaMH)
     BEGIN
-        -- Phục hồi và cập nhật tên môn học mới
         UPDATE dbo.MONHOC
         SET TenMH = @TenMH,
             TrangThai = 1
@@ -562,33 +593,9 @@ GO
 
 GO
 
--- ============================================================
--- FILE: S02_CRUD_StoredProcedures.sql
--- THU TU CHAY: S02 (sau S01 PhanQuyen, truoc S04 IDENTITY Migration)
--- MUC DICH: Tao toan bo SP CRUD goc cho MonHoc, GiaoVien, SinhVien, BoDe, Lop
--- LY DO: Cung cap day du SP CRUD de C# goi. Cac SP nay la phien ban
---        KHOI TAO dau tien, duoc viet dua tren schema ban dau.
--- PHAN DE TAI: 4.3 - Nhap sinh vien, 4.4 - Quan ly GV, 4.5 - Nhap cau hoi
--- BAI GIANG: SQL5 - Stored Procedure (CRUD)
---
--- !!! CHU Y QUAN TRONG !!!
--- File nay chua CAC LOI DA BIET se duoc fix trong Migration sau:
---   1. usp_BoDe_*: Dung ten cot SAI (DapAnA, DapAnB... thay vi A, B...)
---      -> Da duoc fix trong: 002_FixBodeCrudSPs.sql
---   2. usp_BoDe_Insert: Co tham so @CauHoi INT nhung CAUHOI la IDENTITY
---      -> Da duoc fix trong: 002_FixBodeCrudSPs.sql
---   3. usp_SinhVien_*: Chua co cot MATKHAU trong schema goc
---      -> Da them cot trong: 000_AlterSinhVienAddMatKhau.sql
---   4. usp_BoDe_Search, usp_SinhVien_Search...: Thieu OPTION (RECOMPILE)
---      -> Da duoc fix trong: 004_FixSearchSPs.sql
--- Chay file nay truoc, sau do chay cac Migration 000-012 de fix loi.
--- ============================================================
 USE [THITRACNGHIEM]
 GO
 
--- ------------------------------------------------------------
--- Stored Procedures for MonHoc
--- ------------------------------------------------------------
 CREATE PROCEDURE dbo.usp_MonHoc_GetAll
 AS
 BEGIN
@@ -646,9 +653,6 @@ BEGIN
 END
 GO
 
--- ------------------------------------------------------------
--- Stored Procedures for GiaoVien
--- ------------------------------------------------------------
 CREATE PROCEDURE dbo.usp_GiaoVien_GetAll
 AS
 BEGIN
@@ -712,11 +716,7 @@ BEGIN
 END
 GO
 
--- ------------------------------------------------------------
--- Stored Procedures for SinhVien
--- (Luu y: cot MATKHAU duoc them qua 000_AlterSinhVienAddMatKhau.sql)
--- ------------------------------------------------------------
-CREATE PROCEDURE dbo.usp_SinhVien_GetAll
+CREATE OR ALTER PROCEDURE dbo.usp_SinhVien_GetAll
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -729,7 +729,7 @@ GO
 GRANT EXECUTE ON [dbo].[usp_SinhVien_GetAll] TO [PGV]
 GO
 
-CREATE PROCEDURE dbo.usp_SinhVien_GetByLop
+CREATE OR ALTER PROCEDURE dbo.usp_SinhVien_GetByLop
     @MaLop NCHAR(8)
 AS
 BEGIN
@@ -744,7 +744,7 @@ GO
 GRANT EXECUTE ON [dbo].[usp_SinhVien_GetByLop] TO [PGV]
 GO
 
-CREATE PROCEDURE dbo.usp_SinhVien_Insert
+CREATE OR ALTER PROCEDURE dbo.usp_SinhVien_Insert
     @MaSV NCHAR(8),
     @Ho NVARCHAR(40),
     @Ten NVARCHAR(10),
@@ -786,7 +786,7 @@ BEGIN
 END
 GO
 
-CREATE PROCEDURE dbo.usp_SinhVien_Update
+CREATE OR ALTER PROCEDURE dbo.usp_SinhVien_Update
     @MaSV NCHAR(8),
     @Ho NVARCHAR(40),
     @Ten NVARCHAR(10),
@@ -816,7 +816,7 @@ BEGIN
 END
 GO
 
-CREATE PROCEDURE dbo.usp_SinhVien_Delete
+CREATE OR ALTER PROCEDURE dbo.usp_SinhVien_Delete
     @MaSV NCHAR(8)
 AS
 BEGIN
@@ -840,40 +840,17 @@ BEGIN
 END
 GO
 
-CREATE PROCEDURE dbo.usp_SinhVien_Search
-    @Keyword NVARCHAR(250)
-AS
-BEGIN
-    SET NOCOUNT ON;
-    SELECT MaSV, Ho, Ten, NgaySinh, DiaChi, MaLop, MatKhau
-    FROM SINHVIEN
-    WHERE TrangThai = 1
-      AND (@Keyword IS NULL OR @Keyword = ''
-           OR MaSV LIKE '%' + @Keyword + '%'
-           OR Ho LIKE '%' + @Keyword + '%'
-           OR Ten LIKE '%' + @Keyword + '%'
-           OR DiaChi LIKE '%' + @Keyword + '%'
-           OR MaLop LIKE '%' + @Keyword + '%');
-END
-GO
-
-
--- ------------------------------------------------------------
--- Stored Procedures for BoDe
--- !!! CANH BAO: Cac SP nay dung ten cot SAI. Da duoc fix trong 002_FixBodeCrudSPs.sql !!!
--- ------------------------------------------------------------
 CREATE PROCEDURE dbo.usp_BoDe_GetAll
 AS
 BEGIN
     SET NOCOUNT ON;
-    -- LOI: Ten cot thuc te la A, B, C, D, DAP_AN (khong phai DapAnA, DapAnB...)
     SELECT CauHoi, MaMH, TrinhDo, NoiDung, DapAnA, DapAnB, DapAnC, DapAnD, DapAn, MaGV
     FROM BODE;
 END
 GO
 
 CREATE PROCEDURE dbo.usp_BoDe_Insert
-    @CauHoi INT,       -- LOI: CAUHOI la IDENTITY, khong the INSERT gia tri nay
+    @CauHoi INT,
     @MaMH NVARCHAR(50),
     @TrinhDo NVARCHAR(10),
     @NoiDung NVARCHAR(MAX),
@@ -942,10 +919,7 @@ BEGIN
 END
 GO
 
--- ------------------------------------------------------------
--- Stored Procedures for Lop
--- ------------------------------------------------------------
-CREATE PROCEDURE usp_Lop_Insert
+CREATE OR ALTER PROCEDURE dbo.usp_Lop_Insert
     @MALOP NCHAR(8),
     @TENLOP NVARCHAR(40)
 AS
@@ -954,15 +928,13 @@ BEGIN
 
     IF EXISTS (SELECT 1 FROM LOP WHERE MALOP = @MALOP)
     BEGIN
-        UPDATE LOP
-        SET TENLOP = @TENLOP,
-            TrangThai = 1
-        WHERE MALOP = @MALOP
-          AND TrangThai = 0;
+        RAISERROR(N'Ma lop da ton tai', 16, 1);
+        RETURN;
+    END
 
-        IF @@ROWCOUNT = 0
-            RAISERROR(N'Ma lop da ton tai', 16, 1);
-
+    IF EXISTS (SELECT 1 FROM LOP WHERE TENLOP = @TENLOP)
+    BEGIN
+        RAISERROR(N'Ten lop da ton tai', 16, 1);
         RETURN;
     END
 
@@ -971,7 +943,7 @@ BEGIN
 END
 GO
 
-CREATE PROCEDURE usp_Lop_Update
+CREATE OR ALTER PROCEDURE dbo.usp_Lop_Update
     @MALOP NCHAR(8),
     @TENLOP NVARCHAR(40)
 AS
@@ -990,7 +962,7 @@ BEGIN
 END
 GO
 
-CREATE PROCEDURE usp_Lop_Delete
+CREATE OR ALTER PROCEDURE dbo.usp_Lop_Delete
     @MALOP NCHAR(8)
 AS
 BEGIN
@@ -999,6 +971,12 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM LOP WHERE MALOP = @MALOP AND TrangThai = 1)
     BEGIN
         RAISERROR(N'Khong tim thay lop dang hoat dong', 16, 1);
+        RETURN;
+    END
+
+    IF EXISTS (SELECT 1 FROM SINHVIEN WHERE MALOP = @MALOP AND TrangThai = 1)
+    BEGIN
+        RAISERROR(N'Khong the xoa lop vi con sinh vien dang hoat dong', 16, 1);
         RETURN;
     END
 
@@ -1016,7 +994,7 @@ BEGIN
 END
 GO
 
-CREATE PROCEDURE usp_Lop_GetAll
+CREATE OR ALTER PROCEDURE dbo.usp_Lop_GetAll
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -1028,6 +1006,102 @@ BEGIN
     WHERE TrangThai = 1
     ORDER BY MALOP;
 END
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_SinhVien_GetExistingIds
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT MASV
+    FROM dbo.SINHVIEN
+    WHERE TrangThai = 1;
+END
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_SinhVien_ExistsMaSV
+    @MASV NCHAR(8)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT CASE
+        WHEN EXISTS (
+            SELECT 1
+            FROM dbo.SINHVIEN
+            WHERE MASV = @MASV
+              AND TrangThai = 1
+        )
+        THEN 1 ELSE 0
+    END;
+END
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_Lop_ExistsMaLop
+    @MALOP NCHAR(8)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT CASE
+        WHEN EXISTS (
+            SELECT 1
+            FROM dbo.LOP
+            WHERE MALOP = @MALOP
+              AND TrangThai = 1
+        )
+        THEN 1 ELSE 0
+    END;
+END
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_Lop_ExistsTenLop
+    @TENLOP NVARCHAR(40)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT CASE
+        WHEN EXISTS (
+            SELECT 1
+            FROM dbo.LOP
+            WHERE TENLOP = @TENLOP
+              AND TrangThai = 1
+        )
+        THEN 1 ELSE 0
+    END;
+END
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_Lop_ExistsTenLopExcludingMaLop
+    @TENLOP NVARCHAR(40),
+    @MALOP NCHAR(8)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT CASE
+        WHEN EXISTS (
+            SELECT 1
+            FROM dbo.LOP
+            WHERE TENLOP = @TENLOP
+              AND MALOP <> @MALOP
+              AND TrangThai = 1
+        )
+        THEN 1 ELSE 0
+    END;
+END
+GO
+
+GRANT EXECUTE ON dbo.usp_SinhVien_GetExistingIds TO [PGV]
+GO
+GRANT EXECUTE ON dbo.usp_SinhVien_ExistsMaSV TO [PGV]
+GO
+GRANT EXECUTE ON dbo.usp_Lop_ExistsMaLop TO [PGV]
+GO
+GRANT EXECUTE ON dbo.usp_Lop_ExistsTenLop TO [PGV]
+GO
+GRANT EXECUTE ON dbo.usp_Lop_ExistsTenLopExcludingMaLop TO [PGV]
 GO
 
 GRANT EXECUTE ON [dbo].[usp_Lop_GetAll] TO [PGV]
@@ -1043,8 +1117,6 @@ GO
 GRANT EXECUTE ON [dbo].[usp_SinhVien_Update] TO [PGV]
 GO
 GRANT EXECUTE ON [dbo].[usp_SinhVien_Delete] TO [PGV]
-GO
-REVOKE EXECUTE ON [dbo].[usp_Lop_Delete] FROM [Giangvien]
 GO
 REVOKE EXECUTE ON [dbo].[usp_SinhVien_GetAll] FROM [Giangvien]
 GO
@@ -1062,54 +1134,36 @@ GO
 
 GO
 
--- ============================================================
--- FILE: S03_Account_And_Lecturer_StoredProcedures.sql
--- THU TU CHAY: S03 (sau S01 PhanQuyen, Role phai ton tai truoc)
--- MUC DICH: Gom cac SP quan ly tai khoan va thong tin Giang vien:
---   1. SP_TAOTAIKHOAN
---   2. usp_LayDanhSachQuyen_TaoTaiKhoan
---   3. usp_LayThongTinGiaoVienTheoMa
--- ============================================================
 USE [THITRACNGHIEM]
 GO
 
--- ------------------------------------------------------------
--- 1. SP_TAOTAIKHOAN
---    PGV tao tai khoan SQL Server cho Giao vien (Login + User + Role)
--- ------------------------------------------------------------
 CREATE PROCEDURE [dbo].[SP_TAOTAIKHOAN]
-    @LGNAME  VARCHAR(50),   -- Ten dang nhap (Login name)
-    @PASS    VARCHAR(50),   -- Mat khau
-    @USERNAME VARCHAR(50),  -- Ten User trong database (Ma Giao Vien)
-    @ROLE    VARCHAR(50)    -- Ten nhom quyen ('PGV' hoac 'Giangvien')
+    @LGNAME  VARCHAR(50),
+    @PASS    VARCHAR(50),
+    @USERNAME VARCHAR(50),
+    @ROLE    VARCHAR(50)
 AS
 BEGIN
-    -- 1. Kiem tra xem Login name da ton tai tren Server chua
     IF EXISTS (SELECT * FROM sys.server_principals WHERE name = @LGNAME)
-        RETURN 1; -- Tra ve 1: Loi do Login name da ton tai
+        RETURN 1;
 
-    -- 2. Kiem tra xem User (Ma Giao Vien) da duoc cap tai khoan trong Database chua
     IF EXISTS (SELECT * FROM sys.database_principals WHERE name = @USERNAME)
-        RETURN 2; -- Tra ve 2: Loi do User nay da co tai khoan roi
+        RETURN 2;
 
     BEGIN TRY
-        -- 3. Tao Login o muc Server
         EXEC sp_addlogin @loginame = @LGNAME, @passwd = @PASS;
 
-        -- 4. Tao User o muc Database, lien ket voi Login vua tao
         EXEC sp_adduser @loginame = @LGNAME, @name_in_db = @USERNAME;
 
-        -- 5. Gan User vao Role (Nhom quyen PGV hoac Giangvien)
         EXEC sp_addrolemember @rolename = @ROLE, @membername = @USERNAME;
 
-        RETURN 0; -- Thanh cong
+        RETURN 0;
     END TRY
     BEGIN CATCH
-        -- Xoa login neu bi loi giua chung de tranh rac he thong
         IF EXISTS (SELECT * FROM sys.server_principals WHERE name = @LGNAME)
             EXEC sp_droplogin @loginame = @LGNAME;
 
-        RETURN 3; -- Loi he thong bat ngo
+        RETURN 3;
     END CATCH
 END
 GO
@@ -1120,10 +1174,6 @@ GO
 PRINT N'OK: Da tao SP_TAOTAIKHOAN.';
 GO
 
--- ------------------------------------------------------------
--- 2. usp_LayDanhSachQuyen_TaoTaiKhoan
---    Lay danh sach cac Role co the chon khi PGV tao tai khoan GV
--- ------------------------------------------------------------
 CREATE PROCEDURE [dbo].[usp_LayDanhSachQuyen_TaoTaiKhoan]
 AS
 BEGIN
@@ -1147,10 +1197,6 @@ GO
 PRINT N'OK: Da tao usp_LayDanhSachQuyen_TaoTaiKhoan.';
 GO
 
--- ------------------------------------------------------------
--- 3. usp_LayThongTinGiaoVienTheoMa
---    Lay thong tin chi tiet cua 1 Giao vien theo MAGV
--- ------------------------------------------------------------
 CREATE PROCEDURE [dbo].[usp_LayThongTinGiaoVienTheoMa]
     @MAGV NCHAR(8)
 AS
@@ -1178,17 +1224,6 @@ GO
 
 GO
 
--- ============================================================
--- FILE: S05_Exam_And_Class_StoredProcedures.sql
--- THU TU CHAY: S05 (sau S02 CRUD, can bang BODE, GIAOVIEN_DANGKY, LOP)
--- MUC DICH: Gom cac UDF va SP phuc vu dang ky thi va quan ly danh muc lop, trinh do:
---   1. udf_DemSoCauTrongBoDe
---   2. udf_KiemTraDieuKienDangKy
---   3. usp_ThucHienDangKyThi
---   4. usp_LayDanhSachDeThi
---   5. usp_LayDanhSachLop
---   6. usp_LayDanhSachTrinhDo
--- ============================================================
 USE [THITRACNGHIEM]
 GO
 
@@ -1197,10 +1232,6 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 
--- ------------------------------------------------------------
--- 1. udf_DemSoCauTrongBoDe
---    Dem so cau hoi trong bo de theo Mon hoc va Trinh do
--- ------------------------------------------------------------
 CREATE FUNCTION [dbo].[udf_DemSoCauTrongBoDe]
 (
     @MAMH    NCHAR(8),
@@ -1220,10 +1251,6 @@ GO
 PRINT N'OK: Da tao udf_DemSoCauTrongBoDe.';
 GO
 
--- ------------------------------------------------------------
--- 2. udf_KiemTraDieuKienDangKy
---    Kiem tra co du cau hoi de dang ky thi khong
--- ------------------------------------------------------------
 CREATE FUNCTION [dbo].[udf_KiemTraDieuKienDangKy]
 (
     @MAMH     CHAR(5),
@@ -1278,10 +1305,6 @@ GO
 PRINT N'OK: Da tao udf_KiemTraDieuKienDangKy.';
 GO
 
--- ------------------------------------------------------------
--- 3. usp_ThucHienDangKyThi
---    GV dang ky lich thi cho 1 lop, 1 mon, 1 lan thi
--- ------------------------------------------------------------
 CREATE PROCEDURE usp_ThucHienDangKyThi
     @MAGV     NCHAR(8),
     @MALOP    NCHAR(8),
@@ -1337,10 +1360,6 @@ GO
 PRINT N'OK: Da tao usp_ThucHienDangKyThi.';
 GO
 
--- ------------------------------------------------------------
--- 4. usp_LayDanhSachDeThi
---    GV lay danh sach cac de thi (lich thi) da dang ky theo MAGV
--- ------------------------------------------------------------
 CREATE PROCEDURE usp_LayDanhSachDeThi
     @MaGV NCHAR(8)
 AS
@@ -1369,11 +1388,7 @@ GO
 PRINT N'OK: Da tao usp_LayDanhSachDeThi.';
 GO
 
--- ------------------------------------------------------------
--- 5. usp_LayDanhSachLop
---    SinhVienController va LopController lay danh sach lop
--- ------------------------------------------------------------
-CREATE PROCEDURE usp_LayDanhSachLop
+CREATE OR ALTER PROCEDURE dbo.usp_LayDanhSachLop
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -1395,10 +1410,6 @@ GO
 PRINT N'OK: Da tao usp_LayDanhSachLop.';
 GO
 
--- ------------------------------------------------------------
--- 6. usp_LayDanhSachTrinhDo
---    Lay danh sach cac Trinh do dang co trong Bo de
--- ------------------------------------------------------------
 CREATE PROCEDURE usp_LayDanhSachTrinhDo
 AS
 BEGIN

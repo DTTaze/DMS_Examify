@@ -45,8 +45,16 @@ namespace DMS_Examify.Controllers
         [HttpPost]
         public IActionResult DeleteClass(string maLop)
         {
-            _lopService.Delete(maLop);
-            return Ok();
+            try
+            {
+                _lopService.Delete(maLop);
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not delete class {MaLop}.", maLop);
+                return BadRequest(ex.Message);
+            }
         }
 
         [HttpGet]
