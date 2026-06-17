@@ -11,22 +11,6 @@
 USE [THITRACNGHIEM]
 GO
 
-IF COL_LENGTH('dbo.LOP', 'TrangThai') IS NULL
-BEGIN
-    ALTER TABLE dbo.LOP
-    ADD TrangThai BIT NOT NULL
-        CONSTRAINT DF_LOP_TrangThai DEFAULT (1);
-END
-GO
-
-IF COL_LENGTH('dbo.SINHVIEN', 'TrangThai') IS NULL
-BEGIN
-    ALTER TABLE dbo.SINHVIEN
-    ADD TrangThai BIT NOT NULL
-        CONSTRAINT DF_SINHVIEN_TrangThai DEFAULT (1);
-END
-GO
-
 -- ------------------------------------------------------------
 -- 1. usp_TaiKhoan_LayThongTin
 -- ------------------------------------------------------------
