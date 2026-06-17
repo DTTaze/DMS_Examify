@@ -10,6 +10,8 @@ namespace DMS_Examify.Services
         void Delete(string maSV);
         List<SinhVien> GetByLop(string maLop);
         HashSet<string> GetExistingStudentIds();
+        List<SinhVienImportCheckResult> CheckImportDuplicates(List<SinhVien> items);
+        SinhVienDuplicateResult CheckDuplicateForCreate(string maSV);
         bool ExistsMaSV(string maSV);
     }
 }

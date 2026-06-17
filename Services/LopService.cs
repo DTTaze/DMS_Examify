@@ -89,6 +89,24 @@ namespace DMS_Examify.Services
             return list;
         }
 
+        public LopDuplicateResult CheckDuplicateForCreate(string maLop, string tenLop)
+        {
+            return new LopDuplicateResult
+            {
+                MaLopDuplicate = ExistsMaLop(maLop),
+                TenLopDuplicate = ExistsTenLop(tenLop)
+            };
+        }
+
+        public LopDuplicateResult CheckDuplicateForUpdate(string maLop, string tenLop)
+        {
+            return new LopDuplicateResult
+            {
+                MaLopDuplicate = false,
+                TenLopDuplicate = ExistsTenLopExcludingMaLop(tenLop, maLop)
+            };
+        }
+
         public bool ExistsMaLop(string maLop)
         {
             if (string.IsNullOrWhiteSpace(maLop)) return false;

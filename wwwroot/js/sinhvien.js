@@ -537,7 +537,8 @@ function validateClassInputs() {
     );
 
     classDebounceTimer = setTimeout(() => {
-        const checkUrl = `/SinhVien/CheckDuplicateLop?maLop=${encodeURIComponent(maLop)}&tenLop=${encodeURIComponent(tenLop)}&isEditing=${isEditing}`;
+        const action = isEditing ? "CheckDuplicateLopForUpdate" : "CheckDuplicateLopForCreate";
+        const checkUrl = `/SinhVien/${action}?maLop=${encodeURIComponent(maLop)}&tenLop=${encodeURIComponent(tenLop)}`;
 
         fetch(checkUrl)
             .then(res => {
@@ -1119,7 +1120,7 @@ function validateStudentInputs() {
         );
 
         studentDebounceTimer = setTimeout(() => {
-            const checkUrl = `/SinhVien/CheckDuplicateStudent?maSV=${encodeURIComponent(d.MaSV)}&isEditing=${isEditing}`;
+            const checkUrl = `/SinhVien/CheckDuplicateStudentForCreate?maSV=${encodeURIComponent(d.MaSV)}`;
 
             fetch(checkUrl)
                 .then(res => {

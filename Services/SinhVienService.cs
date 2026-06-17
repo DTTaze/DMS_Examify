@@ -127,6 +127,37 @@ namespace DMS_Examify.Services
             return ids;
         }
 
+        public List<SinhVienImportCheckResult> CheckImportDuplicates(List<SinhVien> items)
+        {
+            if (items.Count == 0)
+            {
+                return new List<SinhVienImportCheckResult>();
+            }
+
+            var existingIds = GetExistingStudentIds();
+            return items.Select((item, index) =>
+            {
+                var normalizedId = item.MaSV?.Trim().ToUpper() ?? string.Empty;
+
+                return new SinhVienImportCheckResult
+                {
+                    Index = index,
+                    MaSV = item.MaSV?.Trim() ?? string.Empty,
+                    Ho = item.Ho?.Trim() ?? string.Empty,
+                    Ten = item.Ten?.Trim() ?? string.Empty,
+                    IdDuplicate = existingIds.Contains(normalizedId)
+                };
+            }).ToList();
+        }
+
+        public SinhVienDuplicateResult CheckDuplicateForCreate(string maSV)
+        {
+            return new SinhVienDuplicateResult
+            {
+                MaSVDuplicate = ExistsMaSV(maSV)
+            };
+        }
+
         public bool ExistsMaSV(string maSV)
         {
             if (string.IsNullOrWhiteSpace(maSV)) return false;

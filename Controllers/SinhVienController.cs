@@ -1,24 +1,29 @@
+using DMS_Examify.Filters;
 using DMS_Examify.Models;
 using DMS_Examify.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DMS_Examify.Controllers
 {
+    [RequireRole("PGV")]
     public class SinhVienController : BaseController
     {
         private readonly ISinhVienService _sinhVienService;
         private readonly ILopService _lopService;
+        private readonly ILogger<SinhVienController> _logger;
 
-        public SinhVienController(ISinhVienService sinhVienService, ILopService lopService)
+        public SinhVienController(
+            ISinhVienService sinhVienService,
+            ILopService lopService,
+            ILogger<SinhVienController> logger)
         {
             _sinhVienService = sinhVienService;
             _lopService = lopService;
+            _logger = logger;
         }
 
         public IActionResult Index()
         {
-            if (!CheckRole("PGV")) return Denied();
-
             var classes = _lopService.GetAll();
             return View(classes);
         }
@@ -26,8 +31,6 @@ namespace DMS_Examify.Controllers
         [HttpPost]
         public IActionResult InsertLop([FromBody] Lop model)
         {
-            if (!CheckRole("PGV")) return Denied();
-
             _lopService.Insert(model);
             return Ok();
         }
@@ -35,8 +38,6 @@ namespace DMS_Examify.Controllers
         [HttpPost]
         public IActionResult UpdateLop([FromBody] Lop model)
         {
-            if (!CheckRole("PGV")) return Denied();
-
             _lopService.Update(model);
             return Ok();
         }
@@ -44,8 +45,6 @@ namespace DMS_Examify.Controllers
         [HttpPost]
         public IActionResult DeleteLop(string maLop)
         {
-            if (!CheckRole("PGV")) return Denied();
-
             _lopService.Delete(maLop);
             return Ok();
         }
@@ -53,8 +52,6 @@ namespace DMS_Examify.Controllers
         [HttpGet]
         public IActionResult SearchLop(string keyword)
         {
-            if (!CheckRole("PGV")) return Denied();
-
             var classes = _lopService.Search(keyword);
             return Json(classes);
         }
@@ -62,8 +59,6 @@ namespace DMS_Examify.Controllers
         [HttpGet]
         public IActionResult Search(string keyword)
         {
-            if (!CheckRole("PGV")) return Denied();
-
             var students = _sinhVienService.Search(keyword);
             return Json(students);
         }
@@ -71,8 +66,6 @@ namespace DMS_Examify.Controllers
         [HttpPost]
         public IActionResult Insert([FromBody] SinhVien model)
         {
-            if (!CheckRole("PGV")) return Denied();
-
             _sinhVienService.Insert(model);
             return Ok();
         }
@@ -80,8 +73,6 @@ namespace DMS_Examify.Controllers
         [HttpPost]
         public IActionResult Update([FromBody] SinhVien model)
         {
-            if (!CheckRole("PGV")) return Denied();
-
             _sinhVienService.Update(model);
             return Ok();
         }
@@ -89,8 +80,6 @@ namespace DMS_Examify.Controllers
         [HttpPost]
         public IActionResult Delete(string maSV)
         {
-            if (!CheckRole("PGV")) return Denied();
-
             _sinhVienService.Delete(maSV);
             return Ok();
         }
@@ -98,101 +87,70 @@ namespace DMS_Examify.Controllers
         [HttpGet]
         public IActionResult GetByLop(string maLop)
         {
-            if (!CheckRole("PGV")) return Denied();
-
             var students = _sinhVienService.GetByLop(maLop);
             return Json(students);
         }
 
         [HttpPost]
-        public IActionResult CheckImport([FromBody] List<SinhVien> items)
+        public IActionResult CheckImport([FromBody] List<SinhVien>? items)
         {
-            if (!CheckRole("PGV")) return Denied();
-            if (items == null || items.Count == 0)
-                return Json(new List<object>());
-
             try
             {
-                var existingIds = _sinhVienService.GetExistingStudentIds();
-
-                var results = items.Select((item, index) =>
-                {
-                    var id = item.MaSV?.Trim().ToUpper() ?? string.Empty;
-                    return new
-                    {
-                        index,
-                        maSV = item.MaSV?.Trim() ?? string.Empty,
-                        ho = item.Ho?.Trim() ?? string.Empty,
-                        ten = item.Ten?.Trim() ?? string.Empty,
-                        idDuplicate = existingIds.Contains(id)
-                    };
-                });
-
+                var results = _sinhVienService.CheckImportDuplicates(items ?? new List<SinhVien>());
                 return Json(results);
             }
             catch (Exception ex)
             {
-                return StatusCode(500, $"Lỗi hệ thống khi kiểm tra danh sách import: {ex.Message}");
+                return ServerError(ex, "Lỗi hệ thống khi kiểm tra danh sách import.");
             }
         }
 
         [HttpGet]
-        public IActionResult CheckDuplicateLop(string maLop, string tenLop, bool isEditing)
+        public IActionResult CheckDuplicateLopForCreate(string maLop, string tenLop)
         {
-            if (!CheckRole("PGV")) return Denied();
-
             try
             {
-                bool maLopDuplicate = false;
-                if (!isEditing)
-                {
-                    maLopDuplicate = _lopService.ExistsMaLop(maLop);
-                }
-
-                bool tenLopDuplicate = false;
-                if (isEditing)
-                {
-                    tenLopDuplicate = _lopService.ExistsTenLopExcludingMaLop(tenLop, maLop);
-                }
-                else
-                {
-                    tenLopDuplicate = _lopService.ExistsTenLop(tenLop);
-                }
-
-                return Json(new
-                {
-                    maLopDuplicate,
-                    tenLopDuplicate
-                });
+                var result = _lopService.CheckDuplicateForCreate(maLop, tenLop);
+                return Json(result);
             }
             catch (Exception ex)
             {
-                return StatusCode(500, $"Lỗi hệ thống khi kiểm tra trùng lớp: {ex.Message}");
+                return ServerError(ex, "Lỗi hệ thống khi kiểm tra trùng lớp.");
             }
         }
 
         [HttpGet]
-        public IActionResult CheckDuplicateStudent(string maSV, bool isEditing)
+        public IActionResult CheckDuplicateLopForUpdate(string maLop, string tenLop)
         {
-            if (!CheckRole("PGV")) return Denied();
-
             try
             {
-                bool maSVDuplicate = false;
-                if (!isEditing)
-                {
-                    maSVDuplicate = _sinhVienService.ExistsMaSV(maSV);
-                }
-
-                return Json(new
-                {
-                    maSVDuplicate
-                });
+                var result = _lopService.CheckDuplicateForUpdate(maLop, tenLop);
+                return Json(result);
             }
             catch (Exception ex)
             {
-                return StatusCode(500, $"Lỗi hệ thống khi kiểm tra trùng sinh viên: {ex.Message}");
+                return ServerError(ex, "Lỗi hệ thống khi kiểm tra trùng lớp.");
             }
+        }
+
+        [HttpGet]
+        public IActionResult CheckDuplicateStudentForCreate(string maSV)
+        {
+            try
+            {
+                var result = _sinhVienService.CheckDuplicateForCreate(maSV);
+                return Json(result);
+            }
+            catch (Exception ex)
+            {
+                return ServerError(ex, "Lỗi hệ thống khi kiểm tra trùng sinh viên.");
+            }
+        }
+
+        private IActionResult ServerError(Exception exception, string message)
+        {
+            _logger.LogError(exception, message);
+            return StatusCode(500, message);
         }
     }
 }
