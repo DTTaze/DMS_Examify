@@ -6,7 +6,35 @@ namespace DMS_Examify.Services
 {
     public class BoDeService : IBoDeService
     {
+        private const string LecturerRole = "Giangvien";
+        private const string DefaultStringValue = "";
+
         private readonly IDbConnectionFactory _connectionFactory;
+
+        private static class StoredProcedures
+        {
+            public const string GetList = "dbo.usp_BoDe_GetDanhSach";
+            public const string Insert = "dbo.usp_BoDe_Insert";
+            public const string Update = "dbo.usp_BoDe_Update";
+            public const string Delete = "dbo.usp_BoDe_Delete";
+            public const string Search = "dbo.usp_BoDe_Search";
+            public const string GetLatestCauHoi = "dbo.usp_BoDe_GetLatestCauHoi";
+            public const string GetActiveSubjectCodes = "dbo.usp_BoDe_GetActiveSubjectCodes";
+        }
+
+        private static class Columns
+        {
+            public const string CauHoi = "CAUHOI";
+            public const string MaMH = "MAMH";
+            public const string TrinhDo = "TRINHDO";
+            public const string NoiDung = "NOIDUNG";
+            public const string DapAnA = "A";
+            public const string DapAnB = "B";
+            public const string DapAnC = "C";
+            public const string DapAnD = "D";
+            public const string DapAn = "DAP_AN";
+            public const string MaGV = "MAGV";
+        }
 
         public BoDeService(IDbConnectionFactory connectionFactory)
         {
@@ -15,140 +43,182 @@ namespace DMS_Examify.Services
 
         public List<BoDe> GetAll(string role, string maGV)
         {
-            var questions = new List<BoDe>();
-            using var conn = _connectionFactory.CreateConnection();
-            using var cmd = new SqlCommand("dbo.usp_GetCauHoiByGiangVien", conn)
-            {
-                CommandType = CommandType.StoredProcedure
-            };
+            using var connection = _connectionFactory.CreateConnection();
+            using var command = CreateStoredProcedureCommand(StoredProcedures.GetList, connection);
 
-            if (role == "PGV")
-            {
-                cmd.Parameters.AddWithValue("@MAGV", DBNull.Value);
-            }
-            else
-            {
-                cmd.Parameters.AddWithValue("@MAGV", maGV);
-            }
+            command.Parameters.Add("@MAGV", SqlDbType.NChar, 8).Value = GetTeacherFilterValue(role, maGV);
 
-            using var reader = cmd.ExecuteReader();
-            while (reader.Read())
-            {
-                questions.Add(new BoDe
-                {
-                    CauHoi = reader["CAUHOI"] as int? ?? 0,
-                    MaMH = reader["MAMH"]?.ToString() ?? string.Empty,
-                    TrinhDo = reader["TRINHDO"]?.ToString() ?? string.Empty,
-                    NoiDung = reader["NOIDUNG"]?.ToString() ?? string.Empty,
-                    DapAnA = reader["A"]?.ToString() ?? string.Empty,
-                    DapAnB = reader["B"]?.ToString() ?? string.Empty,
-                    DapAnC = reader["C"]?.ToString() ?? string.Empty,
-                    DapAnD = reader["D"]?.ToString() ?? string.Empty,
-                    DapAn = reader["DAP_AN"]?.ToString() ?? string.Empty,
-                    MaGV = reader["MAGV"]?.ToString() ?? string.Empty
-                });
-            }
-            return questions;
+            return ReadQuestions(command);
         }
 
         public int Insert(BoDe model, string maGV)
         {
-            using var conn = _connectionFactory.CreateConnection();
-            using var cmd = new SqlCommand("usp_BoDe_Insert", conn)
-            {
-                CommandType = CommandType.StoredProcedure
-            };
+            using var connection = _connectionFactory.CreateConnection();
+            using var command = CreateStoredProcedureCommand(StoredProcedures.Insert, connection);
 
-            cmd.Parameters.AddWithValue("@MaMH", model.MaMH);
-            cmd.Parameters.AddWithValue("@TrinhDo", model.TrinhDo);
-            cmd.Parameters.AddWithValue("@NoiDung", model.NoiDung);
-            cmd.Parameters.AddWithValue("@DapAnA", model.DapAnA);
-            cmd.Parameters.AddWithValue("@DapAnB", model.DapAnB);
-            cmd.Parameters.AddWithValue("@DapAnC", model.DapAnC);
-            cmd.Parameters.AddWithValue("@DapAnD", model.DapAnD);
-            cmd.Parameters.AddWithValue("@DapAn", model.DapAn);
-            cmd.Parameters.AddWithValue("@MaGV", maGV);
+            AddQuestionParameters(command, model);
+            command.Parameters.Add("@MaGV", SqlDbType.NChar, 8).Value = Trim(maGV);
 
-            return Convert.ToInt32(cmd.ExecuteScalar());
+            return Convert.ToInt32(command.ExecuteScalar());
         }
 
-        public void Update(BoDe model, string maGV)
+        public bool Update(BoDe model, string role, string maGV)
         {
-            using var conn = _connectionFactory.CreateConnection();
-            using var cmd = new SqlCommand("dbo.usp_BoDe_Update", conn)
-            {
-                CommandType = CommandType.StoredProcedure
-            };
+            using var connection = _connectionFactory.CreateConnection();
+            using var command = CreateStoredProcedureCommand(StoredProcedures.Update, connection);
 
-            cmd.Parameters.AddWithValue("@CauHoi", model.CauHoi);
-            cmd.Parameters.AddWithValue("@MaMH", model.MaMH);
-            cmd.Parameters.AddWithValue("@TrinhDo", model.TrinhDo);
-            cmd.Parameters.AddWithValue("@NoiDung", model.NoiDung);
-            cmd.Parameters.AddWithValue("@DapAnA", model.DapAnA);
-            cmd.Parameters.AddWithValue("@DapAnB", model.DapAnB);
-            cmd.Parameters.AddWithValue("@DapAnC", model.DapAnC);
-            cmd.Parameters.AddWithValue("@DapAnD", model.DapAnD);
-            cmd.Parameters.AddWithValue("@DapAn", model.DapAn);
-            cmd.Parameters.AddWithValue("@MaGV", maGV);
-
-            cmd.ExecuteNonQuery();
+            command.Parameters.Add("@CauHoi", SqlDbType.Int).Value = model.CauHoi;
+            AddQuestionParameters(command, model);
+            command.Parameters.Add("@MAGV", SqlDbType.NChar, 8).Value = GetTeacherFilterValue(role, maGV);
+            return command.ExecuteNonQuery() > 0;
         }
 
-        public void Delete(int cauHoi, string maMH)
+        public bool Delete(int cauHoi, string maMH, string role, string maGV)
         {
-            using var conn = _connectionFactory.CreateConnection();
-            using var cmd = new SqlCommand("dbo.usp_BoDe_Delete", conn)
-            {
-                CommandType = CommandType.StoredProcedure
-            };
+            using var connection = _connectionFactory.CreateConnection();
+            using var command = CreateStoredProcedureCommand(StoredProcedures.Delete, connection);
 
-            cmd.Parameters.AddWithValue("@CauHoi", cauHoi);
-            cmd.Parameters.AddWithValue("@MaMH", maMH);
-
-            cmd.ExecuteNonQuery();
+            command.Parameters.Add("@CauHoi", SqlDbType.Int).Value = cauHoi;
+            command.Parameters.Add("@MaMH", SqlDbType.NChar, 5).Value = Trim(maMH);
+            command.Parameters.Add("@MAGV", SqlDbType.NChar, 8).Value = GetTeacherFilterValue(role, maGV);
+            return command.ExecuteNonQuery() > 0;
         }
 
-        public List<BoDe> Search(string keyword)
+        public List<BoDe> Search(string? keyword, string role, string maGV)
         {
-            var questions = new List<BoDe>();
-            using var conn = _connectionFactory.CreateConnection();
-            using var cmd = new SqlCommand("dbo.usp_BoDe_Search", conn)
-            {
-                CommandType = CommandType.StoredProcedure
-            };
+            using var connection = _connectionFactory.CreateConnection();
+            using var command = CreateStoredProcedureCommand(StoredProcedures.Search, connection);
 
-            cmd.Parameters.Add("@Keyword", SqlDbType.NVarChar, 500).Value = string.IsNullOrWhiteSpace(keyword) ? DBNull.Value : keyword;
+            command.Parameters.Add("@Keyword", SqlDbType.NVarChar, 250).Value = GetDbValue(keyword);
+            command.Parameters.Add("@MAGV", SqlDbType.NChar, 8).Value = GetTeacherFilterValue(role, maGV);
 
-            using var reader = cmd.ExecuteReader();
-            while (reader.Read())
-            {
-                questions.Add(new BoDe
-                {
-                    CauHoi = reader.GetInt32(reader.GetOrdinal("CAUHOI")),
-                    MaMH = reader["MAMH"]?.ToString()?.Trim() ?? "",
-                    TrinhDo = reader["TRINHDO"]?.ToString()?.Trim() ?? "",
-                    NoiDung = reader["NOIDUNG"]?.ToString() ?? "",
-                    DapAnA = reader["A"]?.ToString() ?? "",
-                    DapAnB = reader["B"]?.ToString() ?? "",
-                    DapAnC = reader["C"]?.ToString() ?? "",
-                    DapAnD = reader["D"]?.ToString() ?? "",
-                    DapAn = reader["DAP_AN"]?.ToString()?.Trim() ?? "",
-                    MaGV = reader["MAGV"]?.ToString()?.Trim() ?? ""
-                });
-            }
-            return questions;
+            return ReadQuestions(command);
         }
 
         public int GetLatestCauHoi()
         {
-            using var conn = _connectionFactory.CreateConnection();
-            using var cmd = new SqlCommand("usp_BoDe_GetLatestCauHoi", conn)
+            using var connection = _connectionFactory.CreateConnection();
+            using var command = CreateStoredProcedureCommand(StoredProcedures.GetLatestCauHoi, connection);
+
+            var result = command.ExecuteScalar();
+            return result != null ? Convert.ToInt32(result) : 0;
+        }
+
+        public List<BoDeImportCheckResult> CheckImportSubjects(List<BoDe> items)
+        {
+            if (items.Count == 0)
+            {
+                return new List<BoDeImportCheckResult>();
+            }
+
+            var subjectCodes = GetActiveSubjectCodes();
+
+            return items.Select((item, index) => new BoDeImportCheckResult
+            {
+                Index = index,
+                MaMH = Trim(item.MaMH),
+                NoiDung = Trim(item.NoiDung),
+                SubjectExists = subjectCodes.Contains(NormalizeCode(item.MaMH))
+            }).ToList();
+        }
+
+        private HashSet<string> GetActiveSubjectCodes()
+        {
+            using var connection = _connectionFactory.CreateConnection();
+            using var command = CreateStoredProcedureCommand(StoredProcedures.GetActiveSubjectCodes, connection);
+            using var reader = command.ExecuteReader();
+
+            var subjectCodes = new HashSet<string>();
+            while (reader.Read())
+            {
+                var code = NormalizeCode(reader[Columns.MaMH].ToString());
+                if (!string.IsNullOrEmpty(code))
+                {
+                    subjectCodes.Add(code);
+                }
+            }
+
+            return subjectCodes;
+        }
+
+        private static SqlCommand CreateStoredProcedureCommand(string procedureName, SqlConnection connection)
+        {
+            return new SqlCommand(procedureName, connection)
             {
                 CommandType = CommandType.StoredProcedure
             };
+        }
 
-            var result = cmd.ExecuteScalar();
-            return result != null ? Convert.ToInt32(result) : 0;
+        private static List<BoDe> ReadQuestions(SqlCommand command)
+        {
+            using var reader = command.ExecuteReader();
+            var questions = new List<BoDe>();
+
+            while (reader.Read())
+            {
+                questions.Add(MapQuestion(reader));
+            }
+
+            return questions;
+        }
+
+        private static BoDe MapQuestion(SqlDataReader reader)
+        {
+            return new BoDe
+            {
+                CauHoi = reader.GetInt32(reader.GetOrdinal(Columns.CauHoi)),
+                MaMH = ReadString(reader, Columns.MaMH).Trim(),
+                TrinhDo = ReadString(reader, Columns.TrinhDo).Trim(),
+                NoiDung = ReadString(reader, Columns.NoiDung),
+                DapAnA = ReadString(reader, Columns.DapAnA),
+                DapAnB = ReadString(reader, Columns.DapAnB),
+                DapAnC = ReadString(reader, Columns.DapAnC),
+                DapAnD = ReadString(reader, Columns.DapAnD),
+                DapAn = ReadString(reader, Columns.DapAn).Trim(),
+                MaGV = ReadString(reader, Columns.MaGV).Trim()
+            };
+        }
+
+        private static void AddQuestionParameters(SqlCommand command, BoDe question)
+        {
+            command.Parameters.Add("@MaMH", SqlDbType.NChar, 5).Value = Trim(question.MaMH);
+            command.Parameters.Add("@TrinhDo", SqlDbType.Char, 1).Value = Trim(question.TrinhDo);
+            command.Parameters.Add("@NoiDung", SqlDbType.NVarChar, 200).Value = Trim(question.NoiDung);
+            command.Parameters.Add("@DapAnA", SqlDbType.NVarChar, 50).Value = Trim(question.DapAnA);
+            command.Parameters.Add("@DapAnB", SqlDbType.NVarChar, 50).Value = Trim(question.DapAnB);
+            command.Parameters.Add("@DapAnC", SqlDbType.NVarChar, 50).Value = Trim(question.DapAnC);
+            command.Parameters.Add("@DapAnD", SqlDbType.NVarChar, 50).Value = Trim(question.DapAnD);
+            command.Parameters.Add("@DapAn", SqlDbType.Char, 1).Value = Trim(question.DapAn);
+        }
+
+        private static object GetTeacherFilterValue(string role, string maGV)
+        {
+            return IsLecturer(role) ? Trim(maGV) : DBNull.Value;
+        }
+
+        private static bool IsLecturer(string role)
+        {
+            return string.Equals(role, LecturerRole, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static object GetDbValue(string? value)
+        {
+            return string.IsNullOrWhiteSpace(value) ? DBNull.Value : value.Trim();
+        }
+
+        private static string ReadString(SqlDataReader reader, string columnName)
+        {
+            return reader[columnName].ToString() ?? DefaultStringValue;
+        }
+
+        private static string NormalizeCode(string? value)
+        {
+            return Trim(value).ToUpperInvariant();
+        }
+
+        private static string Trim(string? value)
+        {
+            return value?.Trim() ?? DefaultStringValue;
         }
     }
 }

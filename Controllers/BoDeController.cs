@@ -1,33 +1,39 @@
+using DMS_Examify.Filters;
 using DMS_Examify.Models;
 using DMS_Examify.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DMS_Examify.Controllers
 {
+    [RequireRole("PGV", "Giangvien")]
     public class BoDeController : BaseController
     {
+        private const string InvalidQuestionMessage = "Thông tin câu hỏi không hợp lệ.";
+        private const string ImportCheckErrorMessage = "Lỗi hệ thống khi kiểm tra danh sách import.";
+        private const string QuestionNotFoundOrDeniedMessage = "Không tìm thấy câu hỏi hoặc bạn không có quyền thao tác.";
+
         private readonly IBoDeService _boDeService;
         private readonly IMonHocService _monHocService;
+        private readonly ILogger<BoDeController> _logger;
 
-        public BoDeController(IBoDeService boDeService, IMonHocService monHocService)
+        public BoDeController(
+            IBoDeService boDeService,
+            IMonHocService monHocService,
+            ILogger<BoDeController> logger)
         {
             _boDeService = boDeService;
             _monHocService = monHocService;
+            _logger = logger;
         }
 
         public IActionResult Index()
         {
-            if (!CheckRole("PGV", "Giangvien")) return Denied();
-
             ViewBag.Title = "Nhập câu hỏi thi";
             ViewBag.Subtitle = "Quản lý bộ đề trắc nghiệm";
 
-            string maGV = HttpContext.Session.GetString("UserLogin") ?? string.Empty;
-            string role = HttpContext.Session.GetString("UserRole") ?? string.Empty;
-
             var viewModel = new BoDeViewModel
             {
-                BoDes = _boDeService.GetAll(role, maGV),
+                BoDes = _boDeService.GetAll(CurrentRole, CurrentTeacherId),
                 MonHocList = _monHocService.GetAll()
             };
 
@@ -35,83 +41,78 @@ namespace DMS_Examify.Controllers
         }
 
         [HttpPost]
-        public IActionResult Insert([FromBody] BoDe model)
+        public IActionResult Insert([FromBody] BoDe? model)
         {
-            string maGV = HttpContext.Session.GetString("UserLogin") ?? string.Empty;
-            var cauHoi = _boDeService.Insert(model, maGV);
+            if (model == null) return BadRequest(InvalidQuestionMessage);
+
+            var cauHoi = _boDeService.Insert(model, CurrentTeacherId);
             return Json(new { cauHoi });
         }
 
         [HttpPost]
-        public IActionResult Update([FromBody] BoDe model)
+        public IActionResult Update([FromBody] BoDe? model)
         {
-            if (!CheckRole("PGV", "Giangvien")) return Denied();
-            if (model == null || model.CauHoi <= 0 || string.IsNullOrEmpty(model.MaMH))
-                return BadRequest("Thông tin câu hỏi không hợp lệ.");
+            if (IsInvalidQuestion(model)) return BadRequest(InvalidQuestionMessage);
 
-            string maGV = HttpContext.Session.GetString("UserLogin") ?? string.Empty;
-            _boDeService.Update(model, maGV);
-            return Ok();
+            return _boDeService.Update(model!, CurrentRole, CurrentTeacherId)
+                ? Ok()
+                : NotFound(QuestionNotFoundOrDeniedMessage);
         }
 
         [HttpPost]
         public IActionResult Delete(int cauHoi, string maMH)
         {
-            if (!CheckRole("PGV", "Giangvien")) return Denied();
-            if (cauHoi <= 0 || string.IsNullOrEmpty(maMH))
-                return BadRequest("Thông tin câu hỏi không hợp lệ.");
+            if (IsInvalidQuestionKey(cauHoi, maMH)) return BadRequest(InvalidQuestionMessage);
 
-            _boDeService.Delete(cauHoi, maMH);
-            return Ok();
+            return _boDeService.Delete(cauHoi, maMH, CurrentRole, CurrentTeacherId)
+                ? Ok()
+                : NotFound(QuestionNotFoundOrDeniedMessage);
         }
 
         [HttpGet]
-        public IActionResult Search(string keyword)
+        public IActionResult Search(string? keyword)
         {
-            if (!CheckRole("PGV", "Giangvien")) return Denied();
-
-            var questions = _boDeService.Search(keyword);
-            return Json(questions);
+            return Json(_boDeService.Search(keyword, CurrentRole, CurrentTeacherId));
         }
 
         [HttpGet]
         public IActionResult GetLatestCauHoi()
         {
-            var max = _boDeService.GetLatestCauHoi();
-            return Json(max);
+            return Json(_boDeService.GetLatestCauHoi());
         }
 
         [HttpPost]
-        public IActionResult CheckImport([FromBody] List<BoDe> items)
+        public IActionResult CheckImport([FromBody] List<BoDe>? items)
         {
-            if (!CheckRole("PGV", "Giangvien")) return Denied();
-            if (items == null || items.Count == 0)
-                return Json(new List<object>());
-
             try
             {
-                var existingSubjects = _monHocService.GetAll();
-                var existingSubjectCodes = existingSubjects.Select(s => s.MaMH.Trim().ToUpper()).ToHashSet();
-
-                var results = items.Select((item, index) =>
-                {
-                    var code = item.MaMH?.Trim().ToUpper() ?? string.Empty;
-                    var subjectExists = existingSubjectCodes.Contains(code);
-                    return new
-                    {
-                        index,
-                        maMH = item.MaMH?.Trim() ?? string.Empty,
-                        noiDung = item.NoiDung?.Trim() ?? string.Empty,
-                        subjectExists = subjectExists
-                    };
-                });
-
-                return Json(results);
+                return Json(_boDeService.CheckImportSubjects(items ?? new List<BoDe>()));
             }
             catch (Exception ex)
             {
-                return StatusCode(500, $"Lỗi hệ thống khi kiểm tra danh sách import: {ex.Message}");
+                return LogAndReturnServerError(ex, ImportCheckErrorMessage);
             }
+        }
+
+        private string CurrentTeacherId => HttpContext.Session.GetString("UserLogin") ?? string.Empty;
+
+        private string CurrentRole => HttpContext.Session.GetString("UserRole") ?? string.Empty;
+
+        private IActionResult LogAndReturnServerError(Exception exception, string message)
+        {
+            _logger.LogError(exception, message);
+            return StatusCode(500, message);
+        }
+
+        private static bool IsInvalidQuestion(BoDe? question)
+        {
+            return question == null
+                || IsInvalidQuestionKey(question.CauHoi, question.MaMH);
+        }
+
+        private static bool IsInvalidQuestionKey(int cauHoi, string? maMH)
+        {
+            return cauHoi <= 0 || string.IsNullOrWhiteSpace(maMH);
         }
     }
 }

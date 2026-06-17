@@ -107,6 +107,20 @@ GO
 PRINT N'OK: Da tao usp_SinhVien_Login.';
 GO
 
+IF COL_LENGTH('dbo.BODE', 'TrangThai') IS NULL
+BEGIN
+    ALTER TABLE dbo.BODE
+    ADD TrangThai BIT NOT NULL
+        CONSTRAINT DF_BODE_TrangThai DEFAULT (1);
+END
+GO
+
+IF OBJECT_ID(N'dbo.trg_BODE_KiemTraTruocKhiXoa', N'TR') IS NOT NULL
+BEGIN
+    DROP TRIGGER dbo.trg_BODE_KiemTraTruocKhiXoa;
+END
+GO
+
 CREATE OR ALTER PROCEDURE dbo.usp_BoDe_GetAll
 AS
 BEGIN
@@ -114,6 +128,7 @@ BEGIN
     SELECT CAUHOI, MAMH, TRINHDO, NOIDUNG,
            A, B, C, D, DAP_AN, MAGV
     FROM BODE
+    WHERE TrangThai = 1
     ORDER BY CAUHOI;
 END
 GO
@@ -121,16 +136,84 @@ GO
 PRINT N'OK: usp_BoDe_GetAll đã được cập nhật.';
 GO
 
+IF NOT EXISTS (
+    SELECT 1
+    FROM sys.indexes
+    WHERE name = N'IX_BODE_TrangThai_MAGV_CAUHOI'
+      AND object_id = OBJECT_ID(N'dbo.BODE')
+)
+BEGIN
+    CREATE NONCLUSTERED INDEX [IX_BODE_TrangThai_MAGV_CAUHOI]
+    ON [dbo].[BODE] ([TrangThai] ASC, [MAGV] ASC, [CAUHOI] ASC)
+    INCLUDE ([MAMH], [TRINHDO], [DAP_AN]);
+END
+GO
+
+IF NOT EXISTS (
+    SELECT 1
+    FROM sys.indexes
+    WHERE name = N'IX_BODE_TrangThai_MAMH_TRINHDO_CAUHOI'
+      AND object_id = OBJECT_ID(N'dbo.BODE')
+)
+BEGIN
+    CREATE NONCLUSTERED INDEX [IX_BODE_TrangThai_MAMH_TRINHDO_CAUHOI]
+    ON [dbo].[BODE] ([TrangThai] ASC, [MAMH] ASC, [TRINHDO] ASC, [CAUHOI] ASC)
+    INCLUDE ([DAP_AN], [MAGV]);
+END
+GO
+
+IF NOT EXISTS (
+    SELECT 1
+    FROM sys.indexes
+    WHERE name = N'IX_BODE_MAGV_CAUHOI'
+      AND object_id = OBJECT_ID(N'dbo.BODE')
+)
+BEGIN
+    CREATE NONCLUSTERED INDEX [IX_BODE_MAGV_CAUHOI]
+    ON [dbo].[BODE] ([MAGV] ASC, [CAUHOI] ASC)
+    INCLUDE ([MAMH], [TRINHDO], [DAP_AN]);
+END
+GO
+
+IF NOT EXISTS (
+    SELECT 1
+    FROM sys.indexes
+    WHERE name = N'IX_BODE_MAGV_MAMH_CAUHOI'
+      AND object_id = OBJECT_ID(N'dbo.BODE')
+)
+BEGIN
+    CREATE NONCLUSTERED INDEX [IX_BODE_MAGV_MAMH_CAUHOI]
+    ON [dbo].[BODE] ([MAGV] ASC, [MAMH] ASC, [CAUHOI] ASC)
+    INCLUDE ([TRINHDO], [DAP_AN]);
+END
+GO
+
+IF NOT EXISTS (
+    SELECT 1
+    FROM sys.indexes
+    WHERE name = N'IX_BODE_MAMH_TRINHDO_CAUHOI'
+      AND object_id = OBJECT_ID(N'dbo.BODE')
+)
+BEGIN
+    CREATE NONCLUSTERED INDEX [IX_BODE_MAMH_TRINHDO_CAUHOI]
+    ON [dbo].[BODE] ([MAMH] ASC, [TRINHDO] ASC, [CAUHOI] ASC)
+    INCLUDE ([DAP_AN], [MAGV]);
+END
+GO
+
+PRINT N'OK: Index BODE da san sang.';
+GO
+
 CREATE OR ALTER PROCEDURE dbo.usp_BoDe_Insert
-    @MaMH    NVARCHAR(50),
-    @TrinhDo NVARCHAR(10),
-    @NoiDung NVARCHAR(MAX),
-    @DapAnA  NVARCHAR(MAX),
-    @DapAnB  NVARCHAR(MAX),
-    @DapAnC  NVARCHAR(MAX),
-    @DapAnD  NVARCHAR(MAX),
-    @DapAn   NVARCHAR(10),
-    @MaGV    NVARCHAR(50)
+    @MaMH    NCHAR(5),
+    @TrinhDo CHAR(1),
+    @NoiDung NVARCHAR(200),
+    @DapAnA  NVARCHAR(50),
+    @DapAnB  NVARCHAR(50),
+    @DapAnC  NVARCHAR(50),
+    @DapAnD  NVARCHAR(50),
+    @DapAn   CHAR(1),
+    @MaGV    NCHAR(8)
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -152,15 +235,15 @@ GO
 
 CREATE OR ALTER PROCEDURE dbo.usp_BoDe_Update
     @CauHoi  INT,
-    @MaMH    NVARCHAR(50),
-    @TrinhDo NVARCHAR(10),
-    @NoiDung NVARCHAR(MAX),
-    @DapAnA  NVARCHAR(MAX),
-    @DapAnB  NVARCHAR(MAX),
-    @DapAnC  NVARCHAR(MAX),
-    @DapAnD  NVARCHAR(MAX),
-    @DapAn   NVARCHAR(10),
-    @MaGV    NVARCHAR(50)
+    @MaMH    NCHAR(5),
+    @TrinhDo CHAR(1),
+    @NoiDung NVARCHAR(200),
+    @DapAnA  NVARCHAR(50),
+    @DapAnB  NVARCHAR(50),
+    @DapAnC  NVARCHAR(50),
+    @DapAnD  NVARCHAR(50),
+    @DapAn   CHAR(1),
+    @MAGV    NCHAR(8) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -172,9 +255,11 @@ BEGIN
         B       = @DapAnB,
         C       = @DapAnC,
         D       = @DapAnD,
-        DAP_AN  = @DapAn,
-        MAGV    = @MaGV
-    WHERE CAUHOI = @CauHoi AND MAMH = @MaMH;
+        DAP_AN  = @DapAn
+    WHERE CAUHOI = @CauHoi
+      AND MAMH = @MaMH
+      AND TrangThai = 1
+      AND (@MAGV IS NULL OR MAGV = @MAGV);
 END
 GO
 
@@ -186,19 +271,88 @@ GO
 PRINT N'OK: usp_BoDe_Update đã được cập nhật.';
 GO
 
-CREATE OR ALTER PROCEDURE dbo.usp_BoDe_Search
-    @Keyword NVARCHAR(250) = NULL
+CREATE OR ALTER PROCEDURE dbo.usp_BoDe_Delete
+    @CauHoi INT,
+    @MaMH NCHAR(5),
+    @MAGV NCHAR(8) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
 
+    DECLARE @HasReference BIT = 0;
+    DECLARE @ReferenceCheckSql NVARCHAR(MAX) = N'';
+
+    SELECT @ReferenceCheckSql = @ReferenceCheckSql
+        + N'IF EXISTS (SELECT 1 FROM '
+        + QUOTENAME(OBJECT_SCHEMA_NAME(fkc.parent_object_id)) + N'.' + QUOTENAME(OBJECT_NAME(fkc.parent_object_id))
+        + N' WHERE ' + QUOTENAME(COL_NAME(fkc.parent_object_id, fkc.parent_column_id))
+        + N' = @CauHoi) SET @HasReference = 1;'
+    FROM sys.foreign_key_columns fkc
+    WHERE fkc.referenced_object_id = OBJECT_ID(N'dbo.BODE')
+      AND COL_NAME(fkc.referenced_object_id, fkc.referenced_column_id) = N'CAUHOI';
+
+    IF @ReferenceCheckSql <> N''
+    BEGIN
+        EXEC sp_executesql
+            @ReferenceCheckSql,
+            N'@CauHoi INT, @HasReference BIT OUTPUT',
+            @CauHoi = @CauHoi,
+            @HasReference = @HasReference OUTPUT;
+    END
+
+    BEGIN TRANSACTION;
+
+    IF @HasReference = 1
+    BEGIN
+        UPDATE dbo.BODE
+        SET TrangThai = 0
+        WHERE CAUHOI = @CauHoi
+          AND MAMH = @MaMH
+          AND TrangThai = 1
+          AND (@MAGV IS NULL OR MAGV = @MAGV);
+    END
+    ELSE
+    BEGIN
+        DELETE FROM dbo.BODE
+        WHERE CAUHOI = @CauHoi
+          AND MAMH = @MaMH
+          AND TrangThai = 1
+          AND (@MAGV IS NULL OR MAGV = @MAGV);
+    END
+
+    COMMIT TRANSACTION;
+END
+GO
+
+GRANT EXECUTE ON dbo.usp_BoDe_Delete TO [PGV];
+GO
+GRANT EXECUTE ON dbo.usp_BoDe_Delete TO [Giangvien];
+GO
+
+PRINT N'OK: usp_BoDe_Delete da duoc cap nhat.';
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_BoDe_Search
+    @Keyword NVARCHAR(250) = NULL,
+    @MAGV NCHAR(8) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @SearchKeyword NVARCHAR(250) = NULLIF(LTRIM(RTRIM(@Keyword)), N'');
+
     SELECT CAUHOI, MAMH, TRINHDO, NOIDUNG,
            A, B, C, D, DAP_AN, MAGV
-    FROM BODE
-    WHERE @Keyword IS NULL OR @Keyword = ''
-       OR MAMH    LIKE '%' + @Keyword + '%'
-       OR NOIDUNG LIKE '%' + @Keyword + '%'
-       OR MAGV    LIKE '%' + @Keyword + '%'
+    FROM dbo.BODE
+    WHERE TrangThai = 1
+      AND (@MAGV IS NULL OR MAGV = @MAGV)
+      AND (
+          @SearchKeyword IS NULL
+          OR (LEN(@SearchKeyword) <= 5 AND MAMH = CONVERT(NCHAR(5), @SearchKeyword))
+          OR (LEN(@SearchKeyword) <= 8 AND MAGV = CONVERT(NCHAR(8), @SearchKeyword))
+          OR MAMH LIKE @SearchKeyword + N'%'
+          OR NOIDUNG LIKE N'%' + @SearchKeyword + N'%'
+      )
     ORDER BY CAUHOI
     OPTION (RECOMPILE);
 END
@@ -212,7 +366,27 @@ GO
 PRINT N'OK: usp_BoDe_Search đã được cập nhật.';
 GO
 
-CREATE OR ALTER PROCEDURE dbo.usp_GetCauHoiByGiangVien
+CREATE OR ALTER PROCEDURE dbo.usp_BoDe_GetActiveSubjectCodes
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT MAMH
+    FROM dbo.MONHOC
+    WHERE TrangThai = 1
+    ORDER BY MAMH;
+END
+GO
+
+GRANT EXECUTE ON dbo.usp_BoDe_GetActiveSubjectCodes TO [PGV];
+GO
+GRANT EXECUTE ON dbo.usp_BoDe_GetActiveSubjectCodes TO [Giangvien];
+GO
+
+PRINT N'OK: usp_BoDe_GetActiveSubjectCodes da duoc cap nhat.';
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_BoDe_GetDanhSach
     @MAGV NCHAR(8) = NULL
 AS
 BEGIN
@@ -221,9 +395,27 @@ BEGIN
     SELECT CAUHOI, MAMH, TRINHDO, NOIDUNG,
            A, B, C, D, DAP_AN, MAGV
     FROM dbo.BODE
-    WHERE @MAGV IS NULL
-       OR MAGV = @MAGV
+    WHERE TrangThai = 1
+      AND (@MAGV IS NULL OR MAGV = @MAGV)
     ORDER BY CAUHOI;
+END
+GO
+
+GRANT EXECUTE ON dbo.usp_BoDe_GetDanhSach TO [PGV];
+GO
+GRANT EXECUTE ON dbo.usp_BoDe_GetDanhSach TO [Giangvien];
+GO
+
+PRINT N'OK: Đã tạo usp_BoDe_GetDanhSach.';
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_GetCauHoiByGiangVien
+    @MAGV NCHAR(8) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    EXEC dbo.usp_BoDe_GetDanhSach @MAGV = @MAGV;
 END
 GO
 
@@ -232,7 +424,7 @@ GO
 GRANT EXECUTE ON dbo.usp_GetCauHoiByGiangVien TO [Giangvien];
 GO
 
-PRINT N'OK: Đã tạo usp_GetCauHoiByGiangVien.';
+PRINT N'OK: Đã tạo usp_GetCauHoiByGiangVien compatibility wrapper.';
 GO
 
 CREATE OR ALTER PROCEDURE dbo.usp_BoDe_GetLatestCauHoi
@@ -240,7 +432,8 @@ AS
 BEGIN
     SET NOCOUNT ON;
     SELECT ISNULL(MAX(CAUHOI), 0) AS LatestCauHoi
-    FROM BODE;
+    FROM BODE
+    WHERE TrangThai = 1;
 END
 GO
 
@@ -419,7 +612,8 @@ BEGIN
     JOIN      [dbo].[MONHOC]   mh ON b.MAMH = mh.MAMH
     LEFT JOIN [dbo].[GIAOVIEN] gv ON b.MAGV = gv.MAGV
     WHERE
-        (b.MAGV = @MAGV OR @MAGV IS NULL)
+        b.TrangThai = 1
+        AND (b.MAGV = @MAGV OR @MAGV IS NULL)
         AND (b.MAMH = @MAMH OR @MAMH IS NULL)
         AND (b.TRINHDO = @TRINHDO OR @TRINHDO IS NULL)
         AND (
@@ -926,85 +1120,6 @@ BEGIN
 END
 GO
 
-CREATE PROCEDURE dbo.usp_BoDe_GetAll
-AS
-BEGIN
-    SET NOCOUNT ON;
-    SELECT CauHoi, MaMH, TrinhDo, NoiDung, DapAnA, DapAnB, DapAnC, DapAnD, DapAn, MaGV
-    FROM BODE;
-END
-GO
-
-CREATE PROCEDURE dbo.usp_BoDe_Insert
-    @CauHoi INT,
-    @MaMH NVARCHAR(50),
-    @TrinhDo NVARCHAR(10),
-    @NoiDung NVARCHAR(MAX),
-    @DapAnA NVARCHAR(MAX),
-    @DapAnB NVARCHAR(MAX),
-    @DapAnC NVARCHAR(MAX),
-    @DapAnD NVARCHAR(MAX),
-    @DapAn NVARCHAR(10),
-    @MaGV NVARCHAR(50)
-AS
-BEGIN
-    SET NOCOUNT ON;
-    INSERT INTO BODE (CauHoi, MaMH, TrinhDo, NoiDung, DapAnA, DapAnB, DapAnC, DapAnD, DapAn, MaGV)
-    VALUES (@CauHoi, @MaMH, @TrinhDo, @NoiDung, @DapAnA, @DapAnB, @DapAnC, @DapAnD, @DapAn, @MaGV);
-END
-GO
-
-CREATE PROCEDURE dbo.usp_BoDe_Update
-    @CauHoi INT,
-    @MaMH NVARCHAR(50),
-    @TrinhDo NVARCHAR(10),
-    @NoiDung NVARCHAR(MAX),
-    @DapAnA NVARCHAR(MAX),
-    @DapAnB NVARCHAR(MAX),
-    @DapAnC NVARCHAR(MAX),
-    @DapAnD NVARCHAR(MAX),
-    @DapAn NVARCHAR(10),
-    @MaGV NVARCHAR(50)
-AS
-BEGIN
-    SET NOCOUNT ON;
-    UPDATE BODE
-    SET TrinhDo = @TrinhDo,
-        NoiDung = @NoiDung,
-        DapAnA = @DapAnA,
-        DapAnB = @DapAnB,
-        DapAnC = @DapAnC,
-        DapAnD = @DapAnD,
-        DapAn = @DapAn,
-        MaGV = @MaGV
-    WHERE CauHoi = @CauHoi AND MaMH = @MaMH;
-END
-GO
-
-CREATE PROCEDURE dbo.usp_BoDe_Delete
-    @CauHoi INT,
-    @MaMH NVARCHAR(50)
-AS
-BEGIN
-    SET NOCOUNT ON;
-    DELETE FROM BODE WHERE CauHoi = @CauHoi AND MaMH = @MaMH;
-END
-GO
-
-CREATE PROCEDURE dbo.usp_BoDe_Search
-    @Keyword NVARCHAR(250)
-AS
-BEGIN
-    SET NOCOUNT ON;
-    SELECT CauHoi, MaMH, TrinhDo, NoiDung, DapAnA, DapAnB, DapAnC, DapAnD, DapAn, MaGV
-    FROM BODE
-    WHERE @Keyword IS NULL OR @Keyword = ''
-       OR MaMH LIKE '%' + @Keyword + '%'
-       OR NoiDung LIKE '%' + @Keyword + '%'
-       OR MaGV LIKE '%' + @Keyword + '%';
-END
-GO
-
 CREATE OR ALTER PROCEDURE dbo.usp_Lop_Insert
     @MALOP NCHAR(8),
     @TENLOP NVARCHAR(40)
@@ -1329,7 +1444,9 @@ BEGIN
     DECLARE @SoCau INT = 0;
     SELECT @SoCau = COUNT(CAUHOI)
     FROM dbo.BODE
-    WHERE TRINHDO = @TRINHDO AND MAMH = @MAMH;
+    WHERE TRINHDO = @TRINHDO
+      AND MAMH = @MAMH
+      AND TrangThai = 1;
     RETURN @SoCau;
 END
 GO
@@ -1510,6 +1627,7 @@ BEGIN
             ELSE TRINHDO
         END AS TenTrinhDo
     FROM dbo.BODE
+    WHERE TrangThai = 1
     ORDER BY TRINHDO ASC;
 END
 GO

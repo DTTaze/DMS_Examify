@@ -82,7 +82,8 @@ SELECT
     dbo.udf_LayHoTen(gv.HO, gv.TEN) AS TenGV
 FROM [dbo].[BODE] b
 JOIN      [dbo].[MONHOC]   mh ON b.MAMH = mh.MAMH
-LEFT JOIN [dbo].[GIAOVIEN] gv ON b.MAGV = gv.MAGV;
+LEFT JOIN [dbo].[GIAOVIEN] gv ON b.MAGV = gv.MAGV
+WHERE b.TrangThai = 1;
 GO
 
 PRINT N'OK: Da tao View vw_BoDeCuaGiaoVien.';
@@ -118,33 +119,13 @@ GO
 
 -- ------------------------------------------------------------
 -- 5. Trigger trg_BODE_KiemTraTruocKhiXoa
---    Chan xoa cau hoi neu mon hoc do dang co lich thi tuong lai
+--    Da bo: logic xoa mem/xoa cung duoc xu ly trong usp_BoDe_Delete
 -- ------------------------------------------------------------
-CREATE OR ALTER TRIGGER [dbo].[trg_BODE_KiemTraTruocKhiXoa]
-ON [dbo].[BODE]
-INSTEAD OF DELETE
-AS
+IF OBJECT_ID(N'dbo.trg_BODE_KiemTraTruocKhiXoa', N'TR') IS NOT NULL
 BEGIN
-    SET NOCOUNT ON;
-
-    IF EXISTS (
-        SELECT 1
-        FROM deleted d
-        JOIN [dbo].[GIAOVIEN_DANGKY] gdk ON d.MAMH = gdk.MAMH
-        WHERE gdk.NGAYTHI >= GETDATE()
-    )
-    BEGIN
-        RAISERROR(
-            N'Khong the xoa! Cau hoi thuoc mon hoc dang co lich thi trong tuong lai. Hay huy lich thi truoc.',
-            16, 1
-        );
-        RETURN;
-    END
-
-    DELETE FROM [dbo].[BODE]
-    WHERE [CAUHOI] IN (SELECT [CAUHOI] FROM deleted);
+    DROP TRIGGER dbo.trg_BODE_KiemTraTruocKhiXoa;
 END
 GO
 
-PRINT N'OK: Da tao Trigger trg_BODE_KiemTraTruocKhiXoa.';
+PRINT N'OK: Da bo Trigger trg_BODE_KiemTraTruocKhiXoa.';
 GO
