@@ -332,7 +332,7 @@ async function ghiLop() {
 
     try {
         for (const d of deletedLops) {
-            const response = await fetch(`/SinhVien/DeleteLop?maLop=${d.MaLop}`, { method: "POST" });
+            const response = await fetch(`/LopSinhVien/DeleteClass?maLop=${d.MaLop}`, { method: "POST" });
             if (!response.ok) {
                 const err = await response.text();
                 hienThongBao(`Lỗi khi xóa lớp <strong>${d.MaLop}</strong>: ${err}`, "Lỗi");
@@ -341,7 +341,7 @@ async function ghiLop() {
         }
 
         for (const u of updatedLops) {
-            const response = await fetch(`/SinhVien/UpdateLop`, {
+            const response = await fetch(`/LopSinhVien/UpdateClass`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(u)
@@ -354,7 +354,7 @@ async function ghiLop() {
         }
 
         for (const n of newLops) {
-            const response = await fetch(`/SinhVien/InsertLop`, {
+            const response = await fetch(`/LopSinhVien/CreateClass`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(n)
@@ -537,8 +537,8 @@ function validateClassInputs() {
     );
 
     classDebounceTimer = setTimeout(() => {
-        const action = isEditing ? "CheckDuplicateLopForUpdate" : "CheckDuplicateLopForCreate";
-        const checkUrl = `/SinhVien/${action}?maLop=${encodeURIComponent(maLop)}&tenLop=${encodeURIComponent(tenLop)}`;
+        const action = isEditing ? "CheckClassDuplicateForUpdate" : "CheckClassDuplicateForCreate";
+        const checkUrl = `/LopSinhVien/${action}?maLop=${encodeURIComponent(maLop)}&tenLop=${encodeURIComponent(tenLop)}`;
 
         fetch(checkUrl)
             .then(res => {
@@ -751,7 +751,7 @@ async function loadSinhVien() {
     if (!selectedLop) return;
 
     try {
-        const res = await fetch('/SinhVien/GetByLop?maLop=' + selectedLop);
+        const res = await fetch('/LopSinhVien/GetStudentsByClass?maLop=' + selectedLop);
         const data = await res.json();
 
         const tbody = document.getElementById("svTable");
@@ -903,7 +903,7 @@ async function ghiSV() {
 
     try {
         for (const d of deletedItems) {
-            const res = await fetch(`/SinhVien/Delete?maSV=${d.MaSV}`, { method: "POST" });
+            const res = await fetch(`/LopSinhVien/DeleteStudent?maSV=${d.MaSV}`, { method: "POST" });
             if (!res.ok) {
                 const err = await res.text();
                 hienThongBao(`Lỗi khi xóa SV <strong>${d.MaSV}</strong>: ${err}`, "Lỗi");
@@ -912,7 +912,7 @@ async function ghiSV() {
         }
 
         for (const u of updatedItems) {
-            const res = await fetch(`/SinhVien/Update`, {
+            const res = await fetch(`/LopSinhVien/UpdateStudent`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(u)
@@ -925,7 +925,7 @@ async function ghiSV() {
         }
 
         for (const n of newItems) {
-            const res = await fetch(`/SinhVien/Insert`, {
+            const res = await fetch(`/LopSinhVien/CreateStudent`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(n)
@@ -1120,7 +1120,7 @@ function validateStudentInputs() {
         );
 
         studentDebounceTimer = setTimeout(() => {
-            const checkUrl = `/SinhVien/CheckDuplicateStudentForCreate?maSV=${encodeURIComponent(d.MaSV)}`;
+            const checkUrl = `/LopSinhVien/CheckStudentDuplicateForCreate?maSV=${encodeURIComponent(d.MaSV)}`;
 
             fetch(checkUrl)
                 .then(res => {
@@ -1546,7 +1546,7 @@ function validateExcelData(rawData) {
     }
 
     // Call server API batch check
-    fetch('/SinhVien/CheckImport', {
+    fetch('/LopSinhVien/CheckStudentImport', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(candidates.map(c => ({ MaSV: c.maSV })))

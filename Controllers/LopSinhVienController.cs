@@ -6,16 +6,16 @@ using Microsoft.AspNetCore.Mvc;
 namespace DMS_Examify.Controllers
 {
     [RequireRole("PGV")]
-    public class SinhVienController : BaseController
+    public class LopSinhVienController : BaseController
     {
         private readonly ISinhVienService _sinhVienService;
         private readonly ILopService _lopService;
-        private readonly ILogger<SinhVienController> _logger;
+        private readonly ILogger<LopSinhVienController> _logger;
 
-        public SinhVienController(
+        public LopSinhVienController(
             ISinhVienService sinhVienService,
             ILopService lopService,
-            ILogger<SinhVienController> logger)
+            ILogger<LopSinhVienController> logger)
         {
             _sinhVienService = sinhVienService;
             _lopService = lopService;
@@ -29,70 +29,70 @@ namespace DMS_Examify.Controllers
         }
 
         [HttpPost]
-        public IActionResult InsertLop([FromBody] Lop model)
+        public IActionResult CreateClass([FromBody] Lop model)
         {
             _lopService.Insert(model);
             return Ok();
         }
 
         [HttpPost]
-        public IActionResult UpdateLop([FromBody] Lop model)
+        public IActionResult UpdateClass([FromBody] Lop model)
         {
             _lopService.Update(model);
             return Ok();
         }
 
         [HttpPost]
-        public IActionResult DeleteLop(string maLop)
+        public IActionResult DeleteClass(string maLop)
         {
             _lopService.Delete(maLop);
             return Ok();
         }
 
         [HttpGet]
-        public IActionResult SearchLop(string keyword)
+        public IActionResult SearchClasses(string keyword)
         {
             var classes = _lopService.Search(keyword);
             return Json(classes);
         }
 
         [HttpGet]
-        public IActionResult Search(string keyword)
+        public IActionResult SearchStudents(string keyword)
         {
             var students = _sinhVienService.Search(keyword);
             return Json(students);
         }
 
         [HttpPost]
-        public IActionResult Insert([FromBody] SinhVien model)
+        public IActionResult CreateStudent([FromBody] SinhVien model)
         {
             _sinhVienService.Insert(model);
             return Ok();
         }
 
         [HttpPost]
-        public IActionResult Update([FromBody] SinhVien model)
+        public IActionResult UpdateStudent([FromBody] SinhVien model)
         {
             _sinhVienService.Update(model);
             return Ok();
         }
 
         [HttpPost]
-        public IActionResult Delete(string maSV)
+        public IActionResult DeleteStudent(string maSV)
         {
             _sinhVienService.Delete(maSV);
             return Ok();
         }
 
         [HttpGet]
-        public IActionResult GetByLop(string maLop)
+        public IActionResult GetStudentsByClass(string maLop)
         {
             var students = _sinhVienService.GetByLop(maLop);
             return Json(students);
         }
 
         [HttpPost]
-        public IActionResult CheckImport([FromBody] List<SinhVien>? items)
+        public IActionResult CheckStudentImport([FromBody] List<SinhVien>? items)
         {
             try
             {
@@ -101,12 +101,12 @@ namespace DMS_Examify.Controllers
             }
             catch (Exception ex)
             {
-                return ServerError(ex, "Lỗi hệ thống khi kiểm tra danh sách import.");
+                return LogAndReturnServerError(ex, "System error while checking student import.");
             }
         }
 
         [HttpGet]
-        public IActionResult CheckDuplicateLopForCreate(string maLop, string tenLop)
+        public IActionResult CheckClassDuplicateForCreate(string maLop, string tenLop)
         {
             try
             {
@@ -115,12 +115,12 @@ namespace DMS_Examify.Controllers
             }
             catch (Exception ex)
             {
-                return ServerError(ex, "Lỗi hệ thống khi kiểm tra trùng lớp.");
+                return LogAndReturnServerError(ex, "System error while checking class duplicates.");
             }
         }
 
         [HttpGet]
-        public IActionResult CheckDuplicateLopForUpdate(string maLop, string tenLop)
+        public IActionResult CheckClassDuplicateForUpdate(string maLop, string tenLop)
         {
             try
             {
@@ -129,12 +129,12 @@ namespace DMS_Examify.Controllers
             }
             catch (Exception ex)
             {
-                return ServerError(ex, "Lỗi hệ thống khi kiểm tra trùng lớp.");
+                return LogAndReturnServerError(ex, "System error while checking class duplicates.");
             }
         }
 
         [HttpGet]
-        public IActionResult CheckDuplicateStudentForCreate(string maSV)
+        public IActionResult CheckStudentDuplicateForCreate(string maSV)
         {
             try
             {
@@ -143,11 +143,11 @@ namespace DMS_Examify.Controllers
             }
             catch (Exception ex)
             {
-                return ServerError(ex, "Lỗi hệ thống khi kiểm tra trùng sinh viên.");
+                return LogAndReturnServerError(ex, "System error while checking student duplicates.");
             }
         }
 
-        private IActionResult ServerError(Exception exception, string message)
+        private IActionResult LogAndReturnServerError(Exception exception, string message)
         {
             _logger.LogError(exception, message);
             return StatusCode(500, message);

@@ -51,8 +51,8 @@
                        class="menu-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "MonHoc" ? "active" : "")">
                         <i class="bi bi-book"></i> Môn học
                     </a>
-                    <a asp-controller="SinhVien" asp-action="Index"
-                       class="menu-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "SinhVien" ? "active" : "")">
+                    <a asp-controller="LopSinhVien" asp-action="Index"
+                       class="menu-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "LopSinhVien" ? "active" : "")">
                         <i class="bi bi-people"></i> Lớp và Sinh viên
                     </a>
                     <a asp-controller="GiaoVien" asp-action="Index"
