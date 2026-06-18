@@ -827,21 +827,6 @@ GO
 GRANT EXECUTE ON [dbo].[usp_MonHoc_Delete] TO [PGV];
 GO
 
-CREATE OR ALTER PROCEDURE dbo.usp_LayDanhSachMonHoc
-AS
-BEGIN
-    SET NOCOUNT ON;
-    SELECT MAMH, TENMH
-    FROM dbo.MONHOC
-    WHERE TrangThai = 1
-    ORDER BY TENMH ASC;
-END
-GO
-GRANT EXECUTE ON dbo.usp_LayDanhSachMonHoc TO [PGV];
-GO
-GRANT EXECUTE ON dbo.usp_LayDanhSachMonHoc TO [Giangvien];
-GO
-
 CREATE OR ALTER PROCEDURE dbo.usp_MonHoc_Restore
     @MaMH NCHAR(5)
 AS
@@ -923,6 +908,8 @@ BEGIN
     SET TenMH = @TenMH
     WHERE MaMH = @MaMH;
 END
+GO
+GRANT EXECUTE ON [dbo].[usp_MonHoc_Update] TO [PGV];
 GO
 
 CREATE PROCEDURE dbo.usp_MonHoc_Delete
@@ -1427,6 +1414,7 @@ BEGIN
     ORDER BY MALOP;
 END
 GO
+GRANT EXECUTE ON [dbo].[usp_Lop_GetAll] TO [Giangvien]
 
 CREATE OR ALTER PROCEDURE dbo.usp_SinhVien_GetExistingIds
 AS
@@ -1656,6 +1644,7 @@ CREATE FUNCTION [dbo].[udf_DemSoCauTrongBoDe]
 (
     @MAMH    NCHAR(8),
     @TRINHDO CHAR(1)
+    -- @MAGV    NCHAR(8)
 )
 RETURNS INT
 AS
@@ -1665,9 +1654,14 @@ BEGIN
     FROM dbo.BODE
     WHERE TRINHDO = @TRINHDO
       AND MAMH = @MAMH
+    --   AND MAGV = @MAGV
       AND TrangThai = 1;
     RETURN @SoCau;
 END
+GO
+GRANT EXECUTE ON dbo.udf_DemSoCauTrongBoDe TO [PGV];
+GO
+GRANT EXECUTE ON dbo.udf_DemSoCauTrongBoDe TO [Giangvien];
 GO
 
 PRINT N'OK: Da tao udf_DemSoCauTrongBoDe.';
@@ -1723,7 +1717,10 @@ BEGIN
     RETURN @ThongBao;
 END
 GO
-
+GRANT EXECUTE ON dbo.udf_KiemTraDieuKienDangKy TO [PGV];
+GO
+GRANT EXECUTE ON dbo.udf_KiemTraDieuKienDangKy TO [Giangvien];
+GO
 PRINT N'OK: Da tao udf_KiemTraDieuKienDangKy.';
 GO
 
@@ -1778,7 +1775,8 @@ BEGIN
     END
 END
 GO
-
+GRANT EXECUTE ON [dbo].[usp_ThucHienDangKyThi] TO [PGV]
+GRANT EXECUTE ON [dbo].[usp_ThucHienDangKyThi] TO [Giangvien]
 PRINT N'OK: Da tao usp_ThucHienDangKyThi.';
 GO
 
@@ -1808,28 +1806,6 @@ GRANT EXECUTE ON dbo.usp_LayDanhSachDeThi TO [PGV];
 GO
 
 PRINT N'OK: Da tao usp_LayDanhSachDeThi.';
-GO
-
-CREATE OR ALTER PROCEDURE dbo.usp_LayDanhSachLop
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    SELECT
-        MALOP,
-        TENLOP
-    FROM dbo.LOP
-    WHERE TrangThai = 1
-    ORDER BY MALOP ASC;
-END
-GO
-
-GRANT EXECUTE ON dbo.usp_LayDanhSachLop TO [PGV];
-GO
-GRANT EXECUTE ON dbo.usp_LayDanhSachLop TO [Giangvien];
-GO
-
-PRINT N'OK: Da tao usp_LayDanhSachLop.';
 GO
 
 CREATE PROCEDURE usp_LayDanhSachTrinhDo

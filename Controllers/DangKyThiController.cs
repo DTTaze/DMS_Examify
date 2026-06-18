@@ -22,7 +22,7 @@ namespace DMS_Examify.Controllers
             {
                 using (SqlConnection conn = new SqlConnection(connectionString))
                 {
-                    using (SqlCommand cmd = new SqlCommand("usp_LayDanhSachLop", conn))
+                    using (SqlCommand cmd = new SqlCommand("usp_Lop_GetAll", conn))
                     {
                         cmd.CommandType = CommandType.StoredProcedure;
                         conn.Open();
@@ -55,7 +55,7 @@ namespace DMS_Examify.Controllers
             {
                 using (SqlConnection conn = new SqlConnection(connectionString))
                 {
-                    using (SqlCommand cmd = new SqlCommand("usp_LayDanhSachMonHoc", conn))
+                    using (SqlCommand cmd = new SqlCommand("usp_MonHoc_GetAll", conn))
                     {
                         cmd.CommandType = CommandType.StoredProcedure;
                         conn.Open();
