@@ -1250,9 +1250,98 @@ BEGIN
 END
 GO
 
-CREATE OR ALTER PROCEDURE dbo.usp_Lop_Insert
-    @MALOP NCHAR(8),
-    @TENLOP NVARCHAR(40)
+CREATE PROCEDURE dbo.usp_SinhVien_Search
+    @Keyword NVARCHAR(250)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT MaSV, Ho, Ten, NgaySinh, DiaChi, MaLop, MatKhau
+    FROM SINHVIEN
+    WHERE @Keyword IS NULL OR @Keyword = ''
+       OR MaSV LIKE '%' + @Keyword + '%'
+       OR Ho LIKE '%' + @Keyword + '%'
+       OR Ten LIKE '%' + @Keyword + '%'
+       OR DiaChi LIKE '%' + @Keyword + '%'
+       OR MaLop LIKE '%' + @Keyword + '%';
+END
+GO
+
+CREATE PROCEDURE dbo.usp_BoDe_Insert
+    @CauHoi INT,       -- LOI: CAUHOI la IDENTITY, khong the INSERT gia tri nay
+    @MaMH NVARCHAR(50),
+    @TrinhDo NVARCHAR(10),
+    @NoiDung NVARCHAR(MAX),
+    @DapAnA NVARCHAR(MAX),
+    @DapAnB NVARCHAR(MAX),
+    @DapAnC NVARCHAR(MAX),
+    @DapAnD NVARCHAR(MAX),
+    @DapAn NVARCHAR(10),
+    @MaGV NVARCHAR(50)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    INSERT INTO BODE (CauHoi, MaMH, TrinhDo, NoiDung, DapAnA, DapAnB, DapAnC, DapAnD, DapAn, MaGV)
+    VALUES (@CauHoi, @MaMH, @TrinhDo, @NoiDung, @DapAnA, @DapAnB, @DapAnC, @DapAnD, @DapAn, @MaGV);
+END
+GO
+
+CREATE PROCEDURE dbo.usp_BoDe_Update
+    @CauHoi INT,
+    @MaMH NVARCHAR(50),
+    @TrinhDo NVARCHAR(10),
+    @NoiDung NVARCHAR(MAX),
+    @DapAnA NVARCHAR(MAX),
+    @DapAnB NVARCHAR(MAX),
+    @DapAnC NVARCHAR(MAX),
+    @DapAnD NVARCHAR(MAX),
+    @DapAn NVARCHAR(10),
+    @MaGV NVARCHAR(50)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    UPDATE BODE
+    SET TrinhDo = @TrinhDo,
+        NoiDung = @NoiDung,
+        DapAnA = @DapAnA,
+        DapAnB = @DapAnB,
+        DapAnC = @DapAnC,
+        DapAnD = @DapAnD,
+        DapAn = @DapAn,
+        MaGV = @MaGV
+    WHERE CauHoi = @CauHoi AND MaMH = @MaMH;
+END
+GO
+
+CREATE PROCEDURE dbo.usp_BoDe_Delete
+    @CauHoi INT,
+    @MaMH NVARCHAR(50)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DELETE FROM BODE WHERE CauHoi = @CauHoi AND MaMH = @MaMH;
+END
+GO
+
+CREATE PROCEDURE dbo.usp_BoDe_Search
+    @Keyword NVARCHAR(250)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT CauHoi, MaMH, TrinhDo, NoiDung, DapAnA, DapAnB, DapAnC, DapAnD, DapAn, MaGV
+    FROM BODE
+    WHERE @Keyword IS NULL OR @Keyword = ''
+       OR MaMH LIKE '%' + @Keyword + '%'
+       OR NoiDung LIKE '%' + @Keyword + '%'
+       OR MaGV LIKE '%' + @Keyword + '%';
+END
+GO
+
+-- ------------------------------------------------------------
+-- Stored Procedures for Lop
+-- ------------------------------------------------------------
+CREATE PROCEDURE usp_Lop_Insert
+    @MALOP NCHAR(15),
+    @TENLOP NVARCHAR(50)
 AS
 BEGIN
     SET NOCOUNT ON;
