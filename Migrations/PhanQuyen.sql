@@ -52,14 +52,3 @@ GRANT INSERT, SELECT ON [BangDiem] TO [Sinhvien];
 DENY UPDATE, DELETE ON [BODE] TO [Sinhvien];
 DENY UPDATE, DELETE ON [BangDiem] TO [Sinhvien];
 GO
-
--- Cap quyen thuc thi SP lay thong tin tai khoan cho PGV va Giangvien
-GRANT EXECUTE ON [dbo].[usp_TaiKhoan_LayThongTin] TO [PGV];
-GRANT EXECUTE ON [dbo].[usp_TaiKhoan_LayThongTin] TO [Giangvien];
-GO
-
-GRANT EXECUTE ON [dbo].[SP_TAOTAIKHOAN] TO [PGV];
-GO
-
-GRANT EXECUTE ON [dbo].[usp_SinhVien_Login] TO [Sinhvien];
-GO
