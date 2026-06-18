@@ -1,4 +1,3 @@
-// --- Global State ---
 let newItems = [];
 let updatedItems = [];
 let deletedItems = [];
@@ -9,24 +8,17 @@ let tempIdCounter = -1;
 
 let currentPage = 1;
 let rowsPerPage = 10;
-let customModalBs = null;
 
-// --- Lifecycle and Initialization ---
-window.onload = () => {
+AppCommon.onReady(() => {
     bindRows();
 
-    // Form inputs validation event listeners
-    document.getElementById("selMaMH").addEventListener("change", validateQuestionInputs);
-    document.getElementById("selTrinhDo").addEventListener("change", validateQuestionInputs);
-    document.getElementById("txtNoiDung").addEventListener("input", validateQuestionInputs);
-    document.getElementById("txtA").addEventListener("input", validateQuestionInputs);
-    document.getElementById("txtB").addEventListener("input", validateQuestionInputs);
-    document.getElementById("txtC").addEventListener("input", validateQuestionInputs);
-    document.getElementById("txtD").addEventListener("input", validateQuestionInputs);
-    document.getElementById("selDapAn").addEventListener("change", validateQuestionInputs);
-    
-    // Live filter search for questions
-    const txtSearch = document.getElementById("txtSearch");
+    ["selMaMH", "selTrinhDo", "txtNoiDung", "txtA", "txtB", "txtC", "txtD", "selDapAn"]
+        .forEach(id => {
+            const eventName = id.startsWith("sel") ? "change" : "input";
+            AppCommon.byId(id).addEventListener(eventName, validateQuestionInputs);
+        });
+
+    const txtSearch = AppCommon.byId("txtSearch");
     if (txtSearch) {
         txtSearch.addEventListener("input", triggerQuestionSearch);
     }
@@ -35,15 +27,14 @@ window.onload = () => {
     updateSaveButtonState();
     updateUndoRedoButtonStates();
     updateSTT();
-};
+});
 
-// --- State and Undo/Redo Management ---
 function pushState() {
     undoHistoryStack.push({
         html: document.querySelector("#tbl tbody").innerHTML,
-        newItems: JSON.parse(JSON.stringify(newItems)),
-        updatedItems: JSON.parse(JSON.stringify(updatedItems)),
-        deletedItems: JSON.parse(JSON.stringify(deletedItems))
+        newItems: AppCommon.cloneJson(newItems),
+        updatedItems: AppCommon.cloneJson(updatedItems),
+        deletedItems: AppCommon.cloneJson(deletedItems)
     });
     redoHistoryStack = [];
     updateUndoRedoButtonStates();
@@ -54,9 +45,9 @@ function undoBD() {
 
     redoHistoryStack.push({
         html: document.querySelector("#tbl tbody").innerHTML,
-        newItems: JSON.parse(JSON.stringify(newItems)),
-        updatedItems: JSON.parse(JSON.stringify(updatedItems)),
-        deletedItems: JSON.parse(JSON.stringify(deletedItems))
+        newItems: AppCommon.cloneJson(newItems),
+        updatedItems: AppCommon.cloneJson(updatedItems),
+        deletedItems: AppCommon.cloneJson(deletedItems)
     });
 
     const prev = undoHistoryStack.pop();
@@ -78,9 +69,9 @@ function redoBD() {
 
     undoHistoryStack.push({
         html: document.querySelector("#tbl tbody").innerHTML,
-        newItems: JSON.parse(JSON.stringify(newItems)),
-        updatedItems: JSON.parse(JSON.stringify(updatedItems)),
-        deletedItems: JSON.parse(JSON.stringify(deletedItems))
+        newItems: AppCommon.cloneJson(newItems),
+        updatedItems: AppCommon.cloneJson(updatedItems),
+        deletedItems: AppCommon.cloneJson(deletedItems)
     });
 
     const next = redoHistoryStack.pop();
@@ -97,7 +88,6 @@ function redoBD() {
     updateUndoRedoButtonStates();
 }
 
-// --- Form and Input Utilities ---
 function getQuestionForm() {
     return {
         MaMH: document.getElementById("selMaMH").value,
@@ -109,6 +99,23 @@ function getQuestionForm() {
         DapAnD: document.getElementById("txtD").value.trim(),
         DapAn: document.getElementById("selDapAn").value
     };
+}
+
+function normalizeQuestionValue(value) {
+    return (value ?? "").toString().trim();
+}
+
+function hasQuestionFormChanges(row, formData) {
+    if (!row) return false;
+
+    return normalizeQuestionValue(formData.MaMH) !== normalizeQuestionValue(row.dataset.mamh)
+        || normalizeQuestionValue(formData.TrinhDo) !== normalizeQuestionValue(row.dataset.trinhdo)
+        || normalizeQuestionValue(formData.NoiDung) !== normalizeQuestionValue(row.dataset.noidung)
+        || normalizeQuestionValue(formData.DapAnA) !== normalizeQuestionValue(row.dataset.a)
+        || normalizeQuestionValue(formData.DapAnB) !== normalizeQuestionValue(row.dataset.b)
+        || normalizeQuestionValue(formData.DapAnC) !== normalizeQuestionValue(row.dataset.c)
+        || normalizeQuestionValue(formData.DapAnD) !== normalizeQuestionValue(row.dataset.d)
+        || normalizeQuestionValue(formData.DapAn) !== normalizeQuestionValue(row.dataset.dapan);
 }
 
 function fillQuestionForm(row) {
@@ -124,13 +131,17 @@ function fillQuestionForm(row) {
     validateQuestionInputs();
 }
 
-function resetQuestionForm() {
+function clearQuestionFormFields() {
     document.getElementById("txtCauHoi").value = "";
     document.getElementById("txtNoiDung").value = "";
     document.getElementById("txtA").value = "";
     document.getElementById("txtB").value = "";
     document.getElementById("txtC").value = "";
     document.getElementById("txtD").value = "";
+}
+
+function resetQuestionForm() {
+    clearQuestionFormFields();
     // Retain drop downs select indexes
     selectedRow = null;
 
@@ -144,10 +155,13 @@ function bindRows() {
             if (event && (event.target.closest('.btn-edit') || event.target.closest('.btn-delete'))) {
                 return;
             }
+            if (selectedRow) {
+                return;
+            }
             document.querySelectorAll("#tbl tbody tr").forEach(x => x.classList.remove("table-active"));
             row.classList.add("table-active");
-            selectedRow = row;
-            fillQuestionForm(row);
+            selectedRow = null;
+            validateQuestionInputs();
         };
 
         const editBtn = row.querySelector(".btn-edit");
@@ -176,7 +190,6 @@ function bindRows() {
     });
 }
 
-// --- CRUD Operations ---
 function addQuestion() {
     const d = getQuestionForm();
     if (!d.NoiDung || !d.DapAnA || !d.DapAnB || !d.DapAnC || !d.DapAnD) return;
@@ -306,19 +319,14 @@ async function saveAll() {
     redoHistoryStack = [];
     updateUndoRedoButtonStates();
 
-    try {
-        // DELETE
-        for (const d of deletedItems) {
+    try {        for (const d of deletedItems) {
             const res = await fetch(`/BoDe/Delete?cauHoi=${d.CauHoi}&maMH=${d.MaMH}`, { method: "POST" });
             if (!res.ok) {
                 const err = await res.text();
                 hienThongBao(`Lỗi khi xóa câu hỏi <strong>${d.CauHoi}</strong>: ${err}`, "Lỗi");
                 return;
             }
-        }
-
-        // UPDATE
-        for (const u of updatedItems) {
+        }        for (const u of updatedItems) {
             const res = await fetch(`/BoDe/Update`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -329,10 +337,7 @@ async function saveAll() {
                 hienThongBao(`Lỗi khi sửa câu hỏi <strong>${u.CauHoi}</strong>: ${err}`, "Lỗi");
                 return;
             }
-        }
-
-        // INSERT
-        for (const n of newItems) {
+        }        for (const n of newItems) {
             const res = await fetch(`/BoDe/Insert`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -353,12 +358,10 @@ async function saveAll() {
     }
 }
 
-// --- Local Filter Search ---
 let searchDebounceTimer = null;
 
 function triggerQuestionSearch() {
-    clearTimeout(searchDebounceTimer);
-    searchDebounceTimer = setTimeout(executeQuestionSearch, 200);
+    searchDebounceTimer = AppCommon.debounce(searchDebounceTimer, executeQuestionSearch, 200);
 }
 
 function executeQuestionSearch() {
@@ -378,7 +381,6 @@ function executeQuestionSearch() {
     updatePagination();
 }
 
-// --- Validation Routines ---
 function validateQuestionInputs() {
     const d = getQuestionForm();
     const isEditing = selectedRow !== null;
@@ -416,8 +418,13 @@ function validateQuestionInputs() {
         if (isEditing) {
             btnThem.setAttribute("disabled", "true");
             wrapThem.title = "Đang ở chế độ hiệu chỉnh (Reset để thêm mới)";
-            btnSua.removeAttribute("disabled");
-            wrapSua.removeAttribute("title");
+            if (hasQuestionFormChanges(selectedRow, d)) {
+                btnSua.removeAttribute("disabled");
+                wrapSua.removeAttribute("title");
+            } else {
+                btnSua.setAttribute("disabled", "true");
+                wrapSua.title = "Chưa có thay đổi nào so với câu hỏi gốc.";
+            }
         } else {
             btnThem.removeAttribute("disabled");
             wrapThem.removeAttribute("title");
@@ -434,27 +441,34 @@ function validateQuestionInputs() {
 }
 
 function updateSaveButtonState() {
-    const btnGhi = document.getElementById("btnGhi");
-    const wrapGhi = document.getElementById("wrapGhi");
-    const hasChanges = (newItems.length > 0 || updatedItems.length > 0 || deletedItems.length > 0);
-
-    if (hasChanges) {
-        btnGhi.removeAttribute("disabled");
-        wrapGhi.removeAttribute("title");
-    } else {
-        btnGhi.setAttribute("disabled", "true");
-        wrapGhi.title = "Không có thay đổi nào cần lưu.";
-    }
+    const hasChanges = newItems.length > 0 || updatedItems.length > 0 || deletedItems.length > 0;
+    AppCommon.setDisabled(
+        AppCommon.byId("btnGhi"),
+        AppCommon.byId("wrapGhi"),
+        !hasChanges,
+        "Không có thay đổi nào cần lưu."
+    );
 }
 
 function updateUndoRedoButtonStates() {
     const btnUndo = document.getElementById("btnUndo");
     const btnRedo = document.getElementById("btnRedo");
+    const wrapUndo = document.getElementById("wrapUndo");
+    const wrapRedo = document.getElementById("wrapRedo");
+
     if (btnUndo) {
-        btnUndo.disabled = undoHistoryStack.length === 0;
+        const canUndo = undoHistoryStack.length > 0;
+        const undoTitle = canUndo ? "Hoàn tác thao tác thay đổi gần nhất." : "Chưa có thao tác nào để hoàn tác.";
+        btnUndo.disabled = !canUndo;
+        btnUndo.title = undoTitle;
+        if (wrapUndo) wrapUndo.title = undoTitle;
     }
     if (btnRedo) {
-        btnRedo.disabled = redoHistoryStack.length === 0;
+        const canRedo = redoHistoryStack.length > 0;
+        const redoTitle = canRedo ? "Làm lại thao tác vừa hoàn tác." : "Chưa có thao tác nào để làm lại.";
+        btnRedo.disabled = !canRedo;
+        btnRedo.title = redoTitle;
+        if (wrapRedo) wrapRedo.title = redoTitle;
     }
 }
 
@@ -467,110 +481,16 @@ function updateSTT() {
     updatePagination();
 }
 
-// --- Pagination Operations ---
 function updatePagination() {
-    const rows = Array.from(document.querySelectorAll("#tbl tbody tr:not(.search-hidden)"));
-    const totalRows = rows.length;
-    const totalPages = Math.ceil(totalRows / rowsPerPage) || 1;
-
-    if (currentPage > totalPages) {
-        currentPage = totalPages;
-    }
-    if (currentPage < 1) {
-        currentPage = 1;
-    }
-
-    const startIdx = (currentPage - 1) * rowsPerPage;
-    const endIdx = startIdx + rowsPerPage;
-
-    const allRows = Array.from(document.querySelectorAll("#tbl tbody tr"));
-    let visibleCounter = 0;
-
-    allRows.forEach(row => {
-        if (row.classList.contains("search-hidden")) {
-            row.classList.add("d-none");
-            return;
-        }
-
-        if (visibleCounter >= startIdx && visibleCounter < endIdx) {
-            row.classList.remove("d-none");
-        } else {
-            row.classList.add("d-none");
-        }
-        visibleCounter++;
+    currentPage = AppCommon.renderPagination({
+        visibleRowSelector: "#tbl tbody tr:not(.search-hidden)",
+        allRowSelector: "#tbl tbody tr",
+        currentPage,
+        rowsPerPage,
+        summaryId: "lblPaginationSummary",
+        paginationId: "ulPagination",
+        compact: true
     });
-
-    const summarySpan = document.getElementById("lblPaginationSummary");
-    if (summarySpan) {
-        const from = totalRows === 0 ? 0 : startIdx + 1;
-        const to = Math.min(endIdx, totalRows);
-        summarySpan.textContent = `Hiển thị từ ${from} đến ${to} trong tổng số ${totalRows} dòng`;
-    }
-
-    const ulPagination = document.getElementById("ulPagination");
-    if (ulPagination) {
-        ulPagination.innerHTML = "";
-
-        // First button
-        const firstLi = document.createElement("li");
-        firstLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
-        firstLi.innerHTML = `<button type="button" class="page-link shadow-none" onclick="changePage(1)" title="Trang đầu"><i class="bi bi-chevron-double-left"></i></button>`;
-        ulPagination.appendChild(firstLi);
-
-        // Prev button
-        const prevLi = document.createElement("li");
-        prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
-        prevLi.innerHTML = `<button type="button" class="page-link shadow-none" onclick="changePage(${currentPage - 1})" title="Trang trước"><i class="bi bi-chevron-left"></i></button>`;
-        ulPagination.appendChild(prevLi);
-
-        // Page numbers and ellipsis
-        let pages = [];
-        if (totalPages <= 7) {
-            for (let i = 1; i <= totalPages; i++) {
-                pages.push(i);
-            }
-        } else {
-            pages.push(1);
-            if (currentPage <= 4) {
-                pages.push(2, 3, 4, 5);
-                pages.push("...");
-                pages.push(totalPages);
-            } else if (currentPage >= totalPages - 3) {
-                pages.push("...");
-                pages.push(totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1);
-                pages.push(totalPages);
-            } else {
-                pages.push("...");
-                pages.push(currentPage - 1, currentPage, currentPage + 1);
-                pages.push("...");
-                pages.push(totalPages);
-            }
-        }
-
-        pages.forEach(p => {
-            const pageLi = document.createElement("li");
-            if (p === "...") {
-                pageLi.className = "page-item disabled";
-                pageLi.innerHTML = `<span class="page-link border-0 bg-transparent text-secondary">...</span>`;
-            } else {
-                pageLi.className = `page-item ${currentPage === p ? 'active' : ''}`;
-                pageLi.innerHTML = `<button type="button" class="page-link shadow-none" onclick="changePage(${p})">${p}</button>`;
-            }
-            ulPagination.appendChild(pageLi);
-        });
-
-        // Next button
-        const nextLi = document.createElement("li");
-        nextLi.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
-        nextLi.innerHTML = `<button type="button" class="page-link shadow-none" onclick="changePage(${currentPage + 1})" title="Trang sau"><i class="bi bi-chevron-right"></i></button>`;
-        ulPagination.appendChild(nextLi);
-
-        // Last button
-        const lastLi = document.createElement("li");
-        lastLi.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
-        lastLi.innerHTML = `<button type="button" class="page-link shadow-none" onclick="changePage(${totalPages})" title="Trang cuối"><i class="bi bi-chevron-double-right"></i></button>`;
-        ulPagination.appendChild(lastLi);
-    }
 }
 
 function changePage(page) {
@@ -579,12 +499,11 @@ function changePage(page) {
 }
 
 function changePageSize(size) {
-    rowsPerPage = parseInt(size) || 10;
+    rowsPerPage = parseInt(size, 10) || AppCommon.DEFAULT_PAGE_SIZE;
     currentPage = 1;
     updatePagination();
 }
 
-// --- Excel Export/Import Systems ---
 function exportExcel() {
     const rows = [["Mã môn học", "Trình độ", "Nội dung", "Đáp án A", "Đáp án B", "Đáp án C", "Đáp án D", "Đáp án đúng"]];
     
@@ -624,55 +543,17 @@ function downloadTemplate() {
 }
 
 function openImportModal() {
-    document.getElementById("importFile").value = "";
-    document.getElementById("importFileFeedback").textContent = "";
-    document.getElementById("importPreviewSection").style.display = "none";
-    document.getElementById("btnConfirmImport").setAttribute("disabled", "true");
-
-    const modalEl = document.getElementById('importModal');
-    const modalBs = new bootstrap.Modal(modalEl);
-    modalBs.show();
+    AppCommon.showImportModal();
 }
 
 let currentImportList = [];
 
 function handleFileSelect(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        try {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, { type: 'array' });
-            const sheetName = workbook.SheetNames[0];
-            const sheet = workbook.Sheets[sheetName];
-            const rawData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
-            validateExcelData(rawData);
-        } catch (err) {
-            showImportFileError("Không thể đọc file Excel. Vui lòng kiểm tra lại định dạng file.");
-            console.error(err);
-        }
-    };
-    reader.readAsArrayBuffer(file);
-}
-
-function showImportFileError(msg) {
-    document.getElementById("importFileFeedback").textContent = msg;
-    document.getElementById("importPreviewSection").style.display = "none";
-    document.getElementById("btnConfirmImport").setAttribute("disabled", "true");
-}
-
-function normalizeHeader(val) {
-    if (!val) return "";
-    return val.toString().toLowerCase().trim()
-        .replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g, "a")
-        .replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g, "e")
-        .replace(/ì|í|ị|ỉ|ĩ/g, "i")
-        .replace(/ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ/g, "o")
-        .replace(/ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ/g, "u")
-        .replace(/ỳ|ý|ỵ|ỷ|ỹ/g, "y")
-        .replace(/đ/g, "d");
+    AppCommon.readFirstExcelSheet(
+        event.target.files[0],
+        validateExcelData,
+        () => showImportFileError("Không thể đọc file Excel. Vui lòng kiểm tra lại định dạng file.")
+    );
 }
 
 function validateExcelData(rawData) {
@@ -781,22 +662,31 @@ function validateExcelData(rawData) {
         renderPreview(processedRows);
         return;
     }
-
-    // Call server API check (verifies if the subject exists in the database)
     fetch('/BoDe/CheckImport', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(candidates.map(c => ({ MaMH: c.maMH })))
+        body: JSON.stringify(candidates.map(c => ({
+            MaMH: c.maMH,
+            TrinhDo: c.trinhDo,
+            NoiDung: c.noiDung,
+            DapAnA: c.dapAnA,
+            DapAnB: c.dapAnB,
+            DapAnC: c.dapAnC,
+            DapAnD: c.dapAnD,
+            DapAn: c.dapAn
+        })))
     })
     .then(res => {
         if (!res.ok) throw new Error("Không thể kiểm tra môn học từ Server.");
         return res.json();
     })
     .then(dbResults => {
-        dbResults.forEach(res => {
-            const match = processedRows.find(p => p.index === res.index && p.error === "");
+        dbResults.forEach((res, resultIndex) => {
+            const match = candidates[resultIndex];
             if (match && !res.subjectExists) {
                 match.error = `Môn học "${match.maMH}" không tồn tại`;
+            } else if (match && res.hasDuplicate) {
+                match.error = res.duplicateMessage || "Câu hỏi đã tồn tại trong ngân hàng đề";
             }
         });
 
@@ -950,92 +840,7 @@ function confirmImport() {
     updateSaveButtonState();
 }
 
-// --- Custom Modal Dialog System ---
-function getCustomModal() {
-    if (customModalBs === null) {
-        customModalBs = new bootstrap.Modal(document.getElementById('customModal'));
-    }
-    return customModalBs;
-}
 
-function hienThongBao(message, title = "Thông báo", callback = null) {
-    const modalEl = document.getElementById('customModal');
-    const titleEl = document.getElementById('customModalTitle');
-    const msgEl = document.getElementById('customModalMessage');
-    const iconEl = document.getElementById('customModalIcon');
-    const btnCancel = document.getElementById('btnCustomModalCancel');
-    const btnOk = document.getElementById('btnCustomModalOk');
-
-    titleEl.textContent = title;
-    msgEl.innerHTML = message;
-
-    iconEl.className = "bi fs-4";
-    if (title.toLowerCase().includes("lỗi")) {
-        iconEl.classList.add("bi-exclamation-octagon-fill", "text-danger");
-    } else if (title.toLowerCase().includes("thành công") || title.toLowerCase().includes("ok")) {
-        iconEl.classList.add("bi-check-circle-fill", "text-success");
-    } else {
-        iconEl.classList.add("bi-info-circle-fill", "text-primary");
-    }
-
-    btnCancel.style.display = "none";
-    btnOk.className = "btn btn-primary btn-sm px-3";
-    btnOk.textContent = "Đồng ý";
-
-    const newBtnOk = btnOk.cloneNode(true);
-    btnOk.parentNode.replaceChild(newBtnOk, btnOk);
-
-    const bsModal = getCustomModal();
-    newBtnOk.onclick = () => {
-        bsModal.hide();
-    };
-
-    const onHidden = () => {
-        modalEl.removeEventListener('hidden.bs.modal', onHidden);
-        if (callback) callback();
-    };
-    modalEl.addEventListener('hidden.bs.modal', onHidden);
-
-    bsModal.show();
-}
-
-function hienXacNhan(message, onConfirm, title = "Xác nhận") {
-    const modalEl = document.getElementById('customModal');
-    const titleEl = document.getElementById('customModalTitle');
-    const msgEl = document.getElementById('customModalMessage');
-    const iconEl = document.getElementById('customModalIcon');
-    const btnCancel = document.getElementById('btnCustomModalCancel');
-    const btnOk = document.getElementById('btnCustomModalOk');
-
-    titleEl.textContent = title;
-    msgEl.innerHTML = message;
-
-    iconEl.className = "bi fs-4 bi-question-circle-fill text-warning";
-    btnCancel.style.display = "inline-block";
-    btnCancel.textContent = "Hủy";
-    btnOk.className = "btn btn-danger btn-sm px-3";
-    btnOk.textContent = "Xác nhận";
-
-    const newBtnOk = btnOk.cloneNode(true);
-    btnOk.parentNode.replaceChild(newBtnOk, btnOk);
-
-    const bsModal = getCustomModal();
-    let isConfirmed = false;
-    newBtnOk.onclick = () => {
-        isConfirmed = true;
-        bsModal.hide();
-    };
-
-    const onHidden = () => {
-        modalEl.removeEventListener('hidden.bs.modal', onHidden);
-        if (isConfirmed && onConfirm) onConfirm();
-    };
-    modalEl.addEventListener('hidden.bs.modal', onHidden);
-
-    bsModal.show();
-}
-
-// --- Similarity Detection Engine ---
 const SimilarityEngine = {
     stripDiacritics(str) {
         if (!str) return "";
@@ -1123,7 +928,7 @@ function checkDuplicateQuestions() {
         if (!noiDung) return;
 
         const similarity = SimilarityEngine.calculateSimilarity(inputVal, noiDung);
-        if (similarity >= 0.5) {
+        if (similarity >= 0.7) {
             duplicates.push({
                 id: id,
                 noiDung: noiDung,

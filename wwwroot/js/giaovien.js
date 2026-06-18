@@ -1,4 +1,3 @@
-// --- Global State ---
 let newItems = [];
 let updatedItems = [];
 let deletedItems = [];
@@ -8,22 +7,15 @@ let selectedRow = null;
 
 let currentPage = 1;
 let rowsPerPage = 10;
-let customModalBs = null;
 let teacherDebounceTimer = null;
 
-// --- Lifecycle and Initialization ---
-window.onload = () => {
+AppCommon.onReady(() => {
     bindRows();
 
-    // Event listeners for lecturer form inputs validation
-    document.getElementById("txtMaGV").addEventListener("input", validateGiaoVienInputs);
-    document.getElementById("txtHoGV").addEventListener("input", validateGiaoVienInputs);
-    document.getElementById("txtTenGV").addEventListener("input", validateGiaoVienInputs);
-    document.getElementById("txtSoDTLL").addEventListener("input", validateGiaoVienInputs);
-    document.getElementById("txtDiaChiGV").addEventListener("input", validateGiaoVienInputs);
-    
-    // Live filter search for lecturers
-    const txtSearchGV = document.getElementById("txtSearchGV");
+    ["txtMaGV", "txtHoGV", "txtTenGV", "txtSoDTLL", "txtDiaChiGV"]
+        .forEach(id => AppCommon.byId(id).addEventListener("input", validateGiaoVienInputs));
+
+    const txtSearchGV = AppCommon.byId("txtSearchGV");
     if (txtSearchGV) {
         txtSearchGV.addEventListener("input", triggerGiaoVienSearch);
     }
@@ -32,15 +24,14 @@ window.onload = () => {
     updateSaveButtonState();
     updateUndoRedoButtonStates();
     updateSTT();
-};
+});
 
-// --- State and Undo/Redo Management ---
 function pushState() {
     undoHistoryStack.push({
         html: document.getElementById("gvTable").innerHTML,
-        newItems: JSON.parse(JSON.stringify(newItems)),
-        updatedItems: JSON.parse(JSON.stringify(updatedItems)),
-        deletedItems: JSON.parse(JSON.stringify(deletedItems))
+        newItems: AppCommon.cloneJson(newItems),
+        updatedItems: AppCommon.cloneJson(updatedItems),
+        deletedItems: AppCommon.cloneJson(deletedItems)
     });
     redoHistoryStack = [];
     updateUndoRedoButtonStates();
@@ -51,9 +42,9 @@ function undoGV() {
 
     redoHistoryStack.push({
         html: document.getElementById("gvTable").innerHTML,
-        newItems: JSON.parse(JSON.stringify(newItems)),
-        updatedItems: JSON.parse(JSON.stringify(updatedItems)),
-        deletedItems: JSON.parse(JSON.stringify(deletedItems))
+        newItems: AppCommon.cloneJson(newItems),
+        updatedItems: AppCommon.cloneJson(updatedItems),
+        deletedItems: AppCommon.cloneJson(deletedItems)
     });
 
     const prev = undoHistoryStack.pop();
@@ -75,9 +66,9 @@ function redoGV() {
 
     undoHistoryStack.push({
         html: document.getElementById("gvTable").innerHTML,
-        newItems: JSON.parse(JSON.stringify(newItems)),
-        updatedItems: JSON.parse(JSON.stringify(updatedItems)),
-        deletedItems: JSON.parse(JSON.stringify(deletedItems))
+        newItems: AppCommon.cloneJson(newItems),
+        updatedItems: AppCommon.cloneJson(updatedItems),
+        deletedItems: AppCommon.cloneJson(deletedItems)
     });
 
     const next = redoHistoryStack.pop();
@@ -94,7 +85,6 @@ function redoGV() {
     updateUndoRedoButtonStates();
 }
 
-// --- Form and Input Utilities ---
 function getGiaoVienForm() {
     return {
         MaGV: document.getElementById("txtMaGV").value.trim().toUpperCase(),
@@ -122,10 +112,7 @@ function resetGiaoVienForm() {
     document.getElementById("txtSoDTLL").value = "";
     document.getElementById("txtDiaChiGV").value = "";
     document.getElementById("txtMaGV").disabled = false;
-    selectedRow = null;
-
-    // Clear errors
-    const fields = ["txtMaGV", "txtHoGV", "txtTenGV", "txtSoDTLL", "txtDiaChiGV"];
+    selectedRow = null;    const fields = ["txtMaGV", "txtHoGV", "txtTenGV", "txtSoDTLL", "txtDiaChiGV"];
     fields.forEach(f => document.getElementById(f).classList.remove("is-invalid"));
     
     const errors = ["errMaGV", "errHoGV", "errTenGV", "errSoDTLL", "errDiaChiGV"];
@@ -163,7 +150,6 @@ function bindRows() {
     });
 }
 
-// --- CRUD Operations ---
 function themGV() {
     const d = getGiaoVienForm();
     if (!d.MaGV || !d.Ho || !d.Ten) return;
@@ -283,19 +269,14 @@ async function ghiGV() {
     redoHistoryStack = [];
     updateUndoRedoButtonStates();
 
-    try {
-        // DELETE
-        for (const ma of deletedItems) {
+    try {        for (const ma of deletedItems) {
             const res = await fetch(`/GiaoVien/Delete?maGV=${ma}`, { method: "POST" });
             if (!res.ok) {
                 const err = await res.text();
                 hienThongBao(`Lỗi khi xóa giáo viên <strong>${ma}</strong>: ${err}`, "Lỗi");
                 return;
             }
-        }
-
-        // UPDATE
-        for (const u of updatedItems) {
+        }        for (const u of updatedItems) {
             const res = await fetch(`/GiaoVien/Update`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -306,10 +287,7 @@ async function ghiGV() {
                 hienThongBao(`Lỗi khi sửa giáo viên <strong>${u.MaGV}</strong>: ${err}`, "Lỗi");
                 return;
             }
-        }
-
-        // INSERT
-        for (const n of newItems) {
+        }        for (const n of newItems) {
             const res = await fetch(`/GiaoVien/Insert`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -330,12 +308,10 @@ async function ghiGV() {
     }
 }
 
-// --- Local Filter Search ---
 let searchDebounceTimer = null;
 
 function triggerGiaoVienSearch() {
-    clearTimeout(searchDebounceTimer);
-    searchDebounceTimer = setTimeout(executeGiaoVienSearch, 200);
+    searchDebounceTimer = AppCommon.debounce(searchDebounceTimer, executeGiaoVienSearch, 200);
 }
 
 function executeGiaoVienSearch() {
@@ -355,7 +331,6 @@ function executeGiaoVienSearch() {
     updatePagination();
 }
 
-// --- Validation Routines ---
 function validateGiaoVienInputs() {
     const d = getGiaoVienForm();
     const isEditing = document.getElementById("txtMaGV").disabled;
@@ -376,10 +351,7 @@ function validateGiaoVienInputs() {
     const errHoGV = document.getElementById("errHoGV");
     const errTenGV = document.getElementById("errTenGV");
     const errSoDTLL = document.getElementById("errSoDTLL");
-    const errDiaChiGV = document.getElementById("errDiaChiGV");
-
-    // Clear old validation errors and styling
-    errMaGV.textContent = "";
+    const errDiaChiGV = document.getElementById("errDiaChiGV");    errMaGV.textContent = "";
     errHoGV.textContent = "";
     errTenGV.textContent = "";
     errSoDTLL.textContent = "";
@@ -389,10 +361,7 @@ function validateGiaoVienInputs() {
     txtHoGV.classList.remove("is-invalid");
     txtTenGV.classList.remove("is-invalid");
     txtSoDTLL.classList.remove("is-invalid");
-    txtDiaChiGV.classList.remove("is-invalid");
-
-    // Check if editing and no changes
-    if (isEditing && selectedRow) {
+    txtDiaChiGV.classList.remove("is-invalid");    if (isEditing && selectedRow) {
         const hasChanges = (
             d.Ho !== (selectedRow.dataset.ho || "").trim() ||
             d.Ten !== (selectedRow.dataset.ten || "").trim() ||
@@ -408,44 +377,29 @@ function validateGiaoVienInputs() {
         }
     }
 
-    let hasClientError = false;
-
-    // Validate MaGV
-    if (!d.MaGV) {
+    let hasClientError = false;    if (!d.MaGV) {
         hasClientError = true;
     } else if (d.MaGV.length > 8) {
         errMaGV.textContent = "Mã giáo viên tối đa 8 ký tự.";
         txtMaGV.classList.add("is-invalid");
         hasClientError = true;
-    }
-
-    // Validate Ho
-    if (!d.Ho) {
+    }    if (!d.Ho) {
         hasClientError = true;
     } else if (d.Ho.length > 50) {
         errHoGV.textContent = "Họ tối đa 50 ký tự.";
         txtHoGV.classList.add("is-invalid");
         hasClientError = true;
-    }
-
-    // Validate Ten
-    if (!d.Ten) {
+    }    if (!d.Ten) {
         hasClientError = true;
     } else if (d.Ten.length > 10) {
         errTenGV.textContent = "Tên tối đa 10 ký tự.";
         txtTenGV.classList.add("is-invalid");
         hasClientError = true;
-    }
-
-    // Validate SoDTLL
-    if (d.SoDTLL && d.SoDTLL.length > 15) {
+    }    if (d.SoDTLL && d.SoDTLL.length > 15) {
         errSoDTLL.textContent = "Số điện thoại tối đa 15 ký tự.";
         txtSoDTLL.classList.add("is-invalid");
         hasClientError = true;
-    }
-
-    // Validate DiaChi
-    if (d.DiaChi && d.DiaChi.length > 40) {
+    }    if (d.DiaChi && d.DiaChi.length > 40) {
         errDiaChiGV.textContent = "Địa chỉ tối đa 40 ký tự.";
         txtDiaChiGV.classList.add("is-invalid");
         hasClientError = true;
@@ -456,10 +410,7 @@ function validateGiaoVienInputs() {
         let reasonSua = isEditing ? "Thông tin giáo viên nhập không hợp lệ." : "Vui lòng chọn giáo viên trên lưới để hiệu chỉnh";
         updateTeacherButtonStates(true, reasonThem, true, reasonSua);
         return;
-    }
-
-    // Check code duplicate locally
-    if (!isEditing) {
+    }    if (!isEditing) {
         const exists = [...document.querySelectorAll("#gvTable tr")].some(r => r.dataset.magv === d.MaGV);
         if (exists) {
             errMaGV.textContent = "Mã GV này đã trùng trong danh sách tạm thời.";
@@ -496,9 +447,7 @@ function validateGiaoVienInputs() {
                             true, "Mã GV đã tồn tại trong CSDL.",
                             true, "Vui lòng chọn giáo viên trên lưới để hiệu chỉnh"
                         );
-                    } else {
-                        // Success - enable Them
-                        updateTeacherButtonStates(false, "", true, "Vui lòng chọn giáo viên trên lưới để hiệu chỉnh");
+                    } else {                        updateTeacherButtonStates(false, "", true, "Vui lòng chọn giáo viên trên lưới để hiệu chỉnh");
                     }
                 })
                 .catch(error => {
@@ -506,51 +455,23 @@ function validateGiaoVienInputs() {
                     updateTeacherButtonStates(false, "", true, "Vui lòng chọn giáo viên trên lưới để hiệu chỉnh");
                 });
         }, 250);
-    } else {
-        // Editing mode with changes - can save immediately
-        updateTeacherButtonStates(true, "Đang ở chế độ hiệu chỉnh (Reset để thêm mới)", false, "");
+    } else {        updateTeacherButtonStates(true, "Đang ở chế độ hiệu chỉnh (Reset để thêm mới)", false, "");
     }
 }
 
 function updateTeacherButtonStates(disableThem, reasonThem, disableSua, reasonSua) {
-    const btnThemGV = document.getElementById("btnThemGV");
-    const btnSuaGV = document.getElementById("btnSuaGV");
-    const wrapThemGV = document.getElementById("wrapThemGV");
-    const wrapSuaGV = document.getElementById("wrapSuaGV");
-
-    if (btnThemGV && wrapThemGV) {
-        if (disableThem) {
-            btnThemGV.setAttribute("disabled", "true");
-            wrapThemGV.title = reasonThem || "";
-        } else {
-            btnThemGV.removeAttribute("disabled");
-            wrapThemGV.removeAttribute("title");
-        }
-    }
-
-    if (btnSuaGV && wrapSuaGV) {
-        if (disableSua) {
-            btnSuaGV.setAttribute("disabled", "true");
-            wrapSuaGV.title = reasonSua || "";
-        } else {
-            btnSuaGV.removeAttribute("disabled");
-            wrapSuaGV.removeAttribute("title");
-        }
-    }
+    AppCommon.setDisabled(AppCommon.byId("btnThemGV"), AppCommon.byId("wrapThemGV"), disableThem, reasonThem);
+    AppCommon.setDisabled(AppCommon.byId("btnSuaGV"), AppCommon.byId("wrapSuaGV"), disableSua, reasonSua);
 }
 
 function updateSaveButtonState() {
-    const btnGhiGV = document.getElementById("btnGhiGV");
-    const wrapGhiGV = document.getElementById("wrapGhiGV");
-    const hasChanges = (newItems.length > 0 || updatedItems.length > 0 || deletedItems.length > 0);
-
-    if (hasChanges) {
-        btnGhiGV.removeAttribute("disabled");
-        wrapGhiGV.removeAttribute("title");
-    } else {
-        btnGhiGV.setAttribute("disabled", "true");
-        wrapGhiGV.title = "Không có thay đổi nào cần lưu.";
-    }
+    const hasChanges = newItems.length > 0 || updatedItems.length > 0 || deletedItems.length > 0;
+    AppCommon.setDisabled(
+        AppCommon.byId("btnGhiGV"),
+        AppCommon.byId("wrapGhiGV"),
+        !hasChanges,
+        "Không có thay đổi nào cần lưu."
+    );
 }
 
 function updateUndoRedoButtonStates() {
@@ -573,67 +494,15 @@ function updateSTT() {
     updatePagination();
 }
 
-// --- Pagination Operations ---
 function updatePagination() {
-    const rows = Array.from(document.querySelectorAll("#gvTable tr:not(.search-hidden)"));
-    const totalRows = rows.length;
-    const totalPages = Math.ceil(totalRows / rowsPerPage) || 1;
-
-    if (currentPage > totalPages) {
-        currentPage = totalPages;
-    }
-    if (currentPage < 1) {
-        currentPage = 1;
-    }
-
-    const startIdx = (currentPage - 1) * rowsPerPage;
-    const endIdx = startIdx + rowsPerPage;
-
-    const allRows = Array.from(document.querySelectorAll("#gvTable tr"));
-    let visibleCounter = 0;
-
-    allRows.forEach(row => {
-        if (row.classList.contains("search-hidden")) {
-            row.classList.add("d-none");
-            return;
-        }
-
-        if (visibleCounter >= startIdx && visibleCounter < endIdx) {
-            row.classList.remove("d-none");
-        } else {
-            row.classList.add("d-none");
-        }
-        visibleCounter++;
+    currentPage = AppCommon.renderPagination({
+        visibleRowSelector: "#gvTable tr:not(.search-hidden)",
+        allRowSelector: "#gvTable tr",
+        currentPage,
+        rowsPerPage,
+        summaryId: "lblPaginationSummary",
+        paginationId: "ulPagination"
     });
-
-    const summarySpan = document.getElementById("lblPaginationSummary");
-    if (summarySpan) {
-        const from = totalRows === 0 ? 0 : startIdx + 1;
-        const to = Math.min(endIdx, totalRows);
-        summarySpan.textContent = `Hiển thị từ ${from} đến ${to} trong tổng số ${totalRows} dòng`;
-    }
-
-    const ulPagination = document.getElementById("ulPagination");
-    if (ulPagination) {
-        ulPagination.innerHTML = "";
-
-        const prevLi = document.createElement("li");
-        prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
-        prevLi.innerHTML = `<button type="button" class="page-link shadow-none" onclick="changePage(${currentPage - 1})"><i class="bi bi-chevron-left"></i></button>`;
-        ulPagination.appendChild(prevLi);
-
-        for (let i = 1; i <= totalPages; i++) {
-            const pageLi = document.createElement("li");
-            pageLi.className = `page-item ${currentPage === i ? 'active' : ''}`;
-            pageLi.innerHTML = `<button type="button" class="page-link shadow-none" onclick="changePage(${i})">${i}</button>`;
-            ulPagination.appendChild(pageLi);
-        }
-
-        const nextLi = document.createElement("li");
-        nextLi.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
-        nextLi.innerHTML = `<button type="button" class="page-link shadow-none" onclick="changePage(${currentPage + 1})"><i class="bi bi-chevron-right"></i></button>`;
-        ulPagination.appendChild(nextLi);
-    }
 }
 
 function changePage(page) {
@@ -642,12 +511,11 @@ function changePage(page) {
 }
 
 function changePageSize(size) {
-    rowsPerPage = parseInt(size) || 10;
+    rowsPerPage = parseInt(size, 10) || AppCommon.DEFAULT_PAGE_SIZE;
     currentPage = 1;
     updatePagination();
 }
 
-// --- Excel Export/Import Systems ---
 function exportExcel() {
     const rows = [["Mã GV", "Họ", "Tên", "Số ĐT", "Địa chỉ"]];
     
@@ -684,55 +552,17 @@ function downloadTemplate() {
 }
 
 function openImportModal() {
-    document.getElementById("importFile").value = "";
-    document.getElementById("importFileFeedback").textContent = "";
-    document.getElementById("importPreviewSection").style.display = "none";
-    document.getElementById("btnConfirmImport").setAttribute("disabled", "true");
-
-    const modalEl = document.getElementById('importModal');
-    const modalBs = new bootstrap.Modal(modalEl);
-    modalBs.show();
+    AppCommon.showImportModal();
 }
 
 let currentImportList = [];
 
 function handleFileSelect(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        try {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, { type: 'array' });
-            const sheetName = workbook.SheetNames[0];
-            const sheet = workbook.Sheets[sheetName];
-            const rawData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
-            validateExcelData(rawData);
-        } catch (err) {
-            showImportFileError("Không thể đọc file Excel. Vui lòng kiểm tra lại định dạng file.");
-            console.error(err);
-        }
-    };
-    reader.readAsArrayBuffer(file);
-}
-
-function showImportFileError(msg) {
-    document.getElementById("importFileFeedback").textContent = msg;
-    document.getElementById("importPreviewSection").style.display = "none";
-    document.getElementById("btnConfirmImport").setAttribute("disabled", "true");
-}
-
-function normalizeHeader(val) {
-    if (!val) return "";
-    return val.toString().toLowerCase().trim()
-        .replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g, "a")
-        .replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g, "e")
-        .replace(/ì|í|ị|ỉ|ĩ/g, "i")
-        .replace(/ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ/g, "o")
-        .replace(/ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ/g, "u")
-        .replace(/ỳ|ý|ỵ|ỷ|ỹ/g, "y")
-        .replace(/đ/g, "d");
+    AppCommon.readFirstExcelSheet(
+        event.target.files[0],
+        validateExcelData,
+        () => showImportFileError("Không thể đọc file Excel. Vui lòng kiểm tra lại định dạng file.")
+    );
 }
 
 function validateExcelData(rawData) {
@@ -846,10 +676,7 @@ function validateExcelData(rawData) {
     if (candidates.length === 0) {
         renderPreview(processedRows);
         return;
-    }
-
-    // Call server API check
-    fetch('/GiaoVien/CheckImport', {
+    }    fetch('/GiaoVien/CheckImport', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(candidates.map(c => ({ MaGV: c.maGV })))
@@ -975,87 +802,4 @@ function confirmImport() {
     updateSaveButtonState();
 }
 
-// --- Custom Modal Dialog System ---
-function getCustomModal() {
-    if (customModalBs === null) {
-        customModalBs = new bootstrap.Modal(document.getElementById('customModal'));
-    }
-    return customModalBs;
-}
 
-function hienThongBao(message, title = "Thông báo", callback = null) {
-    const modalEl = document.getElementById('customModal');
-    const titleEl = document.getElementById('customModalTitle');
-    const msgEl = document.getElementById('customModalMessage');
-    const iconEl = document.getElementById('customModalIcon');
-    const btnCancel = document.getElementById('btnCustomModalCancel');
-    const btnOk = document.getElementById('btnCustomModalOk');
-
-    titleEl.textContent = title;
-    msgEl.innerHTML = message;
-
-    iconEl.className = "bi fs-4";
-    if (title.toLowerCase().includes("lỗi")) {
-        iconEl.classList.add("bi-exclamation-octagon-fill", "text-danger");
-    } else if (title.toLowerCase().includes("thành công") || title.toLowerCase().includes("ok")) {
-        iconEl.classList.add("bi-check-circle-fill", "text-success");
-    } else {
-        iconEl.classList.add("bi-info-circle-fill", "text-primary");
-    }
-
-    btnCancel.style.display = "none";
-    btnOk.className = "btn btn-primary btn-sm px-3";
-    btnOk.textContent = "Đồng ý";
-
-    const newBtnOk = btnOk.cloneNode(true);
-    btnOk.parentNode.replaceChild(newBtnOk, btnOk);
-
-    const bsModal = getCustomModal();
-    newBtnOk.onclick = () => {
-        bsModal.hide();
-    };
-
-    const onHidden = () => {
-        modalEl.removeEventListener('hidden.bs.modal', onHidden);
-        if (callback) callback();
-    };
-    modalEl.addEventListener('hidden.bs.modal', onHidden);
-
-    bsModal.show();
-}
-
-function hienXacNhan(message, onConfirm, title = "Xác nhận") {
-    const modalEl = document.getElementById('customModal');
-    const titleEl = document.getElementById('customModalTitle');
-    const msgEl = document.getElementById('customModalMessage');
-    const iconEl = document.getElementById('customModalIcon');
-    const btnCancel = document.getElementById('btnCustomModalCancel');
-    const btnOk = document.getElementById('btnCustomModalOk');
-
-    titleEl.textContent = title;
-    msgEl.innerHTML = message;
-
-    iconEl.className = "bi fs-4 bi-question-circle-fill text-warning";
-    btnCancel.style.display = "inline-block";
-    btnCancel.textContent = "Hủy";
-    btnOk.className = "btn btn-danger btn-sm px-3";
-    btnOk.textContent = "Xác nhận";
-
-    const newBtnOk = btnOk.cloneNode(true);
-    btnOk.parentNode.replaceChild(newBtnOk, btnOk);
-
-    const bsModal = getCustomModal();
-    let isConfirmed = false;
-    newBtnOk.onclick = () => {
-        isConfirmed = true;
-        bsModal.hide();
-    };
-
-    const onHidden = () => {
-        modalEl.removeEventListener('hidden.bs.modal', onHidden);
-        if (isConfirmed && onConfirm) onConfirm();
-    };
-    modalEl.addEventListener('hidden.bs.modal', onHidden);
-
-    bsModal.show();
-}

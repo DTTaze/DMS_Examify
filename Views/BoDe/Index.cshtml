@@ -36,9 +36,9 @@
                     <div class="col-md-4">
                         <label class="form-label small fw-medium text-secondary">Trình độ</label>
                         <select class="form-select shadow-none" id="selTrinhDo">
-                            <option value="A">A</option>
-                            <option value="B">B</option>
-                            <option value="C">C</option>
+                            <option value="A">A - Đại học, chuyên ngành</option>
+                            <option value="B">B - Đại học, không chuyên ngành</option>
+                            <option value="C">C - Cao đẳng</option>
                         </select>
                     </div>
                 </div>
@@ -106,12 +106,16 @@
                     <button type="button" class="btn btn-secondary btn-sm px-3 animate-btn" onclick="resetQuestionForm()">
                         <i class="bi bi-arrow-clockwise me-1"></i> Reset
                     </button>
-                    <button type="button" class="btn btn-info btn-sm px-3 text-white animate-btn" id="btnUndo" onclick="undoBD()" disabled>
-                        <i class="bi bi-arrow-counterclockwise me-1"></i> Undo
-                    </button>
-                    <button type="button" class="btn btn-info btn-sm px-3 text-white animate-btn" id="btnRedo" onclick="redoBD()" disabled>
-                        <i class="bi bi-arrow-clockwise me-1"></i> Redo
-                    </button>
+                    <span id="wrapUndo" class="d-inline-block" title="Chưa có thao tác nào để hoàn tác.">
+                        <button type="button" class="btn btn-info btn-sm px-3 text-white animate-btn" id="btnUndo" onclick="undoBD()" disabled title="Chưa có thao tác nào để hoàn tác.">
+                            <i class="bi bi-arrow-counterclockwise me-1"></i> Undo
+                        </button>
+                    </span>
+                    <span id="wrapRedo" class="d-inline-block" title="Chưa có thao tác nào để làm lại.">
+                        <button type="button" class="btn btn-info btn-sm px-3 text-white animate-btn" id="btnRedo" onclick="redoBD()" disabled title="Chưa có thao tác nào để làm lại.">
+                            <i class="bi bi-arrow-clockwise me-1"></i> Redo
+                        </button>
+                    </span>
                     <span id="wrapGhi" class="d-inline-block">
                         <button type="button" class="btn btn-success btn-sm px-3 animate-btn" id="btnGhi" onclick="saveAll()" disabled>
                             <i class="bi bi-check-circle me-1"></i> Ghi (Lưu CSDL)
@@ -287,5 +291,6 @@
 
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="~/js/app-common.js" asp-append-version="true"></script>
     <script src="~/js/bode.js" asp-append-version="true"></script>
 }

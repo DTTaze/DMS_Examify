@@ -1,4 +1,3 @@
-// --- Global State ---
 let selectedLop = null;
 let selectedLopRow = null;
 let selectedRow = null;
@@ -18,30 +17,22 @@ let historyLopRedo = [];
 
 let currentPage = 1;
 let rowsPerPage = 10;
-let customModalBs = null;
 let classDebounceTimer = null;
 let studentDebounceTimer = null;
 
-// --- Lifecycle and Initialization ---
-window.onload = () => {
+AppCommon.onReady(() => {
     bindLopRows();
     bindRows();
 
-    // Event listeners for student form inputs validation
-    document.getElementById("txtMaSV").addEventListener("input", validateStudentInputs);
-    document.getElementById("txtHo").addEventListener("input", validateStudentInputs);
-    document.getElementById("txtTen").addEventListener("input", validateStudentInputs);
-    document.getElementById("txtNgaySinh").addEventListener("input", validateStudentInputs);
-    document.getElementById("txtNgaySinh").addEventListener("change", validateStudentInputs);
-    document.getElementById("txtDiaChi").addEventListener("input", validateStudentInputs);
-    document.getElementById("txtMatKhau").addEventListener("input", validateStudentInputs);
+    ["txtMaSV", "txtHo", "txtTen", "txtDiaChi", "txtMatKhau"]
+        .forEach(id => AppCommon.byId(id).addEventListener("input", validateStudentInputs));
+    AppCommon.byId("txtNgaySinh").addEventListener("input", validateStudentInputs);
+    AppCommon.byId("txtNgaySinh").addEventListener("change", validateStudentInputs);
 
-    // Event listeners for class form inputs validation
-    document.getElementById("txtMaLop").addEventListener("input", validateClassInputs);
-    document.getElementById("txtTenLop").addEventListener("input", validateClassInputs);
-    
-    // Live filter search for students
-    const txtSearchSV = document.getElementById("txtSearchSV");
+    ["txtMaLop", "txtTenLop"]
+        .forEach(id => AppCommon.byId(id).addEventListener("input", validateClassInputs));
+
+    const txtSearchSV = AppCommon.byId("txtSearchSV");
     if (txtSearchSV) {
         txtSearchSV.addEventListener("input", triggerStudentSearch);
     }
@@ -52,11 +43,9 @@ window.onload = () => {
     updateUndoRedoButtonStates();
     updateUndoRedoLopButtonStates();
     updateSaveLopButtonState();
-};
+});
 
-// --- Class (Lop) Subform Management ---
 
-// --- Lọc danh sách Lớp ở Client ---
 function locLop() {
     const keyword = document.getElementById("txtSearchLop").value.toLowerCase().trim();
     const items = document.querySelectorAll("#lopList li");
@@ -107,9 +96,9 @@ function bindLopRows() {
 function pushStateLop() {
     historyLopUndo.push({
         html: document.getElementById("lopList").innerHTML,
-        newLops: JSON.parse(JSON.stringify(newLops)),
-        updatedLops: JSON.parse(JSON.stringify(updatedLops)),
-        deletedLops: JSON.parse(JSON.stringify(deletedLops))
+        newLops: AppCommon.cloneJson(newLops),
+        updatedLops: AppCommon.cloneJson(updatedLops),
+        deletedLops: AppCommon.cloneJson(deletedLops)
     });
     historyLopRedo = [];
     updateUndoRedoLopButtonStates();
@@ -142,19 +131,13 @@ function executeChonLop(el) {
 
     clearLopInputs();
 
-    document.getElementById("currentLop").innerText = el.dataset.tenlop;
-
-    // Reset student states
-    newItems = [];
+    document.getElementById("currentLop").innerText = el.dataset.tenlop;    newItems = [];
     updatedItems = [];
     deletedItems = [];
     undoHistoryStack = [];
     redoHistoryStack = [];
     selectedRow = null;
-    resetStudentForm();
-
-    // Enable Excel buttons
-    document.getElementById("btnExport").removeAttribute("disabled");
+    resetStudentForm();    document.getElementById("btnExport").removeAttribute("disabled");
     document.getElementById("btnImport").removeAttribute("disabled");
 
     loadSinhVien();
@@ -168,10 +151,7 @@ function themLop() {
     if (!ma || !ten) {
         hienThongBao("Vui lòng nhập đầy đủ Mã và Tên lớp.", "Thông báo");
         return;
-    }
-
-    // Check duplicates locally
-    const exists = [...document.querySelectorAll("#lopList li")].some(li => li.dataset.malop === ma);
+    }    const exists = [...document.querySelectorAll("#lopList li")].some(li => li.dataset.malop === ma);
     if (exists) {
         hienThongBao("Mã lớp này đã tồn tại trong danh sách.", "Thông báo");
         return;
@@ -268,9 +248,9 @@ function undoLop() {
 
     historyLopRedo.push({
         html: document.getElementById("lopList").innerHTML,
-        newLops: JSON.parse(JSON.stringify(newLops)),
-        updatedLops: JSON.parse(JSON.stringify(updatedLops)),
-        deletedLops: JSON.parse(JSON.stringify(deletedLops))
+        newLops: AppCommon.cloneJson(newLops),
+        updatedLops: AppCommon.cloneJson(updatedLops),
+        deletedLops: AppCommon.cloneJson(deletedLops)
     });
 
     const previousState = historyLopUndo.pop();
@@ -296,9 +276,9 @@ function redoLop() {
 
     historyLopUndo.push({
         html: document.getElementById("lopList").innerHTML,
-        newLops: JSON.parse(JSON.stringify(newLops)),
-        updatedLops: JSON.parse(JSON.stringify(updatedLops)),
-        deletedLops: JSON.parse(JSON.stringify(deletedLops))
+        newLops: AppCommon.cloneJson(newLops),
+        updatedLops: AppCommon.cloneJson(updatedLops),
+        deletedLops: AppCommon.cloneJson(deletedLops)
     });
 
     const nextState = historyLopRedo.pop();
@@ -401,15 +381,9 @@ function clearLopInputs() {
 }
 
 function resetLopForm() {
-    clearLopInputs();
-    
-    // Clear selection UI
-    selectedLopRow = null;
+    clearLopInputs();    selectedLopRow = null;
     selectedLop = null;
-    document.querySelectorAll("#lopList li").forEach(x => x.classList.remove("active"));
-    
-    // Clear student detail subform
-    document.getElementById("currentLop").innerText = "Chưa chọn lớp";
+    document.querySelectorAll("#lopList li").forEach(x => x.classList.remove("active"));    document.getElementById("currentLop").innerText = "Chưa chọn lớp";
     newItems = [];
     updatedItems = [];
     deletedItems = [];
@@ -417,10 +391,7 @@ function resetLopForm() {
     redoHistoryStack = [];
     selectedRow = null;
     document.getElementById("svTable").innerHTML = "";
-    resetStudentForm();
-    
-    // Disable Excel buttons
-    document.getElementById("btnExport").setAttribute("disabled", "true");
+    resetStudentForm();    document.getElementById("btnExport").setAttribute("disabled", "true");
     document.getElementById("btnImport").setAttribute("disabled", "true");
 }
 
@@ -439,16 +410,10 @@ function validateClassInputs() {
     const errTenLop = document.getElementById("errTenLop");
 
     const txtMaLop = document.getElementById("txtMaLop");
-    const txtTenLop = document.getElementById("txtTenLop");
-
-    // Clean old errors
-    errMaLop.textContent = "";
+    const txtTenLop = document.getElementById("txtTenLop");    errMaLop.textContent = "";
     errTenLop.textContent = "";
     txtMaLop.classList.remove("is-invalid");
-    txtTenLop.classList.remove("is-invalid");
-
-    // Check if editing and no changes
-    if (isEditing && selectedLopRow) {
+    txtTenLop.classList.remove("is-invalid");    if (isEditing && selectedLopRow) {
         const originalTenLop = (selectedLopRow.dataset.tenlop || "").trim();
         if (tenLop === originalTenLop) {
             updateClassButtonStates(
@@ -487,10 +452,7 @@ function validateClassInputs() {
             : "Vui lòng chọn lớp trong danh sách để hiệu chỉnh";
         updateClassButtonStates(true, reasonThem, true, reasonSua);
         return;
-    }
-
-    // Check duplicates locally
-    let isLocalDuplicate = false;
+    }    let isLocalDuplicate = false;
     let localReasonMa = "";
     let localReasonTen = "";
 
@@ -601,40 +563,17 @@ function validateClassInputs() {
 }
 
 function updateClassButtonStates(disableThem, reasonThem, disableSua, reasonSua) {
-    const btnThemLop = document.getElementById("btnThemLop");
-    const btnSuaLop = document.getElementById("btnSuaLop");
-    const wrapThemLop = document.getElementById("wrapThemLop");
-    const wrapSuaLop = document.getElementById("wrapSuaLop");
-
-    if (btnThemLop && wrapThemLop) {
-        if (disableThem) {
-            btnThemLop.setAttribute("disabled", "true");
-            wrapThemLop.title = reasonThem || "";
-        } else {
-            btnThemLop.removeAttribute("disabled");
-            wrapThemLop.removeAttribute("title");
-        }
-    }
-
-    if (btnSuaLop && wrapSuaLop) {
-        if (disableSua) {
-            btnSuaLop.setAttribute("disabled", "true");
-            wrapSuaLop.title = reasonSua || "";
-        } else {
-            btnSuaLop.removeAttribute("disabled");
-            wrapSuaLop.removeAttribute("title");
-        }
-    }
+    AppCommon.setDisabled(AppCommon.byId("btnThemLop"), AppCommon.byId("wrapThemLop"), disableThem, reasonThem);
+    AppCommon.setDisabled(AppCommon.byId("btnSuaLop"), AppCommon.byId("wrapSuaLop"), disableSua, reasonSua);
 }
 
-// --- Student (SinhVien) Subform Management ---
 
 function pushState() {
     undoHistoryStack.push({
         html: document.getElementById("svTable").innerHTML,
-        newItems: JSON.parse(JSON.stringify(newItems)),
-        updatedItems: JSON.parse(JSON.stringify(updatedItems)),
-        deletedItems: JSON.parse(JSON.stringify(deletedItems))
+        newItems: AppCommon.cloneJson(newItems),
+        updatedItems: AppCommon.cloneJson(updatedItems),
+        deletedItems: AppCommon.cloneJson(deletedItems)
     });
     redoHistoryStack = [];
 }
@@ -644,9 +583,9 @@ function undoSV() {
 
     redoHistoryStack.push({
         html: document.getElementById("svTable").innerHTML,
-        newItems: JSON.parse(JSON.stringify(newItems)),
-        updatedItems: JSON.parse(JSON.stringify(updatedItems)),
-        deletedItems: JSON.parse(JSON.stringify(deletedItems))
+        newItems: AppCommon.cloneJson(newItems),
+        updatedItems: AppCommon.cloneJson(updatedItems),
+        deletedItems: AppCommon.cloneJson(deletedItems)
     });
 
     const prev = undoHistoryStack.pop();
@@ -668,9 +607,9 @@ function redoSV() {
 
     undoHistoryStack.push({
         html: document.getElementById("svTable").innerHTML,
-        newItems: JSON.parse(JSON.stringify(newItems)),
-        updatedItems: JSON.parse(JSON.stringify(updatedItems)),
-        deletedItems: JSON.parse(JSON.stringify(deletedItems))
+        newItems: AppCommon.cloneJson(newItems),
+        updatedItems: AppCommon.cloneJson(updatedItems),
+        deletedItems: AppCommon.cloneJson(deletedItems)
     });
 
     const next = redoHistoryStack.pop();
@@ -717,10 +656,7 @@ function clearStudentInputs() {
     document.getElementById("txtNgaySinh").value = "";
     document.getElementById("txtDiaChi").value = "";
     document.getElementById("txtMatKhau").value = "";
-    document.getElementById("txtMaSV").disabled = false;
-    
-    // Clear errors
-    const fields = ["txtMaSV", "txtHo", "txtTen", "txtNgaySinh", "txtDiaChi", "txtMatKhau"];
+    document.getElementById("txtMaSV").disabled = false;    const fields = ["txtMaSV", "txtHo", "txtTen", "txtNgaySinh", "txtDiaChi", "txtMatKhau"];
     fields.forEach(f => document.getElementById(f).classList.remove("is-invalid"));
     
     const errors = ["errMaSV", "errHo", "errTen", "errNgaySinh", "errDiaChi", "errMatKhau"];
@@ -945,12 +881,10 @@ async function ghiSV() {
     }
 }
 
-// --- Local Filter Search ---
 let searchDebounceTimer = null;
 
 function triggerStudentSearch() {
-    clearTimeout(searchDebounceTimer);
-    searchDebounceTimer = setTimeout(executeStudentSearch, 200);
+    searchDebounceTimer = AppCommon.debounce(searchDebounceTimer, executeStudentSearch, 200);
 }
 
 function executeStudentSearch() {
@@ -970,7 +904,6 @@ function executeStudentSearch() {
     updatePagination();
 }
 
-// --- Validation Routines ---
 
 function validateStudentInputs() {
     const d = getStudentForm();
@@ -1018,10 +951,7 @@ function validateStudentInputs() {
             true, "Vui lòng chọn lớp học trước."
         );
         return;
-    }
-
-    // Check if editing and no changes
-    if (isEditing && selectedRow) {
+    }    if (isEditing && selectedRow) {
         const hasChanges = (
             d.Ho !== (selectedRow.dataset.ho || "").trim() ||
             d.Ten !== (selectedRow.dataset.ten || "").trim() ||
@@ -1038,51 +968,33 @@ function validateStudentInputs() {
         }
     }
 
-    let hasClientError = false;
-
-    // Validate MaSV
-    if (!d.MaSV) {
+    let hasClientError = false;    if (!d.MaSV) {
         hasClientError = true;
     } else if (d.MaSV.length > 8) {
         errMaSV.textContent = "Mã sinh viên tối đa 8 ký tự.";
         txtMaSV.classList.add("is-invalid");
         hasClientError = true;
-    }
-
-    // Validate Ho
-    if (!d.Ho) {
+    }    if (!d.Ho) {
         hasClientError = true;
     } else if (d.Ho.length > 50) {
         errHo.textContent = "Họ tối đa 50 ký tự.";
         txtHo.classList.add("is-invalid");
         hasClientError = true;
-    }
-
-    // Validate Ten
-    if (!d.Ten) {
+    }    if (!d.Ten) {
         hasClientError = true;
     } else if (d.Ten.length > 10) {
         errTen.textContent = "Tên tối đa 10 ký tự.";
         txtTen.classList.add("is-invalid");
         hasClientError = true;
-    }
-
-    // Validate NgaySinh
-    if (!d.NgaySinh) {
+    }    if (!d.NgaySinh) {
         hasClientError = true;
-    }
-
-    // Validate DiaChi
-    if (!d.DiaChi) {
+    }    if (!d.DiaChi) {
         hasClientError = true;
     } else if (d.DiaChi.length > 40) {
         errDiaChi.textContent = "Địa chỉ tối đa 40 ký tự.";
         txtDiaChi.classList.add("is-invalid");
         hasClientError = true;
-    }
-
-    // Validate MatKhau
-    if (!d.MatKhau) {
+    }    if (!d.MatKhau) {
         hasClientError = true;
     } else if (d.MatKhau.length > 20) {
         errMatKhau.textContent = "Mật khẩu tối đa 20 ký tự.";
@@ -1095,10 +1007,7 @@ function validateStudentInputs() {
         let reasonSua = isEditing ? "Thông tin sinh viên nhập không hợp lệ." : "Vui lòng chọn sinh viên trên lưới để hiệu chỉnh";
         updateStudentButtonStates(true, reasonThem, true, reasonSua);
         return;
-    }
-
-    // Check code duplicate locally
-    if (!isEditing) {
+    }    if (!isEditing) {
         const exists = [...document.querySelectorAll("#svTable tr")].some(r => r.dataset.masv === d.MaSV);
         if (exists) {
             errMaSV.textContent = "Mã SV này đã trùng trong danh sách tạm thời.";
@@ -1135,9 +1044,7 @@ function validateStudentInputs() {
                             true, "Mã SV đã tồn tại trong CSDL.",
                             true, "Vui lòng chọn sinh viên trên lưới để hiệu chỉnh"
                         );
-                    } else {
-                        // Success - enable Them
-                        updateStudentButtonStates(false, "", true, "Vui lòng chọn sinh viên trên lưới để hiệu chỉnh");
+                    } else {                        updateStudentButtonStates(false, "", true, "Vui lòng chọn sinh viên trên lưới để hiệu chỉnh");
                     }
                 })
                 .catch(error => {
@@ -1145,67 +1052,33 @@ function validateStudentInputs() {
                     updateStudentButtonStates(false, "", true, "Vui lòng chọn sinh viên trên lưới để hiệu chỉnh");
                 });
         }, 250);
-    } else {
-        // Editing mode with changes - can save immediately
-        updateStudentButtonStates(true, "Đang ở chế độ hiệu chỉnh (Reset để thêm mới)", false, "");
+    } else {        updateStudentButtonStates(true, "Đang ở chế độ hiệu chỉnh (Reset để thêm mới)", false, "");
     }
 }
 
 function updateStudentButtonStates(disableThem, reasonThem, disableSua, reasonSua) {
-    const btnThemSV = document.getElementById("btnThemSV");
-    const btnSuaSV = document.getElementById("btnSuaSV");
-    const wrapThemSV = document.getElementById("wrapThemSV");
-    const wrapSuaSV = document.getElementById("wrapSuaSV");
-
-    if (btnThemSV && wrapThemSV) {
-        if (disableThem) {
-            btnThemSV.setAttribute("disabled", "true");
-            wrapThemSV.title = reasonThem || "";
-        } else {
-            btnThemSV.removeAttribute("disabled");
-            wrapThemSV.removeAttribute("title");
-        }
-    }
-
-    if (btnSuaSV && wrapSuaSV) {
-        if (disableSua) {
-            btnSuaSV.setAttribute("disabled", "true");
-            wrapSuaSV.title = reasonSua || "";
-        } else {
-            btnSuaSV.removeAttribute("disabled");
-            wrapSuaSV.removeAttribute("title");
-        }
-    }
+    AppCommon.setDisabled(AppCommon.byId("btnThemSV"), AppCommon.byId("wrapThemSV"), disableThem, reasonThem);
+    AppCommon.setDisabled(AppCommon.byId("btnSuaSV"), AppCommon.byId("wrapSuaSV"), disableSua, reasonSua);
 }
 
 function updateSaveButtonState() {
-    const btnGhiSV = document.getElementById("btnGhiSV");
-    const wrapGhiSV = document.getElementById("wrapGhiSV");
-    const hasChanges = (newItems.length > 0 || updatedItems.length > 0 || deletedItems.length > 0);
-
-    if (hasChanges) {
-        btnGhiSV.removeAttribute("disabled");
-        wrapGhiSV.removeAttribute("title");
-    } else {
-        btnGhiSV.setAttribute("disabled", "true");
-        wrapGhiSV.title = "Không có thay đổi nào cần lưu.";
-    }
+    const hasChanges = newItems.length > 0 || updatedItems.length > 0 || deletedItems.length > 0;
+    AppCommon.setDisabled(
+        AppCommon.byId("btnGhiSV"),
+        AppCommon.byId("wrapGhiSV"),
+        !hasChanges,
+        "Không có thay đổi nào cần lưu."
+    );
 }
 
 function updateSaveLopButtonState() {
-    const btnGhiLop = document.getElementById("btnGhiLop");
-    const wrapGhiLop = document.getElementById("wrapGhiLop");
-    const hasChanges = (newLops.length > 0 || updatedLops.length > 0 || deletedLops.length > 0);
-
-    if (btnGhiLop) {
-        if (hasChanges) {
-            btnGhiLop.removeAttribute("disabled");
-            if (wrapGhiLop) wrapGhiLop.removeAttribute("title");
-        } else {
-            btnGhiLop.setAttribute("disabled", "true");
-            if (wrapGhiLop) wrapGhiLop.title = "Không có thay đổi nào về Lớp cần ghi.";
-        }
-    }
+    const hasChanges = newLops.length > 0 || updatedLops.length > 0 || deletedLops.length > 0;
+    AppCommon.setDisabled(
+        AppCommon.byId("btnGhiLop"),
+        AppCommon.byId("wrapGhiLop"),
+        !hasChanges,
+        "Không có thay đổi nào về Lớp cần ghi."
+    );
 }
 
 function updateUndoRedoButtonStates() {
@@ -1240,68 +1113,15 @@ function updateSTT() {
     updatePagination();
 }
 
-// --- Pagination Operations ---
 function updatePagination() {
-    const rows = Array.from(document.querySelectorAll("#svTable tr:not(.search-hidden)"));
-    const totalRows = rows.length;
-    const totalPages = Math.ceil(totalRows / rowsPerPage) || 1;
-
-    if (currentPage > totalPages) {
-        currentPage = totalPages;
-    }
-    if (currentPage < 1) {
-        currentPage = 1;
-    }
-
-    const startIdx = (currentPage - 1) * rowsPerPage;
-    const endIdx = startIdx + rowsPerPage;
-
-    // Apply class to toggle view
-    const allRows = Array.from(document.querySelectorAll("#svTable tr"));
-    let visibleCounter = 0;
-
-    allRows.forEach(row => {
-        if (row.classList.contains("search-hidden")) {
-            row.classList.add("d-none");
-            return;
-        }
-
-        if (visibleCounter >= startIdx && visibleCounter < endIdx) {
-            row.classList.remove("d-none");
-        } else {
-            row.classList.add("d-none");
-        }
-        visibleCounter++;
+    currentPage = AppCommon.renderPagination({
+        visibleRowSelector: "#svTable tr:not(.search-hidden)",
+        allRowSelector: "#svTable tr",
+        currentPage,
+        rowsPerPage,
+        summaryId: "lblPaginationSummary",
+        paginationId: "ulPagination"
     });
-
-    const summarySpan = document.getElementById("lblPaginationSummary");
-    if (summarySpan) {
-        const from = totalRows === 0 ? 0 : startIdx + 1;
-        const to = Math.min(endIdx, totalRows);
-        summarySpan.textContent = `Hiển thị từ ${from} đến ${to} trong tổng số ${totalRows} dòng`;
-    }
-
-    const ulPagination = document.getElementById("ulPagination");
-    if (ulPagination) {
-        ulPagination.innerHTML = "";
-
-        const prevLi = document.createElement("li");
-        prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
-        prevLi.innerHTML = `<button type="button" class="page-link shadow-none" onclick="changePage(${currentPage - 1})"><i class="bi bi-chevron-left"></i></button>`;
-        ulPagination.appendChild(prevLi);
-
-        for (let i = 1; i <= totalPages; i++) {
-            const pageLi = document.createElement("li");
-            pageLi.className = `page-item ${currentPage === i ? 'active' : ''}`;
-            pageLi.innerHTML = `<button type="button" class="page-link shadow-none" onclick="changePage(${i})">${i}</button>`;
-            ulPagination.appendChild(pageLi);
-        }
-
-        const nextLi = document.createElement("li");
-        nextLi.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
-        nextLi.innerHTML = `<button type="button" class="page-link shadow-none" onclick="changePage(${currentPage + 1})"><i class="bi bi-chevron-right"></i></button>`;
-        ulPagination.appendChild(nextLi);
-    }
 }
 
 function changePage(page) {
@@ -1310,12 +1130,11 @@ function changePage(page) {
 }
 
 function changePageSize(size) {
-    rowsPerPage = parseInt(size) || 10;
+    rowsPerPage = parseInt(size, 10) || AppCommon.DEFAULT_PAGE_SIZE;
     currentPage = 1;
     updatePagination();
 }
 
-// --- Excel Import/Export and Dialog Systems ---
 
 function exportExcel() {
     if (!selectedLop) return;
@@ -1359,55 +1178,18 @@ function openImportModal() {
         hienThongBao("Vui lòng chọn một lớp trước khi import.", "Thông báo");
         return;
     }
-    document.getElementById("importFile").value = "";
-    document.getElementById("importFileFeedback").textContent = "";
-    document.getElementById("importPreviewSection").style.display = "none";
-    document.getElementById("btnConfirmImport").setAttribute("disabled", "true");
 
-    const modalEl = document.getElementById('importModal');
-    const modalBs = new bootstrap.Modal(modalEl);
-    modalBs.show();
+    AppCommon.showImportModal();
 }
 
 let currentImportList = [];
 
 function handleFileSelect(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        try {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, { type: 'array' });
-            const sheetName = workbook.SheetNames[0];
-            const sheet = workbook.Sheets[sheetName];
-            const rawData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
-            validateExcelData(rawData);
-        } catch (err) {
-            showImportFileError("Không thể đọc file Excel. Vui lòng kiểm tra lại định dạng file.");
-            console.error(err);
-        }
-    };
-    reader.readAsArrayBuffer(file);
-}
-
-function showImportFileError(msg) {
-    document.getElementById("importFileFeedback").textContent = msg;
-    document.getElementById("importPreviewSection").style.display = "none";
-    document.getElementById("btnConfirmImport").setAttribute("disabled", "true");
-}
-
-function normalizeHeader(val) {
-    if (!val) return "";
-    return val.toString().toLowerCase().trim()
-        .replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g, "a")
-        .replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g, "e")
-        .replace(/ì|í|ị|ỉ|ĩ/g, "i")
-        .replace(/ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ/g, "o")
-        .replace(/ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ/g, "u")
-        .replace(/ỳ|ý|ỵ|ỷ|ỹ/g, "y")
-        .replace(/đ/g, "d");
+    AppCommon.readFirstExcelSheet(
+        event.target.files[0],
+        validateExcelData,
+        () => showImportFileError("Không thể đọc file Excel. Vui lòng kiểm tra lại định dạng file.")
+    );
 }
 
 function validateExcelData(rawData) {
@@ -1543,10 +1325,7 @@ function validateExcelData(rawData) {
     if (candidates.length === 0) {
         renderPreview(processedRows);
         return;
-    }
-
-    // Call server API batch check
-    fetch('/LopSinhVien/CheckStudentImport', {
+    }    fetch('/LopSinhVien/CheckStudentImport', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(candidates.map(c => ({ MaSV: c.maSV })))
@@ -1678,90 +1457,6 @@ function confirmImport() {
     updateUndoRedoButtonStates();
 }
 
-// --- Custom Modal Dialog System ---
-function getCustomModal() {
-    if (customModalBs === null) {
-        customModalBs = new bootstrap.Modal(document.getElementById('customModal'));
-    }
-    return customModalBs;
-}
-
-function hienThongBao(message, title = "Thông báo", callback = null) {
-    const modalEl = document.getElementById('customModal');
-    const titleEl = document.getElementById('customModalTitle');
-    const msgEl = document.getElementById('customModalMessage');
-    const iconEl = document.getElementById('customModalIcon');
-    const btnCancel = document.getElementById('btnCustomModalCancel');
-    const btnOk = document.getElementById('btnCustomModalOk');
-
-    titleEl.textContent = title;
-    msgEl.innerHTML = message;
-
-    iconEl.className = "bi fs-4";
-    if (title.toLowerCase().includes("lỗi")) {
-        iconEl.classList.add("bi-exclamation-octagon-fill", "text-danger");
-    } else if (title.toLowerCase().includes("thành công") || title.toLowerCase().includes("ok")) {
-        iconEl.classList.add("bi-check-circle-fill", "text-success");
-    } else {
-        iconEl.classList.add("bi-info-circle-fill", "text-primary");
-    }
-
-    btnCancel.style.display = "none";
-    btnOk.className = "btn btn-primary btn-sm px-3";
-    btnOk.textContent = "Đồng ý";
-
-    const newBtnOk = btnOk.cloneNode(true);
-    btnOk.parentNode.replaceChild(newBtnOk, btnOk);
-
-    const bsModal = getCustomModal();
-    newBtnOk.onclick = () => {
-        bsModal.hide();
-    };
-
-    const onHidden = () => {
-        modalEl.removeEventListener('hidden.bs.modal', onHidden);
-        if (callback) callback();
-    };
-    modalEl.addEventListener('hidden.bs.modal', onHidden);
-
-    bsModal.show();
-}
-
-function hienXacNhan(message, onConfirm, title = "Xác nhận") {
-    const modalEl = document.getElementById('customModal');
-    const titleEl = document.getElementById('customModalTitle');
-    const msgEl = document.getElementById('customModalMessage');
-    const iconEl = document.getElementById('customModalIcon');
-    const btnCancel = document.getElementById('btnCustomModalCancel');
-    const btnOk = document.getElementById('btnCustomModalOk');
-
-    titleEl.textContent = title;
-    msgEl.innerHTML = message;
-
-    iconEl.className = "bi fs-4 bi-question-circle-fill text-warning";
-    btnCancel.style.display = "inline-block";
-    btnCancel.textContent = "Hủy";
-    btnOk.className = "btn btn-danger btn-sm px-3";
-    btnOk.textContent = "Xác nhận";
-
-    const newBtnOk = btnOk.cloneNode(true);
-    btnOk.parentNode.replaceChild(newBtnOk, btnOk);
-
-    const bsModal = getCustomModal();
-    let isConfirmed = false;
-    newBtnOk.onclick = () => {
-        isConfirmed = true;
-        bsModal.hide();
-    };
-
-    const onHidden = () => {
-        modalEl.removeEventListener('hidden.bs.modal', onHidden);
-        if (isConfirmed && onConfirm) onConfirm();
-    };
-    modalEl.addEventListener('hidden.bs.modal', onHidden);
-
-    bsModal.show();
-}
 
 window.onbeforeunload = function(e) {
     const hasStudentChanges = (newItems.length > 0 || updatedItems.length > 0 || deletedItems.length > 0);
@@ -1773,7 +1468,6 @@ window.onbeforeunload = function(e) {
     }
 };
 
-// --- Actions Clicks ---
 
 function editLopClick(event, li) {
     if (event) event.stopPropagation();
@@ -1809,10 +1503,7 @@ function deleteLopClick(event, li) {
             selectedLopRow = null;
             selectedLop = null;
             document.getElementById("currentLop").innerText = "Chưa chọn";
-            document.getElementById("svTable").innerHTML = "";
-            
-            // Disable Excel buttons
-            document.getElementById("btnExport").setAttribute("disabled", "true");
+            document.getElementById("svTable").innerHTML = "";            document.getElementById("btnExport").setAttribute("disabled", "true");
             document.getElementById("btnImport").setAttribute("disabled", "true");
             
             resetLopForm();

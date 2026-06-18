@@ -1,4 +1,3 @@
-// --- Global State ---
 let pendingNewItems = [];
 let pendingUpdatedItems = [];
 let pendingDeletedItems = [];
@@ -9,30 +8,26 @@ let temporaryIdCounter = -1;
 let currentPage = 1;
 let rowsPerPage = 10;
 
-let customModalBs = null;
 let debounceTimer = null;
 let searchDebounceTimer = null;
 
-// --- Lifecycle and Orchestration ---
 
-window.onload = () => {
+AppCommon.onReady(() => {
     bindRowEventHandlers();
-    
-    document.getElementById("txtMaMH").addEventListener("input", validateFormInputs);
-    document.getElementById("txtTenMH").addEventListener("input", validateFormInputs);
-    document.getElementById("txtTim").addEventListener("input", triggerSearch);
-    
+
+    AppCommon.byId("txtMaMH").addEventListener("input", validateFormInputs);
+    AppCommon.byId("txtTenMH").addEventListener("input", validateFormInputs);
+    AppCommon.byId("txtTim").addEventListener("input", triggerSearch);
+
     validateFormInputs();
     updateSaveButtonState();
     updateUndoRedoButtonStates();
     updatePagination();
-};
+});
 
-// --- Event Handlers and Core Actions ---
 
 function triggerSearch() {
-    clearTimeout(searchDebounceTimer);
-    searchDebounceTimer = setTimeout(executeSearch, 300);
+    searchDebounceTimer = AppCommon.debounce(searchDebounceTimer, executeSearch, 300);
 }
 
 function executeSearch() {
@@ -270,9 +265,9 @@ function undoLastAction() {
 
     redoHistoryStack.push({
         html: document.querySelector("#tbl tbody").innerHTML,
-        newItems: JSON.parse(JSON.stringify(pendingNewItems)),
-        updatedItems: JSON.parse(JSON.stringify(pendingUpdatedItems)),
-        deletedItems: JSON.parse(JSON.stringify(pendingDeletedItems))
+        newItems: AppCommon.cloneJson(pendingNewItems),
+        updatedItems: AppCommon.cloneJson(pendingUpdatedItems),
+        deletedItems: AppCommon.cloneJson(pendingDeletedItems)
     });
 
     const previousState = undoHistoryStack.pop();
@@ -288,7 +283,6 @@ function undoLastAction() {
     updateUndoRedoButtonStates();
 }
 
-// --- Mid-level Routines and Helpers ---
 
 function bindRowEventHandlers() {
     document.querySelectorAll("#tbl tbody tr").forEach(row => {
@@ -518,40 +512,18 @@ function validateFormInputs() {
 }
 
 function updateActionButtonStates(disableThem, reasonThem, disableSua, reasonSua) {
-    const addButton = document.getElementById("btnThem");
-    const editButton = document.getElementById("btnSua");
-    const addButtonWrapper = document.getElementById("wrapThem");
-    const editButtonWrapper = document.getElementById("wrapSua");
-    
-    if (disableThem) {
-        addButton.setAttribute("disabled", "true");
-        addButtonWrapper.title = reasonThem || "";
-    } else {
-        addButton.removeAttribute("disabled");
-        addButtonWrapper.removeAttribute("title");
-    }
-    
-    if (disableSua) {
-        editButton.setAttribute("disabled", "true");
-        editButtonWrapper.title = reasonSua || "";
-    } else {
-        editButton.removeAttribute("disabled");
-        editButtonWrapper.removeAttribute("title");
-    }
+    AppCommon.setDisabled(AppCommon.byId("btnThem"), AppCommon.byId("wrapThem"), disableThem, reasonThem);
+    AppCommon.setDisabled(AppCommon.byId("btnSua"), AppCommon.byId("wrapSua"), disableSua, reasonSua);
 }
 
 function updateSaveButtonState() {
-    const saveButton = document.getElementById("btnGhi");
-    const saveButtonWrapper = document.getElementById("wrapGhi");
-    const hasChanges = (pendingNewItems.length > 0 || pendingUpdatedItems.length > 0 || pendingDeletedItems.length > 0);
-    
-    if (hasChanges) {
-        saveButton.removeAttribute("disabled");
-        saveButtonWrapper.removeAttribute("title");
-    } else {
-        saveButton.setAttribute("disabled", "true");
-        saveButtonWrapper.title = "Không có thay đổi nào cần ghi vào CSDL.";
-    }
+    const hasChanges = pendingNewItems.length > 0 || pendingUpdatedItems.length > 0 || pendingDeletedItems.length > 0;
+    AppCommon.setDisabled(
+        AppCommon.byId("btnGhi"),
+        AppCommon.byId("wrapGhi"),
+        !hasChanges,
+        "Không có thay đổi nào cần ghi vào CSDL."
+    );
 }
 
 function updateSTT() {
@@ -576,107 +548,15 @@ function getFormValues() {
 function pushState() {
     undoHistoryStack.push({
         html: document.querySelector("#tbl tbody").innerHTML,
-        newItems: JSON.parse(JSON.stringify(pendingNewItems)),
-        updatedItems: JSON.parse(JSON.stringify(pendingUpdatedItems)),
-        deletedItems: JSON.parse(JSON.stringify(pendingDeletedItems))
+        newItems: AppCommon.cloneJson(pendingNewItems),
+        updatedItems: AppCommon.cloneJson(pendingUpdatedItems),
+        deletedItems: AppCommon.cloneJson(pendingDeletedItems)
     });
     redoHistoryStack = [];
 }
 
-// --- Custom Dialog System ---
 
-function getCustomModal() {
-    if (customModalBs === null) {
-        customModalBs = new bootstrap.Modal(document.getElementById('customModal'));
-    }
-    return customModalBs;
-}
 
-function hienThongBao(message, title = "Thông báo", callback = null) {
-    const modalEl = document.getElementById('customModal');
-    const titleEl = document.getElementById('customModalTitle');
-    const msgEl = document.getElementById('customModalMessage');
-    const iconEl = document.getElementById('customModalIcon');
-    const btnCancel = document.getElementById('btnCustomModalCancel');
-    const btnOk = document.getElementById('btnCustomModalOk');
-
-    titleEl.textContent = title;
-    msgEl.innerHTML = message;
-    
-    iconEl.className = "bi fs-4";
-    if (title.toLowerCase().includes("lỗi")) {
-        iconEl.classList.add("bi-exclamation-octagon-fill", "text-danger");
-    } else if (title.toLowerCase().includes("thành công") || title.toLowerCase().includes("ok")) {
-        iconEl.classList.add("bi-check-circle-fill", "text-success");
-    } else {
-        iconEl.classList.add("bi-info-circle-fill", "text-primary");
-    }
-
-    btnCancel.style.display = "none";
-    btnOk.className = "btn btn-primary btn-sm px-3";
-    btnOk.textContent = "Đồng ý";
-    
-    const newBtnOk = btnOk.cloneNode(true);
-    btnOk.parentNode.replaceChild(newBtnOk, btnOk);
-    
-    const bsModal = getCustomModal();
-    
-    newBtnOk.onclick = () => {
-        bsModal.hide();
-    };
-
-    const onHidden = () => {
-        modalEl.removeEventListener('hidden.bs.modal', onHidden);
-        if (callback) {
-            callback();
-        }
-    };
-    modalEl.addEventListener('hidden.bs.modal', onHidden);
-
-    bsModal.show();
-}
-
-function hienXacNhan(message, onConfirm, title = "Xác nhận") {
-    const modalEl = document.getElementById('customModal');
-    const titleEl = document.getElementById('customModalTitle');
-    const msgEl = document.getElementById('customModalMessage');
-    const iconEl = document.getElementById('customModalIcon');
-    const btnCancel = document.getElementById('btnCustomModalCancel');
-    const btnOk = document.getElementById('btnCustomModalOk');
-
-    titleEl.textContent = title;
-    msgEl.innerHTML = message;
-    
-    iconEl.className = "bi fs-4 bi-question-circle-fill text-warning";
-
-    btnCancel.style.display = "inline-block";
-    btnCancel.textContent = "Hủy";
-    btnOk.className = "btn btn-danger btn-sm px-3";
-    btnOk.textContent = "Xác nhận";
-    
-    const newBtnOk = btnOk.cloneNode(true);
-    btnOk.parentNode.replaceChild(newBtnOk, btnOk);
-    
-    const bsModal = getCustomModal();
-    
-    let isConfirmed = false;
-    newBtnOk.onclick = () => {
-        isConfirmed = true;
-        bsModal.hide();
-    };
-
-    const onHidden = () => {
-        modalEl.removeEventListener('hidden.bs.modal', onHidden);
-        if (isConfirmed && onConfirm) {
-            onConfirm();
-        }
-    };
-    modalEl.addEventListener('hidden.bs.modal', onHidden);
-
-    bsModal.show();
-}
-
-// --- Excel Import/Export and Undo Helpers ---
 
 function updateUndoRedoButtonStates() {
     const btnUndo = document.getElementById("btnUndo");
@@ -705,9 +585,9 @@ function redoLastAction() {
 
     undoHistoryStack.push({
         html: document.querySelector("#tbl tbody").innerHTML,
-        newItems: JSON.parse(JSON.stringify(pendingNewItems)),
-        updatedItems: JSON.parse(JSON.stringify(pendingUpdatedItems)),
-        deletedItems: JSON.parse(JSON.stringify(pendingDeletedItems))
+        newItems: AppCommon.cloneJson(pendingNewItems),
+        updatedItems: AppCommon.cloneJson(pendingUpdatedItems),
+        deletedItems: AppCommon.cloneJson(pendingDeletedItems)
     });
 
     const nextState = redoHistoryStack.pop();
@@ -765,55 +645,17 @@ function downloadTemplate() {
 }
 
 function openImportModal() {
-    document.getElementById("importFile").value = "";
-    document.getElementById("importFileFeedback").textContent = "";
-    document.getElementById("importPreviewSection").style.display = "none";
-    document.getElementById("btnConfirmImport").setAttribute("disabled", "true");
-    
-    const modalEl = document.getElementById('importModal');
-    const modalBs = new bootstrap.Modal(modalEl);
-    modalBs.show();
+    AppCommon.showImportModal();
 }
 
 let currentImportList = [];
 
 function handleFileSelect(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        try {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, { type: 'array' });
-            const sheetName = workbook.SheetNames[0];
-            const sheet = workbook.Sheets[sheetName];
-            const rawData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
-            validateExcelData(rawData);
-        } catch (err) {
-            showImportFileError("Không thể đọc file Excel. Vui lòng kiểm tra lại định dạng file.");
-            console.error(err);
-        }
-    };
-    reader.readAsArrayBuffer(file);
-}
-
-function showImportFileError(msg) {
-    document.getElementById("importFileFeedback").textContent = msg;
-    document.getElementById("importPreviewSection").style.display = "none";
-    document.getElementById("btnConfirmImport").setAttribute("disabled", "true");
-}
-
-function normalizeHeader(val) {
-    if (!val) return "";
-    return val.toString().toLowerCase().trim()
-        .replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g, "a")
-        .replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g, "e")
-        .replace(/ì|í|ị|ỉ|ĩ/g, "i")
-        .replace(/ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ/g, "o")
-        .replace(/ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ/g, "u")
-        .replace(/ỳ|ý|ỵ|ỷ|ỹ/g, "y")
-        .replace(/đ/g, "d");
+    AppCommon.readFirstExcelSheet(
+        event.target.files[0],
+        validateExcelData,
+        () => showImportFileError("Không thể đọc file Excel. Vui lòng kiểm tra lại định dạng file.")
+    );
 }
 
 function validateExcelData(rawData) {
@@ -826,17 +668,11 @@ function validateExcelData(rawData) {
     tbody.innerHTML = "";
     previewSection.style.display = "none";
     confirmBtn.setAttribute("disabled", "true");
-    currentImportList = [];
-
-    // Filter empty rows
-    const rows = rawData.filter(r => r.some(cell => cell.toString().trim() !== ""));
+    currentImportList = [];    const rows = rawData.filter(r => r.some(cell => cell.toString().trim() !== ""));
     if (rows.length === 0) {
         showImportFileError("File Excel không có dữ liệu.");
         return;
-    }
-
-    // Validate headers
-    const headerRow = rows[0];
+    }    const headerRow = rows[0];
     if (headerRow.length < 2) {
         showImportFileError("Cấu trúc cột không hợp lệ. File Excel phải có ít nhất 2 cột: Mã môn học, Tên môn học.");
         return;
@@ -1044,56 +880,13 @@ function confirmImport() {
 }
 
 function updatePagination() {
-    const rows = Array.from(document.querySelectorAll("#tbl tbody tr"));
-    const totalRows = rows.length;
-    const totalPages = Math.ceil(totalRows / rowsPerPage) || 1;
-
-    if (currentPage > totalPages) {
-        currentPage = totalPages;
-    }
-    if (currentPage < 1) {
-        currentPage = 1;
-    }
-
-    const startIdx = (currentPage - 1) * rowsPerPage;
-    const endIdx = startIdx + rowsPerPage;
-
-    rows.forEach((row, index) => {
-        if (index >= startIdx && index < endIdx) {
-            row.classList.remove("d-none");
-        } else {
-            row.classList.add("d-none");
-        }
+    currentPage = AppCommon.renderPagination({
+        visibleRowSelector: "#tbl tbody tr",
+        currentPage,
+        rowsPerPage,
+        summaryId: "lblPaginationSummary",
+        paginationId: "ulPagination"
     });
-
-    const summarySpan = document.getElementById("lblPaginationSummary");
-    if (summarySpan) {
-        const from = totalRows === 0 ? 0 : startIdx + 1;
-        const to = Math.min(endIdx, totalRows);
-        summarySpan.textContent = `Hiển thị từ ${from} đến ${to} trong tổng số ${totalRows} dòng`;
-    }
-
-    const ulPagination = document.getElementById("ulPagination");
-    if (ulPagination) {
-        ulPagination.innerHTML = "";
-
-        const prevLi = document.createElement("li");
-        prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
-        prevLi.innerHTML = `<button type="button" class="page-link shadow-none" onclick="changePage(${currentPage - 1})"><i class="bi bi-chevron-left"></i></button>`;
-        ulPagination.appendChild(prevLi);
-
-        for (let i = 1; i <= totalPages; i++) {
-            const pageLi = document.createElement("li");
-            pageLi.className = `page-item ${currentPage === i ? 'active' : ''}`;
-            pageLi.innerHTML = `<button type="button" class="page-link shadow-none" onclick="changePage(${i})">${i}</button>`;
-            ulPagination.appendChild(pageLi);
-        }
-
-        const nextLi = document.createElement("li");
-        nextLi.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
-        nextLi.innerHTML = `<button type="button" class="page-link shadow-none" onclick="changePage(${currentPage + 1})"><i class="bi bi-chevron-right"></i></button>`;
-        ulPagination.appendChild(nextLi);
-    }
 }
 
 function changePage(page) {
@@ -1102,7 +895,8 @@ function changePage(page) {
 }
 
 function changePageSize(size) {
-    rowsPerPage = parseInt(size) || 10;
+    rowsPerPage = parseInt(size, 10) || AppCommon.DEFAULT_PAGE_SIZE;
     currentPage = 1;
     updatePagination();
 }
+

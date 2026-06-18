@@ -201,7 +201,87 @@ BEGIN
 END
 GO
 
+IF NOT EXISTS (
+    SELECT 1
+    FROM sys.indexes
+    WHERE name = N'IX_BODE_DuplicateCheck'
+      AND object_id = OBJECT_ID(N'dbo.BODE')
+)
+BEGIN
+    CREATE NONCLUSTERED INDEX [IX_BODE_DuplicateCheck]
+    ON [dbo].[BODE] ([TrangThai] ASC, [MAMH] ASC, [TRINHDO] ASC)
+    INCLUDE ([CAUHOI], [NOIDUNG], [A], [B], [C], [D]);
+END
+GO
+
 PRINT N'OK: Index BODE da san sang.';
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_BoDe_CheckDuplicate
+    @CauHoi  INT = NULL,
+    @MaMH    NCHAR(5),
+    @TrinhDo CHAR(1),
+    @NoiDung NVARCHAR(200),
+    @DapAnA  NVARCHAR(50) = NULL,
+    @DapAnB  NVARCHAR(50) = NULL,
+    @DapAnC  NVARCHAR(50) = NULL,
+    @DapAnD  NVARCHAR(50) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @CleanNoiDung NVARCHAR(200) = LTRIM(RTRIM(ISNULL(@NoiDung, N'')));
+    DECLARE @CleanA NVARCHAR(50) = LTRIM(RTRIM(ISNULL(@DapAnA, N'')));
+    DECLARE @CleanB NVARCHAR(50) = LTRIM(RTRIM(ISNULL(@DapAnB, N'')));
+    DECLARE @CleanC NVARCHAR(50) = LTRIM(RTRIM(ISNULL(@DapAnC, N'')));
+    DECLARE @CleanD NVARCHAR(50) = LTRIM(RTRIM(ISNULL(@DapAnD, N'')));
+    DECLARE @DuplicateLevel NVARCHAR(30) = N'None';
+    DECLARE @DuplicateMessage NVARCHAR(255) = N'';
+
+    IF EXISTS (
+        SELECT 1
+        FROM dbo.BODE
+        WHERE TrangThai = 1
+          AND MAMH = @MaMH
+          AND TRINHDO = @TrinhDo
+          AND LTRIM(RTRIM(NOIDUNG)) = @CleanNoiDung
+          AND LTRIM(RTRIM(A)) = @CleanA
+          AND LTRIM(RTRIM(B)) = @CleanB
+          AND LTRIM(RTRIM(C)) = @CleanC
+          AND LTRIM(RTRIM(D)) = @CleanD
+          AND (@CauHoi IS NULL OR CAUHOI <> @CauHoi)
+    )
+    BEGIN
+        SET @DuplicateLevel = N'Full';
+        SET @DuplicateMessage = N'Cau hoi bi trung toan bo noi dung va 4 phuong an trong ngan hang de.';
+    END
+    ELSE IF EXISTS (
+        SELECT 1
+        FROM dbo.BODE
+        WHERE TrangThai = 1
+          AND MAMH = @MaMH
+          AND TRINHDO = @TrinhDo
+          AND LTRIM(RTRIM(NOIDUNG)) = @CleanNoiDung
+          AND (@CauHoi IS NULL OR CAUHOI <> @CauHoi)
+    )
+    BEGIN
+        SET @DuplicateLevel = N'Content';
+        SET @DuplicateMessage = N'Noi dung cau hoi da ton tai trong ngan hang de cua mon va trinh do nay.';
+    END
+
+    SELECT
+        @DuplicateLevel AS DuplicateLevel,
+        @DuplicateMessage AS DuplicateMessage,
+        CAST(CASE WHEN @DuplicateLevel = N'None' THEN 0 ELSE 1 END AS BIT) AS HasDuplicate;
+END
+GO
+
+GRANT EXECUTE ON dbo.usp_BoDe_CheckDuplicate TO [PGV];
+GO
+GRANT EXECUTE ON dbo.usp_BoDe_CheckDuplicate TO [Giangvien];
+GO
+
+PRINT N'OK: usp_BoDe_CheckDuplicate da duoc cap nhat.';
 GO
 
 CREATE OR ALTER PROCEDURE dbo.usp_BoDe_Insert
@@ -217,6 +297,31 @@ CREATE OR ALTER PROCEDURE dbo.usp_BoDe_Insert
 AS
 BEGIN
     SET NOCOUNT ON;
+
+    DECLARE @Duplicate TABLE (
+        DuplicateLevel NVARCHAR(30),
+        DuplicateMessage NVARCHAR(255),
+        HasDuplicate BIT
+    );
+
+    INSERT INTO @Duplicate
+    EXEC dbo.usp_BoDe_CheckDuplicate
+        @CauHoi = NULL,
+        @MaMH = @MaMH,
+        @TrinhDo = @TrinhDo,
+        @NoiDung = @NoiDung,
+        @DapAnA = @DapAnA,
+        @DapAnB = @DapAnB,
+        @DapAnC = @DapAnC,
+        @DapAnD = @DapAnD;
+
+    IF EXISTS (SELECT 1 FROM @Duplicate WHERE HasDuplicate = 1)
+    BEGIN
+        DECLARE @InsertDuplicateMessage NVARCHAR(255);
+        SELECT @InsertDuplicateMessage = DuplicateMessage FROM @Duplicate;
+        RAISERROR(@InsertDuplicateMessage, 16, 1);
+        RETURN;
+    END
 
     INSERT INTO BODE (MAMH, TRINHDO, NOIDUNG, A, B, C, D, DAP_AN, MAGV)
     VALUES (@MaMH, @TrinhDo, @NoiDung, @DapAnA, @DapAnB, @DapAnC, @DapAnD, @DapAn, @MaGV);
@@ -247,6 +352,31 @@ CREATE OR ALTER PROCEDURE dbo.usp_BoDe_Update
 AS
 BEGIN
     SET NOCOUNT ON;
+
+    DECLARE @Duplicate TABLE (
+        DuplicateLevel NVARCHAR(30),
+        DuplicateMessage NVARCHAR(255),
+        HasDuplicate BIT
+    );
+
+    INSERT INTO @Duplicate
+    EXEC dbo.usp_BoDe_CheckDuplicate
+        @CauHoi = @CauHoi,
+        @MaMH = @MaMH,
+        @TrinhDo = @TrinhDo,
+        @NoiDung = @NoiDung,
+        @DapAnA = @DapAnA,
+        @DapAnB = @DapAnB,
+        @DapAnC = @DapAnC,
+        @DapAnD = @DapAnD;
+
+    IF EXISTS (SELECT 1 FROM @Duplicate WHERE HasDuplicate = 1)
+    BEGIN
+        DECLARE @UpdateDuplicateMessage NVARCHAR(255);
+        SELECT @UpdateDuplicateMessage = DuplicateMessage FROM @Duplicate;
+        RAISERROR(@UpdateDuplicateMessage, 16, 1);
+        RETURN;
+    END
 
     UPDATE BODE
     SET TRINHDO = @TrinhDo,

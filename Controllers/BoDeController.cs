@@ -2,6 +2,7 @@ using DMS_Examify.Filters;
 using DMS_Examify.Models;
 using DMS_Examify.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
 
 namespace DMS_Examify.Controllers
 {
@@ -45,8 +46,15 @@ namespace DMS_Examify.Controllers
         {
             if (model == null) return BadRequest(InvalidQuestionMessage);
 
-            var cauHoi = _boDeService.Insert(model, CurrentTeacherId);
-            return Json(new { cauHoi });
+            try
+            {
+                var cauHoi = _boDeService.Insert(model, CurrentTeacherId);
+                return Json(new { cauHoi });
+            }
+            catch (SqlException ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         [HttpPost]
@@ -54,9 +62,16 @@ namespace DMS_Examify.Controllers
         {
             if (IsInvalidQuestion(model)) return BadRequest(InvalidQuestionMessage);
 
-            return _boDeService.Update(model!, CurrentRole, CurrentTeacherId)
-                ? Ok()
-                : NotFound(QuestionNotFoundOrDeniedMessage);
+            try
+            {
+                return _boDeService.Update(model!, CurrentRole, CurrentTeacherId)
+                    ? Ok()
+                    : NotFound(QuestionNotFoundOrDeniedMessage);
+            }
+            catch (SqlException ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         [HttpPost]

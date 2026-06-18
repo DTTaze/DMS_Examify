@@ -20,6 +20,7 @@ namespace DMS_Examify.Services
             public const string Search = "dbo.usp_BoDe_Search";
             public const string GetLatestCauHoi = "dbo.usp_BoDe_GetLatestCauHoi";
             public const string GetActiveSubjectCodes = "dbo.usp_BoDe_GetActiveSubjectCodes";
+            public const string CheckDuplicate = "dbo.usp_BoDe_CheckDuplicate";
         }
 
         private static class Columns
@@ -113,13 +114,43 @@ namespace DMS_Examify.Services
 
             var subjectCodes = GetActiveSubjectCodes();
 
-            return items.Select((item, index) => new BoDeImportCheckResult
+            return items.Select((item, index) =>
             {
-                Index = index,
-                MaMH = Trim(item.MaMH),
-                NoiDung = Trim(item.NoiDung),
-                SubjectExists = subjectCodes.Contains(NormalizeCode(item.MaMH))
+                var duplicate = CheckQuestionDuplicate(item);
+
+                return new BoDeImportCheckResult
+                {
+                    Index = index,
+                    MaMH = Trim(item.MaMH),
+                    NoiDung = Trim(item.NoiDung),
+                    SubjectExists = subjectCodes.Contains(NormalizeCode(item.MaMH)),
+                    HasDuplicate = duplicate.HasDuplicate,
+                    DuplicateLevel = duplicate.DuplicateLevel,
+                    DuplicateMessage = duplicate.DuplicateMessage
+                };
             }).ToList();
+        }
+
+        private BoDeImportCheckResult CheckQuestionDuplicate(BoDe question)
+        {
+            using var connection = _connectionFactory.CreateConnection();
+            using var command = CreateStoredProcedureCommand(StoredProcedures.CheckDuplicate, connection);
+
+            command.Parameters.Add("@CauHoi", SqlDbType.Int).Value = question.CauHoi > 0 ? question.CauHoi : DBNull.Value;
+            AddQuestionParametersWithoutAnswer(command, question);
+
+            using var reader = command.ExecuteReader();
+            if (!reader.Read())
+            {
+                return new BoDeImportCheckResult();
+            }
+
+            return new BoDeImportCheckResult
+            {
+                DuplicateLevel = ReadString(reader, "DuplicateLevel"),
+                DuplicateMessage = ReadString(reader, "DuplicateMessage"),
+                HasDuplicate = reader["HasDuplicate"] != DBNull.Value && Convert.ToBoolean(reader["HasDuplicate"])
+            };
         }
 
         private HashSet<string> GetActiveSubjectCodes()
@@ -181,6 +212,12 @@ namespace DMS_Examify.Services
 
         private static void AddQuestionParameters(SqlCommand command, BoDe question)
         {
+            AddQuestionParametersWithoutAnswer(command, question);
+            command.Parameters.Add("@DapAn", SqlDbType.Char, 1).Value = Trim(question.DapAn);
+        }
+
+        private static void AddQuestionParametersWithoutAnswer(SqlCommand command, BoDe question)
+        {
             command.Parameters.Add("@MaMH", SqlDbType.NChar, 5).Value = Trim(question.MaMH);
             command.Parameters.Add("@TrinhDo", SqlDbType.Char, 1).Value = Trim(question.TrinhDo);
             command.Parameters.Add("@NoiDung", SqlDbType.NVarChar, 200).Value = Trim(question.NoiDung);
@@ -188,7 +225,6 @@ namespace DMS_Examify.Services
             command.Parameters.Add("@DapAnB", SqlDbType.NVarChar, 50).Value = Trim(question.DapAnB);
             command.Parameters.Add("@DapAnC", SqlDbType.NVarChar, 50).Value = Trim(question.DapAnC);
             command.Parameters.Add("@DapAnD", SqlDbType.NVarChar, 50).Value = Trim(question.DapAnD);
-            command.Parameters.Add("@DapAn", SqlDbType.Char, 1).Value = Trim(question.DapAn);
         }
 
         private static object GetTeacherFilterValue(string role, string maGV)
