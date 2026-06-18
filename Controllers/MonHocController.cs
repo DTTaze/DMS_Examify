@@ -1,3 +1,4 @@
+using DMS_Examify.Filters;
 using DMS_Examify.Models;
 using DMS_Examify.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -5,6 +6,7 @@ using Microsoft.Data.SqlClient;
 
 namespace DMS_Examify.Controllers
 {
+    [RequireRole("PGV")]
     public class MonHocController : BaseController
     {
         private readonly IMonHocService _monHocService;
@@ -16,8 +18,6 @@ namespace DMS_Examify.Controllers
 
         public IActionResult Index()
         {
-            if (!CheckRole("PGV")) return Denied();
-
             ViewData["Title"] = "Quản lý Môn học";
             ViewData["Subtitle"] = "Thêm, sửa, xóa môn học";
 
@@ -28,7 +28,6 @@ namespace DMS_Examify.Controllers
         [HttpPost]
         public IActionResult Insert([FromBody] MonHoc model)
         {
-            if (!CheckRole("PGV")) return Denied();
             if (model == null)
                 return BadRequest("Dữ liệu môn học gửi lên không hợp lệ.");
             if (string.IsNullOrWhiteSpace(model.MaMH))
@@ -54,7 +53,6 @@ namespace DMS_Examify.Controllers
         [HttpPost]
         public IActionResult Update([FromBody] MonHoc model)
         {
-            if (!CheckRole("PGV")) return Denied();
             if (model == null)
                 return BadRequest("Dữ liệu môn học gửi lên không hợp lệ.");
             if (string.IsNullOrWhiteSpace(model.MaMH))
@@ -80,7 +78,6 @@ namespace DMS_Examify.Controllers
         [HttpPost]
         public IActionResult Delete(string maMH)
         {
-            if (!CheckRole("PGV")) return Denied();
             if (string.IsNullOrEmpty(maMH)) return BadRequest("Mã môn học không hợp lệ.");
 
             try
@@ -101,8 +98,6 @@ namespace DMS_Examify.Controllers
         [HttpGet]
         public IActionResult Search(string keyword)
         {
-            if (!CheckRole("PGV")) return Denied();
-
             try
             {
                 var subjects = _monHocService.Search(keyword);
@@ -117,8 +112,6 @@ namespace DMS_Examify.Controllers
         [HttpGet]
         public IActionResult CheckDuplicate(string maMH, string tenMH, bool isEditing)
         {
-            if (!CheckRole("PGV")) return Denied();
-
             try
             {
                 bool maMHDuplicate = false;
@@ -162,7 +155,6 @@ namespace DMS_Examify.Controllers
         [HttpPost]
         public IActionResult CheckImport([FromBody] List<MonHoc> items)
         {
-            if (!CheckRole("PGV")) return Denied();
             if (items == null || items.Count == 0)
                 return Json(new List<object>());
 
