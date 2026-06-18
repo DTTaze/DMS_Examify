@@ -105,6 +105,60 @@ function normalizeQuestionValue(value) {
     return (value ?? "").toString().trim();
 }
 
+function normalizeAnswerForDuplicate(value) {
+    return normalizeQuestionValue(value).replace(/\s+/g, " ").toLowerCase();
+}
+
+function getDuplicateAnswerLabels(formData) {
+    const answers = [
+        { label: "A", value: formData.DapAnA },
+        { label: "B", value: formData.DapAnB },
+        { label: "C", value: formData.DapAnC },
+        { label: "D", value: formData.DapAnD }
+    ];
+
+    const seen = new Map();
+    const duplicateLabels = new Set();
+
+    answers.forEach(answer => {
+        const normalized = normalizeAnswerForDuplicate(answer.value);
+        if (!normalized) return;
+
+        if (seen.has(normalized)) {
+            duplicateLabels.add(seen.get(normalized));
+            duplicateLabels.add(answer.label);
+        } else {
+            seen.set(normalized, answer.label);
+        }
+    });
+
+    return Array.from(duplicateLabels).sort();
+}
+
+function updateAnswerDuplicateFeedback(duplicateLabels) {
+    const feedback = document.getElementById("answerDuplicateFeedback");
+    const optionInputMap = {
+        A: document.getElementById("txtA"),
+        B: document.getElementById("txtB"),
+        C: document.getElementById("txtC"),
+        D: document.getElementById("txtD")
+    };
+
+    Object.values(optionInputMap).forEach(input => input?.classList.remove("is-invalid"));
+
+    if (!feedback) return;
+
+    if (duplicateLabels.length === 0) {
+        feedback.style.display = "none";
+        feedback.textContent = "";
+        return;
+    }
+
+    duplicateLabels.forEach(label => optionInputMap[label]?.classList.add("is-invalid"));
+    feedback.textContent = `Các phương án ${duplicateLabels.join(", ")} đang trùng nội dung. Vui lòng nhập 4 phương án khác nhau.`;
+    feedback.style.display = "block";
+}
+
 function hasQuestionFormChanges(row, formData) {
     if (!row) return false;
 
@@ -193,6 +247,10 @@ function bindRows() {
 function addQuestion() {
     const d = getQuestionForm();
     if (!d.NoiDung || !d.DapAnA || !d.DapAnB || !d.DapAnC || !d.DapAnD) return;
+    if (getDuplicateAnswerLabels(d).length > 0) {
+        validateQuestionInputs();
+        return;
+    }
 
     pushState();
 
@@ -240,6 +298,11 @@ function editQuestion() {
     if (!selectedRow) return;
 
     const d = getQuestionForm();
+    if (getDuplicateAnswerLabels(d).length > 0) {
+        validateQuestionInputs();
+        return;
+    }
+
     const id = parseInt(selectedRow.dataset.id);
 
     pushState();
@@ -393,6 +456,8 @@ function validateQuestionInputs() {
 
     let valid = true;
     let message = "";
+    const duplicateAnswerLabels = getDuplicateAnswerLabels(d);
+    updateAnswerDuplicateFeedback(duplicateAnswerLabels);
 
     if (!d.MaMH) {
         valid = false;
@@ -409,6 +474,9 @@ function validateQuestionInputs() {
     } else if (d.DapAnA.length > 200 || d.DapAnB.length > 200 || d.DapAnC.length > 200 || d.DapAnD.length > 200) {
         valid = false;
         message = "Các phương án trả lời tối đa 200 ký tự.";
+    } else if (duplicateAnswerLabels.length > 0) {
+        valid = false;
+        message = `Các phương án ${duplicateAnswerLabels.join(", ")} đang trùng nội dung. Vui lòng nhập 4 phương án khác nhau.`;
     } else if (!d.DapAn) {
         valid = false;
         message = "Vui lòng chọn đáp án đúng.";

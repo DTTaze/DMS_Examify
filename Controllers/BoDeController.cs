@@ -13,6 +13,8 @@ namespace DMS_Examify.Controllers
         private const string ImportCheckErrorMessage = "Lỗi hệ thống khi kiểm tra danh sách import.";
         private const string QuestionNotFoundOrDeniedMessage = "Không tìm thấy câu hỏi hoặc bạn không có quyền thao tác.";
 
+        private const string DuplicateQuestionMessage = "Câu hỏi này đã tồn tại trong ngân hàng đề của môn học.";
+
         private readonly IBoDeService _boDeService;
         private readonly IMonHocService _monHocService;
         private readonly ILogger<BoDeController> _logger;
@@ -44,11 +46,13 @@ namespace DMS_Examify.Controllers
         [HttpPost]
         public IActionResult Insert([FromBody] BoDe? model)
         {
-            if (model == null) return BadRequest(InvalidQuestionMessage);
+            if (IsInvalidQuestionContent(model)) return BadRequest(InvalidQuestionMessage);
 
             try
             {
-                var cauHoi = _boDeService.Insert(model, CurrentTeacherId);
+                if (HasDuplicateQuestion(model!)) return BadRequest(DuplicateQuestionMessage);
+
+                var cauHoi = _boDeService.Insert(model!, CurrentTeacherId);
                 return Json(new { cauHoi });
             }
             catch (SqlException ex)
@@ -60,10 +64,12 @@ namespace DMS_Examify.Controllers
         [HttpPost]
         public IActionResult Update([FromBody] BoDe? model)
         {
-            if (IsInvalidQuestion(model)) return BadRequest(InvalidQuestionMessage);
+            if (IsInvalidQuestion(model) || IsInvalidQuestionContent(model)) return BadRequest(InvalidQuestionMessage);
 
             try
             {
+                if (HasDuplicateQuestion(model!)) return BadRequest(DuplicateQuestionMessage);
+
                 return _boDeService.Update(model!, CurrentRole, CurrentTeacherId)
                     ? Ok()
                     : NotFound(QuestionNotFoundOrDeniedMessage);
@@ -119,10 +125,28 @@ namespace DMS_Examify.Controllers
             return StatusCode(500, message);
         }
 
+        private bool HasDuplicateQuestion(BoDe question)
+        {
+            var result = _boDeService.CheckImportSubjects(new List<BoDe> { question }).FirstOrDefault();
+            return result?.HasDuplicate == true;
+        }
+
         private static bool IsInvalidQuestion(BoDe? question)
         {
             return question == null
                 || IsInvalidQuestionKey(question.CauHoi, question.MaMH);
+        }
+
+        private static bool IsInvalidQuestionContent(BoDe? question)
+        {
+            return question == null
+                || string.IsNullOrWhiteSpace(question.MaMH)
+                || string.IsNullOrWhiteSpace(question.NoiDung)
+                || string.IsNullOrWhiteSpace(question.DapAnA)
+                || string.IsNullOrWhiteSpace(question.DapAnB)
+                || string.IsNullOrWhiteSpace(question.DapAnC)
+                || string.IsNullOrWhiteSpace(question.DapAnD)
+                || string.IsNullOrWhiteSpace(question.DapAn);
         }
 
         private static bool IsInvalidQuestionKey(int cauHoi, string? maMH)

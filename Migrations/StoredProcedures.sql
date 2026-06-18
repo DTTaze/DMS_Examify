@@ -231,10 +231,6 @@ BEGIN
     SET NOCOUNT ON;
 
     DECLARE @CleanNoiDung NVARCHAR(200) = LTRIM(RTRIM(ISNULL(@NoiDung, N'')));
-    DECLARE @CleanA NVARCHAR(50) = LTRIM(RTRIM(ISNULL(@DapAnA, N'')));
-    DECLARE @CleanB NVARCHAR(50) = LTRIM(RTRIM(ISNULL(@DapAnB, N'')));
-    DECLARE @CleanC NVARCHAR(50) = LTRIM(RTRIM(ISNULL(@DapAnC, N'')));
-    DECLARE @CleanD NVARCHAR(50) = LTRIM(RTRIM(ISNULL(@DapAnD, N'')));
     DECLARE @DuplicateLevel NVARCHAR(30) = N'None';
     DECLARE @DuplicateMessage NVARCHAR(255) = N'';
 
@@ -243,30 +239,12 @@ BEGIN
         FROM dbo.BODE
         WHERE TrangThai = 1
           AND MAMH = @MaMH
-          AND TRINHDO = @TrinhDo
-          AND LTRIM(RTRIM(NOIDUNG)) = @CleanNoiDung
-          AND LTRIM(RTRIM(A)) = @CleanA
-          AND LTRIM(RTRIM(B)) = @CleanB
-          AND LTRIM(RTRIM(C)) = @CleanC
-          AND LTRIM(RTRIM(D)) = @CleanD
-          AND (@CauHoi IS NULL OR CAUHOI <> @CauHoi)
-    )
-    BEGIN
-        SET @DuplicateLevel = N'Full';
-        SET @DuplicateMessage = N'Cau hoi bi trung toan bo noi dung va 4 phuong an trong ngan hang de.';
-    END
-    ELSE IF EXISTS (
-        SELECT 1
-        FROM dbo.BODE
-        WHERE TrangThai = 1
-          AND MAMH = @MaMH
-          AND TRINHDO = @TrinhDo
           AND LTRIM(RTRIM(NOIDUNG)) = @CleanNoiDung
           AND (@CauHoi IS NULL OR CAUHOI <> @CauHoi)
     )
     BEGIN
         SET @DuplicateLevel = N'Content';
-        SET @DuplicateMessage = N'Noi dung cau hoi da ton tai trong ngan hang de cua mon va trinh do nay.';
+        SET @DuplicateMessage = N'Noi dung cau hoi da ton tai trong ngan hang de cua mon hoc nay.';
     END
 
     SELECT
@@ -688,29 +666,6 @@ GO
 PRINT N'OK: usp_SinhVien_Search đã được cập nhật.';
 GO
 
-CREATE OR ALTER PROCEDURE dbo.usp_MonHoc_Search
-    @Keyword NVARCHAR(250) = NULL
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    SELECT MAMH, TENMH
-    FROM MONHOC
-    WHERE @Keyword IS NULL OR @Keyword = ''
-       OR MAMH  LIKE '%' + @Keyword + '%'
-       OR TENMH LIKE '%' + @Keyword + '%'
-    OPTION (RECOMPILE);
-END
-GO
-
-GRANT EXECUTE ON dbo.usp_MonHoc_Search TO [PGV];
-GO
-GRANT EXECUTE ON dbo.usp_MonHoc_Search TO [Giangvien];
-GO
-
-PRINT N'OK: usp_MonHoc_Search đã được cập nhật.';
-GO
-
 CREATE OR ALTER PROCEDURE [dbo].[usp_BoDe_TimKiemNangCao]
     @MAGV    NCHAR(8)      = NULL,
     @MAMH    NCHAR(5)      = NULL,
@@ -882,69 +837,23 @@ GO
 GRANT EXECUTE ON [dbo].[usp_MonHoc_Insert] TO [PGV];
 GO
 
-PRINT N'OK: Các stored procedure cho MonHoc đã được cập nhật.';
-GO
-
-GO
-
-USE [THITRACNGHIEM]
-GO
-
-CREATE PROCEDURE dbo.usp_MonHoc_GetAll
+CREATE OR ALTER PROCEDURE dbo.usp_MonHoc_Update
+    @MaMH NCHAR(5),
+    @TenMH NVARCHAR(40)
 AS
 BEGIN
     SET NOCOUNT ON;
-    SELECT MaMH, TenMH
-    FROM MONHOC;
-END
-GO
 
-GRANT EXECUTE ON [dbo].[usp_MonHoc_GetAll] TO [PGV];
-GO
-
-CREATE PROCEDURE dbo.usp_MonHoc_Insert
-    @MaMH NVARCHAR(50),
-    @TenMH NVARCHAR(250)
-AS
-BEGIN
-    SET NOCOUNT ON;
-    INSERT INTO MONHOC (MaMH, TenMH)
-    VALUES (@MaMH, @TenMH);
-END
-GO
-
-CREATE PROCEDURE dbo.usp_MonHoc_Update
-    @MaMH NVARCHAR(50),
-    @TenMH NVARCHAR(250)
-AS
-BEGIN
-    SET NOCOUNT ON;
-    UPDATE MONHOC
+    UPDATE dbo.MONHOC
     SET TenMH = @TenMH
-    WHERE MaMH = @MaMH;
+    WHERE MaMH = @MaMH
+      AND TrangThai = 1;
 END
 GO
-
-CREATE PROCEDURE dbo.usp_MonHoc_Delete
-    @MaMH NVARCHAR(50)
-AS
-BEGIN
-    SET NOCOUNT ON;
-    DELETE FROM MONHOC WHERE MaMH = @MaMH;
-END
+GRANT EXECUTE ON [dbo].[usp_MonHoc_Update] TO [PGV];
 GO
 
-CREATE PROCEDURE dbo.usp_MonHoc_Search
-    @Keyword NVARCHAR(250)
-AS
-BEGIN
-    SET NOCOUNT ON;
-    SELECT MaMH, TenMH
-    FROM MONHOC
-    WHERE @Keyword IS NULL OR @Keyword = ''
-       OR MaMH LIKE '%' + @Keyword + '%'
-       OR TenMH LIKE '%' + @Keyword + '%';
-END
+PRINT N'OK: Các stored procedure cho MonHoc đã được cập nhật.';
 GO
 
 IF COL_LENGTH('dbo.GIAOVIEN', 'TrangThai') IS NULL
