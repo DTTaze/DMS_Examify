@@ -105,6 +105,11 @@ function pushStateLop() {
 }
 
 function chonLop(el, callback) {
+    if (AppCommon.isPendingDelete(el)) {
+        hienThongBao("Lớp này đang chờ xóa. Dùng Undo nếu muốn hủy thao tác xóa.", "Thông báo");
+        return;
+    }
+
     if (el.classList.contains("active")) {
         if (callback) callback();
         return;
@@ -180,6 +185,7 @@ function themLop() {
             </div>
         </div>
     `;
+    AppCommon.setChangeState(li, "new");
     li.onclick = () => chonLop(li);
 
     document.getElementById("lopList").appendChild(li);
@@ -224,9 +230,11 @@ function suaLop() {
     const newIndex = newLops.findIndex(x => x.MaLop === oldMa);
     if (newIndex >= 0) {
         newLops[newIndex].TenLop = ten;
+        AppCommon.setChangeState(selectedLopRow, "new");
     } else {
         updatedLops = updatedLops.filter(x => x.MaLop !== oldMa);
         updatedLops.push({ MaLop: oldMa, TenLop: ten });
+        AppCommon.setChangeState(selectedLopRow, "updated");
     }
 
     document.getElementById("currentLop").innerText = ten;
@@ -347,6 +355,9 @@ async function ghiLop() {
         }
 
         hienThongBao("Ghi danh mục Lớp thành công!", "Thành công", () => {
+            newLops = [];
+            updatedLops = [];
+            deletedLops = [];
             location.reload();
         });
     } catch (e) {
@@ -458,6 +469,9 @@ function validateClassInputs() {
 
     const listItems = document.querySelectorAll("#lopList li");
     for (const li of listItems) {
+        if (AppCommon.isPendingDelete(li)) {
+            continue;
+        }
         if (selectedLopRow !== null && li === selectedLopRow) {
             continue;
         }
@@ -674,6 +688,9 @@ function resetStudentForm() {
 function bindRows() {
     document.querySelectorAll("#svTable tr").forEach(row => {
         row.onclick = () => {
+            if (AppCommon.isPendingDelete(row)) {
+                return;
+            }
             if (row.classList.contains("table-active")) return;
             document.querySelectorAll("#svTable tr").forEach(x => x.classList.remove("table-active"));
             row.classList.add("table-active");
@@ -767,6 +784,7 @@ function themSV() {
             </div>
         </td>
     `;
+    AppCommon.setChangeState(row, "new");
 
     newItems.push(d);
 
@@ -815,9 +833,11 @@ function suaSV() {
     const newIdx = newItems.findIndex(x => x.MaSV === id);
     if (newIdx >= 0) {
         newItems[newIdx] = d;
+        AppCommon.setChangeState(selectedRow, "new");
     } else {
         updatedItems = updatedItems.filter(x => x.MaSV !== id);
         updatedItems.push(d);
+        AppCommon.setChangeState(selectedRow, "updated");
     }
 
     bindRows();
@@ -874,6 +894,9 @@ async function ghiSV() {
         }
 
         hienThongBao("Ghi danh sách sinh viên thành công!", "Thành công", () => {
+            newItems = [];
+            updatedItems = [];
+            deletedItems = [];
             loadSinhVien();
         });
     } catch (e) {
@@ -1471,6 +1494,10 @@ window.onbeforeunload = function(e) {
 
 function editLopClick(event, li) {
     if (event) event.stopPropagation();
+    if (AppCommon.isPendingDelete(li)) {
+        hienThongBao("Lớp này đang chờ xóa. Dùng Undo nếu muốn hủy thao tác xóa.", "Thông báo");
+        return;
+    }
     chonLop(li, () => {
         document.getElementById("txtMaLop").value = li.dataset.malop;
         document.getElementById("txtTenLop").value = li.dataset.tenlop;
@@ -1482,6 +1509,10 @@ function editLopClick(event, li) {
 
 function deleteLopClick(event, li) {
     if (event) event.stopPropagation();
+    if (AppCommon.isPendingDelete(li)) {
+        hienThongBao("Lớp này đã được đánh dấu chờ xóa.", "Thông báo");
+        return;
+    }
     
     const ma = li.dataset.malop;
     const ten = li.dataset.tenlop;
@@ -1509,7 +1540,11 @@ function deleteLopClick(event, li) {
             resetLopForm();
         }
         
-        li.remove();
+        if (newIndex >= 0) {
+            li.remove();
+        } else {
+            AppCommon.setChangeState(li, "deleted");
+        }
         updateSTT();
         locLop();
         updateSaveLopButtonState();
@@ -1518,6 +1553,10 @@ function deleteLopClick(event, li) {
 
 function editSVClick(event, tr) {
     if (event) event.stopPropagation();
+    if (AppCommon.isPendingDelete(tr)) {
+        hienThongBao("Dòng này đang chờ xóa. Dùng Undo nếu muốn hủy thao tác xóa.", "Thông báo");
+        return;
+    }
     
     document.querySelectorAll("#svTable tr").forEach(x => x.classList.remove("table-active"));
     tr.classList.add("table-active");
@@ -1529,6 +1568,10 @@ function editSVClick(event, tr) {
 
 function deleteSVClick(event, tr) {
     if (event) event.stopPropagation();
+    if (AppCommon.isPendingDelete(tr)) {
+        hienThongBao("Sinh viên này đã được đánh dấu chờ xóa.", "Thông báo");
+        return;
+    }
 
     const id = tr.dataset.masv;
     const name = `${tr.dataset.ho} ${tr.dataset.ten}`;
@@ -1546,7 +1589,11 @@ function deleteSVClick(event, tr) {
             }
         }
 
-        tr.remove();
+        if (newIdx >= 0) {
+            tr.remove();
+        } else {
+            AppCommon.setChangeState(tr, "deleted");
+        }
         if (selectedRow === tr) {
             resetStudentForm();
         }

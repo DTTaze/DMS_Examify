@@ -104,6 +104,51 @@
         byId("btnConfirmImport").disabled = true;
     }
 
+    const changeStateConfig = {
+        new: { className: "row-change-new", label: "Thêm mới", badgeClass: "text-bg-success" },
+        updated: { className: "row-change-updated", label: "Đã sửa", badgeClass: "text-bg-warning" },
+        deleted: { className: "row-change-deleted", label: "Chờ xóa", badgeClass: "text-bg-danger" }
+    };
+
+    function setChangeState(element, state) {
+        if (!element) {
+            return;
+        }
+
+        Object.values(changeStateConfig).forEach(config => element.classList.remove(config.className));
+        element.querySelectorAll(":scope .change-state-badge").forEach(badge => badge.remove());
+
+        if (!state || !changeStateConfig[state]) {
+            delete element.dataset.changeState;
+            return;
+        }
+
+        const config = changeStateConfig[state];
+        element.dataset.changeState = state;
+        element.classList.add(config.className);
+
+        const badge = document.createElement("span");
+        badge.className = `change-state-badge badge ${config.badgeClass}`;
+        badge.textContent = config.label;
+
+        const target = getChangeBadgeTarget(element);
+        target.appendChild(badge);
+    }
+
+    function getChangeBadgeTarget(element) {
+        if (element.matches("tr")) {
+            return element.cells[0] || element;
+        }
+
+        return element.querySelector(".change-state-slot")
+            || element.querySelector(".fw-semibold")?.parentElement
+            || element;
+    }
+
+    function isPendingDelete(element) {
+        return element?.dataset?.changeState === "deleted";
+    }
+
     function createPageItem(content, options = {}) {
         const item = document.createElement("li");
         item.className = `page-item ${options.active ? "active" : ""} ${options.disabled ? "disabled" : ""}`.trim();
@@ -308,6 +353,8 @@
         readFirstExcelSheet,
         showImportModal,
         showImportFileError,
+        setChangeState,
+        isPendingDelete,
         renderPagination,
         modal
     };

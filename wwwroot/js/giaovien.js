@@ -128,6 +128,10 @@ function bindRows() {
         if (editBtn) {
             editBtn.onclick = (event) => {
                 if (event) event.stopPropagation();
+                if (AppCommon.isPendingDelete(row)) {
+                    hienThongBao("Dòng này đang chờ xóa. Dùng Undo nếu muốn hủy thao tác xóa.", "Thông báo");
+                    return;
+                }
                 document.querySelectorAll("#gvTable tr").forEach(x => x.classList.remove("table-active"));
                 row.classList.add("table-active");
                 selectedRow = row;
@@ -141,6 +145,10 @@ function bindRows() {
         if (deleteBtn) {
             deleteBtn.onclick = (event) => {
                 if (event) event.stopPropagation();
+                if (AppCommon.isPendingDelete(row)) {
+                    hienThongBao("Giáo viên này đã được đánh dấu chờ xóa.", "Thông báo");
+                    return;
+                }
                 document.querySelectorAll("#gvTable tr").forEach(x => x.classList.remove("table-active"));
                 row.classList.add("table-active");
                 selectedRow = row;
@@ -180,6 +188,7 @@ function themGV() {
             </div>
         </td>
     `;
+    AppCommon.setChangeState(row, "new");
 
     newItems.push(d);
 
@@ -225,9 +234,11 @@ function hieuChinhGV() {
     const newIdx = newItems.findIndex(x => x.MaGV === id);
     if (newIdx >= 0) {
         newItems[newIdx] = d;
+        AppCommon.setChangeState(selectedRow, "new");
     } else {
         updatedItems = updatedItems.filter(x => x.MaGV !== id);
         updatedItems.push(d);
+        AppCommon.setChangeState(selectedRow, "updated");
     }
 
     bindRows();
@@ -255,7 +266,11 @@ function xoaGV() {
             }
         }
 
-        selectedRow.remove();
+        if (newIdx >= 0) {
+            selectedRow.remove();
+        } else {
+            AppCommon.setChangeState(selectedRow, "deleted");
+        }
         selectedRow = null;
 
         updateSTT();
@@ -411,7 +426,8 @@ function validateGiaoVienInputs() {
         updateTeacherButtonStates(true, reasonThem, true, reasonSua);
         return;
     }    if (!isEditing) {
-        const exists = [...document.querySelectorAll("#gvTable tr")].some(r => r.dataset.magv === d.MaGV);
+        const exists = [...document.querySelectorAll("#gvTable tr")]
+            .some(r => !AppCommon.isPendingDelete(r) && r.dataset.magv === d.MaGV);
         if (exists) {
             errMaGV.textContent = "Mã GV này đã trùng trong danh sách tạm thời.";
             txtMaGV.classList.add("is-invalid");
@@ -520,6 +536,9 @@ function exportExcel() {
     const rows = [["Mã GV", "Họ", "Tên", "Số ĐT", "Địa chỉ"]];
     
     document.querySelectorAll("#gvTable tr").forEach(tr => {
+        if (AppCommon.isPendingDelete(tr)) {
+            return;
+        }
         rows.push([
             tr.dataset.magv,
             tr.dataset.ho,
@@ -617,7 +636,7 @@ function validateExcelData(rawData) {
 
     const currentTableIds = new Set();
     document.querySelectorAll("#gvTable tr").forEach(tr => {
-        if (tr.dataset.magv) {
+        if (!AppCommon.isPendingDelete(tr) && tr.dataset.magv) {
             currentTableIds.add(tr.dataset.magv.trim().toUpperCase());
         }
     });
@@ -783,6 +802,7 @@ function confirmImport() {
                 </div>
             </td>
         `;
+        AppCommon.setChangeState(row, "new");
 
         newItems.push(item);
     });

@@ -119,6 +119,7 @@ function addSubject() {
             </button>
         </td>
     `;
+    AppCommon.setChangeState(row, "new");
 
     bindRowEventHandlers();
     updateSTT();
@@ -165,9 +166,11 @@ function editSubject() {
         if (itemIndex >= 0) {
             pendingNewItems[itemIndex] = { Id: subjectId, ...formValues };
         }
+        AppCommon.setChangeState(selectedTableRow, "new");
     } else {
         pendingUpdatedItems = pendingUpdatedItems.filter(item => item.MaMH !== formValues.MaMH);
         pendingUpdatedItems.push(formValues);
+        AppCommon.setChangeState(selectedTableRow, "updated");
     }
 
     validateFormInputs();
@@ -214,7 +217,12 @@ function deleteSubject() {
         }
     }
 
-    rowToDelete.remove();
+    if (subjectId < 0) {
+        rowToDelete.remove();
+    } else {
+        AppCommon.setChangeState(rowToDelete, "deleted");
+    }
+
     if (selectedTableRow === rowToDelete) {
         selectedTableRow = null;
     }
@@ -303,6 +311,9 @@ function undoLastAction() {
 function bindRowEventHandlers() {
     document.querySelectorAll("#tbl tbody tr").forEach(row => {
         row.onclick = (event) => {
+            if (AppCommon.isPendingDelete(row)) {
+                return;
+            }
             if (event.target.closest('.btn-edit') || event.target.closest('.btn-delete')) {
                 return;
             }
@@ -318,6 +329,10 @@ function bindRowEventHandlers() {
         if (editButton !== null) {
             editButton.onclick = (event) => {
                 event.stopPropagation();
+                if (AppCommon.isPendingDelete(row)) {
+                    hienThongBao("Dòng này đang chờ xóa. Dùng Undo nếu muốn hủy thao tác xóa.", "Thông báo");
+                    return;
+                }
                 
                 document.querySelectorAll("#tbl tbody tr")
                     .forEach(r => r.classList.remove("table-active"));
@@ -331,6 +346,10 @@ function bindRowEventHandlers() {
         if (deleteButton !== null) {
             deleteButton.onclick = (event) => {
                 event.stopPropagation();
+                if (AppCommon.isPendingDelete(row)) {
+                    hienThongBao("Môn học này đã được đánh dấu chờ xóa.", "Thông báo");
+                    return;
+                }
                 
                 const subjectCode = row.dataset.mamh.trim();
                 const subjectName = row.dataset.tenmh.trim();
@@ -403,6 +422,10 @@ function validateFormInputs() {
         
         const existingMaMH = row.dataset.mamh.trim().toUpperCase();
         const existingTenMH = row.dataset.tenmh.trim().toLowerCase();
+
+        if (AppCommon.isPendingDelete(row)) {
+            continue;
+        }
         
         if (subjectCode !== "" && existingMaMH === subjectCode) {
             document.getElementById("errMaMH").textContent = "Mã môn học này đã tồn tại trên danh sách tạm thời.";
@@ -626,6 +649,9 @@ function redoLastAction() {
 function exportExcel() {
     const rows = [["Mã môn học", "Tên môn học"]];
     document.querySelectorAll("#tbl tbody tr").forEach(tr => {
+        if (AppCommon.isPendingDelete(tr)) {
+            return;
+        }
         const mamh = tr.dataset.mamh;
         const tenmh = tr.dataset.tenmh;
         if (mamh && tenmh) {
@@ -952,6 +978,7 @@ function confirmImport() {
                 </button>
             </td>
         `;
+        AppCommon.setChangeState(row, "new");
     });
 
     bindRowEventHandlers();

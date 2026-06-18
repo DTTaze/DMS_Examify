@@ -358,6 +358,34 @@ a:hover {
     border-left: 3px solid var(--primary);
 }
 
+.table tbody tr.row-change-new > td,
+.list-group-item.row-change-new {
+    background: #ecfdf5 !important;
+}
+
+.table tbody tr.row-change-updated > td,
+.list-group-item.row-change-updated {
+    background: #fffbeb !important;
+}
+
+.table tbody tr.row-change-deleted > td,
+.list-group-item.row-change-deleted {
+    background: #fef2f2 !important;
+    color: #991b1b;
+}
+
+.table tbody tr.row-change-deleted td:not(:last-child),
+.list-group-item.row-change-deleted .fw-semibold {
+    text-decoration: line-through;
+    opacity: 0.78;
+}
+
+.change-state-badge {
+    margin-left: 8px;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
 /* ---------- Buttons ---------- */
 .btn {
     font-family: 'Inter', sans-serif;

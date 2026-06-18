@@ -206,6 +206,9 @@ function resetQuestionForm() {
 function bindRows() {
     document.querySelectorAll("#tbl tbody tr").forEach(row => {
         row.onclick = (event) => {
+            if (AppCommon.isPendingDelete(row)) {
+                return;
+            }
             if (event && (event.target.closest('.btn-edit') || event.target.closest('.btn-delete'))) {
                 return;
             }
@@ -222,6 +225,10 @@ function bindRows() {
         if (editBtn) {
             editBtn.onclick = (event) => {
                 if (event) event.stopPropagation();
+                if (AppCommon.isPendingDelete(row)) {
+                    hienThongBao("Dòng này đang chờ xóa. Dùng Undo nếu muốn hủy thao tác xóa.", "Thông báo");
+                    return;
+                }
                 document.querySelectorAll("#tbl tbody tr").forEach(x => x.classList.remove("table-active"));
                 row.classList.add("table-active");
                 selectedRow = row;
@@ -235,6 +242,10 @@ function bindRows() {
         if (deleteBtn) {
             deleteBtn.onclick = (event) => {
                 if (event) event.stopPropagation();
+                if (AppCommon.isPendingDelete(row)) {
+                    hienThongBao("Câu hỏi này đã được đánh dấu chờ xóa.", "Thông báo");
+                    return;
+                }
                 document.querySelectorAll("#tbl tbody tr").forEach(x => x.classList.remove("table-active"));
                 row.classList.add("table-active");
                 selectedRow = row;
@@ -285,6 +296,7 @@ function addQuestion() {
             </div>
         </td>
     `;
+    AppCommon.setChangeState(row, "new");
 
     newItems.push({ CauHoi: id, ...d });
 
@@ -339,9 +351,11 @@ function editQuestion() {
     if (id < 0) {
         const i = newItems.findIndex(x => x.CauHoi === id);
         if (i >= 0) newItems[i] = { CauHoi: id, ...d };
+        AppCommon.setChangeState(selectedRow, "new");
     } else {
         updatedItems = updatedItems.filter(x => x.CauHoi !== id);
         updatedItems.push({ CauHoi: id, ...d });
+        AppCommon.setChangeState(selectedRow, "updated");
     }
 
     bindRows();
@@ -368,7 +382,11 @@ function deleteQuestion() {
             }
         }
 
-        selectedRow.remove();
+        if (id < 0) {
+            selectedRow.remove();
+        } else {
+            AppCommon.setChangeState(selectedRow, "deleted");
+        }
         selectedRow = null;
 
         updateSTT();
@@ -576,6 +594,9 @@ function exportExcel() {
     const rows = [["Mã môn học", "Trình độ", "Nội dung", "Đáp án A", "Đáp án B", "Đáp án C", "Đáp án D", "Đáp án đúng"]];
     
     document.querySelectorAll("#tbl tbody tr").forEach(tr => {
+        if (AppCommon.isPendingDelete(tr)) {
+            return;
+        }
         rows.push([
             tr.dataset.mamh,
             tr.dataset.trinhdo,
@@ -759,7 +780,8 @@ function validateExcelData(rawData) {
         });
 
         // Check similarity for all candidate rows
-        const existingRows = Array.from(document.querySelectorAll("#tbl tbody tr"));
+        const existingRows = Array.from(document.querySelectorAll("#tbl tbody tr"))
+            .filter(row => !AppCommon.isPendingDelete(row));
         
         processedRows.forEach((row, i) => {
             if (row.error) return;
@@ -889,6 +911,7 @@ function confirmImport() {
                 </div>
             </td>
         `;
+        AppCommon.setChangeState(row, "new");
 
         newItems.push({ CauHoi: id, ...item });
     });
@@ -987,6 +1010,9 @@ function checkDuplicateQuestions() {
 
     const rows = Array.from(document.querySelectorAll("#tbl tbody tr"));
     rows.forEach(r => {
+        if (AppCommon.isPendingDelete(r)) {
+            return;
+        }
         const id = parseInt(r.dataset.id);
         if (currentId !== null && id === currentId) {
             return;
