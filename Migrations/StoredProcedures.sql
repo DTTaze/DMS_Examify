@@ -2431,10 +2431,18 @@ CREATE PROCEDURE [dbo].[SP_TAOTAIKHOAN]
     @ROLE    VARCHAR(50)
 AS
 BEGIN
-    IF EXISTS (SELECT * FROM sys.server_principals WHERE name = @LGNAME)
+    DECLARE @sid VARBINARY(85);
+
+    SET @LGNAME   = LTRIM(RTRIM(@LGNAME));
+    SET @PASS     = LTRIM(RTRIM(@PASS));
+    SET @USERNAME = LTRIM(RTRIM(@USERNAME));
+    SET @ROLE     = LTRIM(RTRIM(@ROLE));
+    SET @sid = SUSER_SID(@LGNAME);
+
+    IF EXISTS (SELECT * FROM sysusers WHERE name = @LGNAME)
         RETURN 1;
 
-    IF EXISTS (SELECT * FROM sys.database_principals WHERE name = @USERNAME)
+    IF EXISTS (SELECT * FROM master.dbo.syslogins WHERE sid = @sid)
         RETURN 2;
 
     BEGIN TRY
@@ -2447,7 +2455,7 @@ BEGIN
         RETURN 0;
     END TRY
     BEGIN CATCH
-        IF EXISTS (SELECT * FROM sys.server_principals WHERE name = @LGNAME)
+        IF EXISTS (SELECT * FROM master.dbo.syslogins WHERE sid = @sid)
             EXEC sp_droplogin @loginame = @LGNAME;
 
         RETURN 3;
@@ -2469,10 +2477,9 @@ BEGIN
     SELECT
         name AS TenNhomQuyen
     FROM
-        sys.database_principals
+        sysusers
     WHERE
-        type = 'R'
-        AND name IN ('PGV', 'Giangvien')
+        name IN ('PGV', 'Giangvien')
     ORDER BY
         name;
 END
