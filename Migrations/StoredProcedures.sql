@@ -872,32 +872,6 @@ GO
 
 GO
 
-USE [THITRACNGHIEM]
-GO
-
-CREATE PROCEDURE dbo.usp_MonHoc_GetAll
-AS
-BEGIN
-    SET NOCOUNT ON;
-    SELECT MaMH, TenMH
-    FROM MONHOC;
-END
-GO
-
-GRANT EXECUTE ON [dbo].[usp_MonHoc_GetAll] TO [PGV];
-GO
-
-CREATE PROCEDURE dbo.usp_MonHoc_Insert
-    @MaMH NVARCHAR(50),
-    @TenMH NVARCHAR(250)
-AS
-BEGIN
-    SET NOCOUNT ON;
-    INSERT INTO MONHOC (MaMH, TenMH)
-    VALUES (@MaMH, @TenMH);
-END
-GO
-
 CREATE PROCEDURE dbo.usp_MonHoc_Update
     @MaMH NVARCHAR(50),
     @TenMH NVARCHAR(250)
@@ -912,14 +886,6 @@ GO
 GRANT EXECUTE ON [dbo].[usp_MonHoc_Update] TO [PGV];
 GO
 
-CREATE PROCEDURE dbo.usp_MonHoc_Delete
-    @MaMH NVARCHAR(50)
-AS
-BEGIN
-    SET NOCOUNT ON;
-    DELETE FROM MONHOC WHERE MaMH = @MaMH;
-END
-GO
 
 CREATE PROCEDURE dbo.usp_MonHoc_Search
     @Keyword NVARCHAR(250)
