@@ -15,7 +15,7 @@ let searchDebounceTimer = null;
 AppCommon.onReady(() => {
     bindRowEventHandlers();
 
-    AppCommon.byId("txtMaMH").addEventListener("input", validateFormInputs);
+    AppCommon.byId("txtMaMH").addEventListener("input", handleSubjectCodeInput);
     AppCommon.byId("txtTenMH").addEventListener("input", validateFormInputs);
     AppCommon.byId("txtTim").addEventListener("input", triggerSearch);
 
@@ -24,6 +24,22 @@ AppCommon.onReady(() => {
     updateUndoRedoButtonStates();
     updatePagination();
 });
+
+function handleSubjectCodeInput(event) {
+    forceUppercaseInput(event.target);
+    validateFormInputs();
+}
+
+function forceUppercaseInput(input) {
+    const start = input.selectionStart;
+    const end = input.selectionEnd;
+    const upperValue = normalizeSubjectCode(input.value);
+
+    if (input.value !== upperValue) {
+        input.value = upperValue;
+        input.setSelectionRange(start, end);
+    }
+}
 
 
 function triggerSearch() {
@@ -540,9 +556,13 @@ function updateSTT() {
 
 function getFormValues() {
     return {
-        MaMH: txtMaMH.value.trim(),
+        MaMH: normalizeSubjectCode(txtMaMH.value),
         TenMH: txtTenMH.value.trim()
     };
+}
+
+function normalizeSubjectCode(value) {
+    return String(value ?? "").trim().toUpperCase();
 }
 
 function pushState() {
@@ -649,6 +669,8 @@ function openImportModal() {
 }
 
 let currentImportList = [];
+let currentImportRows = [];
+let importValidationTimer = null;
 
 function handleFileSelect(event) {
     AppCommon.readFirstExcelSheet(
@@ -668,34 +690,67 @@ function validateExcelData(rawData) {
     tbody.innerHTML = "";
     previewSection.style.display = "none";
     confirmBtn.setAttribute("disabled", "true");
-    currentImportList = [];    const rows = rawData.filter(r => r.some(cell => cell.toString().trim() !== ""));
+    currentImportList = [];
+    currentImportRows = [];
+
+    const rows = rawData.filter(r => r.some(cell => cell.toString().trim() !== ""));
     if (rows.length === 0) {
-        showImportFileError("File Excel không có dữ liệu.");
-        return;
-    }    const headerRow = rows[0];
-    if (headerRow.length < 2) {
-        showImportFileError("Cấu trúc cột không hợp lệ. File Excel phải có ít nhất 2 cột: Mã môn học, Tên môn học.");
+        showImportFileError("File Excel khong co du lieu.");
         return;
     }
 
-    const col1 = normalizeHeader(headerRow[0]);
-    const col2 = normalizeHeader(headerRow[1]);
-    
-    const validCol1 = (col1 === "ma mon hoc" || col1 === "ma mh" || col1 === "mamh");
-    const validCol2 = (col2 === "ten mon hoc" || col2 === "ten mh" || col2 === "tenmh");
+    const headerRow = rows[0];
+    if (headerRow.length < 2) {
+        showImportFileError("Cau truc cot khong hop le. File Excel phai co it nhat 2 cot: Ma mon hoc, Ten mon hoc.");
+        return;
+    }
 
-    if (!validCol1 || !validCol2) {
-        showImportFileError("Cấu trúc cột không hợp lệ. Cột 1 phải là 'Mã môn học', Cột 2 phải là 'Tên môn học'.");
+    const normalizedHeaders = headerRow.map(header => normalizeHeader(header));
+    const subjectCodeColumn = normalizedHeaders.findIndex(isSubjectCodeHeader);
+    const subjectNameColumn = normalizedHeaders.findIndex(isSubjectNameHeader);
+
+    if (subjectCodeColumn !== -1 && subjectCodeColumn !== 0) {
+        showImportFileError("Cot Ma mon hoc phai dung o cot 1 (cot A) trong file Excel.");
+        return;
+    }
+
+    if (subjectNameColumn !== -1 && subjectNameColumn !== 1) {
+        showImportFileError("Cot Ten mon hoc phai dung o cot 2 (cot B) trong file Excel.");
+        return;
+    }
+
+    if (subjectCodeColumn !== 0 || subjectNameColumn !== 1) {
+        showImportFileError("Cau truc cot khong hop le. Cot 1 phai la Ma mon hoc, cot 2 phai la Ten mon hoc.");
         return;
     }
 
     const dataRows = rows.slice(1);
     if (dataRows.length === 0) {
-        showImportFileError("Không tìm thấy dòng dữ liệu nào dưới hàng tiêu đề.");
+        showImportFileError("Khong tim thay dong du lieu nao duoi hang tieu de.");
         return;
     }
 
-    let processedRows = [];
+    currentImportRows = dataRows.map((row, idx) => ({
+        index: idx,
+        rowNum: idx + 2,
+        maMH: normalizeSubjectCode(row[0]),
+        tenMH: row[1]?.toString().trim() ?? "",
+        error: ""
+    }));
+
+    validateImportPreviewRows();
+}
+
+function isSubjectCodeHeader(header) {
+    return header === "ma mon hoc" || header === "ma mh" || header === "mamh";
+}
+
+function isSubjectNameHeader(header) {
+    return header === "ten mon hoc" || header === "ten mh" || header === "tenmh";
+}
+
+function validateImportPreviewRows() {
+    let processedRows = currentImportRows.map(row => ({ ...row, error: "" }));
     let fileMaMHSet = new Set();
     let fileTenMHSet = new Set();
 
@@ -708,48 +763,43 @@ function validateExcelData(rawData) {
         if (tenmh) currentTableNames.add(tenmh.trim().toLowerCase());
     });
 
-    dataRows.forEach((row, idx) => {
-        const maMH = row[0]?.toString().trim() ?? "";
-        const tenMH = row[1]?.toString().trim() ?? "";
-        const rowNum = idx + 2;
-
+    processedRows.forEach(row => {
+        const maMH = normalizeSubjectCode(row.maMH);
+        const tenMH = row.tenMH.trim();
         let error = "";
         
         if (maMH === "") {
-            error = "Mã môn học trống";
+            error = "Ma mon hoc trong";
         } else if (tenMH === "") {
-            error = "Tên môn học trống";
+            error = "Ten mon hoc trong";
         } else if (maMH.length > 5) {
-            error = "Mã môn học tối đa 5 ký tự";
+            error = "Ma mon hoc toi da 5 ky tu";
         } else if (tenMH.length > 40) {
-            error = "Tên môn học tối đa 40 ký tự";
+            error = "Ten mon hoc toi da 40 ky tu";
         } else {
             const codeUpper = maMH.toUpperCase();
             const nameLower = tenMH.toLowerCase();
 
             if (fileMaMHSet.has(codeUpper)) {
-                error = "Trùng Mã MH trong file";
+                error = "Trung Ma MH trong file";
             } else if (fileTenMHSet.has(nameLower)) {
-                error = "Trùng Tên MH trong file";
+                error = "Trung Ten MH trong file";
             } else if (currentTableCodes.has(codeUpper)) {
-                error = "Trùng Mã MH với danh sách trên lưới";
+                error = "Trung Ma MH voi danh sach tren luoi";
             } else if (currentTableNames.has(nameLower)) {
-                error = "Trùng Tên MH với danh sách trên lưới";
+                error = "Trung Ten MH voi danh sach tren luoi";
             } else {
                 fileMaMHSet.add(codeUpper);
                 fileTenMHSet.add(nameLower);
             }
         }
 
-        processedRows.push({
-            index: idx,
-            rowNum: rowNum,
-            maMH: maMH,
-            tenMH: tenMH,
-            error: error
-        });
+        row.maMH = maMH;
+        row.tenMH = tenMH;
+        row.error = error;
     });
 
+    currentImportRows = processedRows;
     const candidates = processedRows.filter(r => r.error === "");
     
     if (candidates.length === 0) {
@@ -763,27 +813,27 @@ function validateExcelData(rawData) {
         body: JSON.stringify(candidates.map(c => ({ MaMH: c.maMH, TenMH: c.tenMH })))
     })
     .then(response => {
-        if (!response.ok) throw new Error("Không thể kiểm tra trùng lặp từ Server.");
+        if (!response.ok) throw new Error("Khong the kiem tra trung lap tu Server.");
         return response.json();
     })
     .then(dbResults => {
         dbResults.forEach(res => {
-            const match = processedRows.find(p => p.index === res.index && p.error === "");
+            const match = candidates[res.index];
             if (match) {
                 if (res.codeDuplicate) {
-                    match.error = "Trùng Mã môn học trong CSDL";
+                    match.error = "Trung Ma mon hoc trong CSDL";
                 } else if (res.nameDuplicate) {
-                    match.error = "Trùng Tên môn học trong CSDL";
+                    match.error = "Trung Ten mon hoc trong CSDL";
                 }
             }
         });
+        currentImportRows = processedRows;
         renderPreview(processedRows);
     })
     .catch(err => {
-        showImportFileError("Lỗi kết nối Server: " + err.message);
+        showImportFileError("Loi ket noi Server: " + err.message);
     });
 }
-
 function renderPreview(processedRows) {
     const tbody = document.querySelector("#tblImportPreview tbody");
     const previewSection = document.getElementById("importPreviewSection");
@@ -802,24 +852,40 @@ function renderPreview(processedRows) {
         
         let statusBadge = "";
         if (row.error) {
-            statusBadge = `<span class="badge bg-danger"><i class="bi bi-x-circle"></i> ${row.error}</span>`;
+            statusBadge = `<span class="badge bg-danger"><i class="bi bi-x-circle"></i> ${AppCommon.escapeHtml(row.error)}</span>`;
             tr.className = "table-danger";
             errorCount++;
         } else {
-            statusBadge = `<span class="badge bg-success"><i class="bi bi-check-circle"></i> Hợp lệ</span>`;
+            statusBadge = `<span class="badge bg-success"><i class="bi bi-check-circle"></i> Hop le</span>`;
             successCount++;
         }
 
         tr.innerHTML = `
             <td class="text-center">${stt}</td>
-            <td><strong>${row.maMH}</strong></td>
-            <td>${row.tenMH}</td>
+            <td>
+                <input type="text"
+                       class="form-control form-control-sm import-edit-input import-code-input"
+                       value="${AppCommon.escapeHtml(row.maMH)}"
+                       maxlength="5"
+                       data-import-index="${row.index}"
+                       data-import-field="maMH" />
+            </td>
+            <td>
+                <input type="text"
+                       class="form-control form-control-sm import-edit-input"
+                       value="${AppCommon.escapeHtml(row.tenMH)}"
+                       maxlength="40"
+                       data-import-index="${row.index}"
+                       data-import-field="tenMH" />
+            </td>
             <td>${statusBadge}</td>
         `;
         tbody.appendChild(tr);
     });
 
-    summarySpan.textContent = `Tổng: ${processedRows.length} | Hợp lệ: ${successCount} | Lỗi: ${errorCount}`;
+    bindImportPreviewInputs();
+
+    summarySpan.textContent = `Tong: ${processedRows.length} | Hop le: ${successCount} | Loi: ${errorCount}`;
     summarySpan.className = errorCount > 0 ? "badge bg-danger rounded-pill px-3 py-1.5" : "badge bg-success rounded-pill px-3 py-1.5";
 
     if (errorCount === 0 && successCount > 0) {
@@ -827,9 +893,34 @@ function renderPreview(processedRows) {
         currentImportList = processedRows.map(r => ({ MaMH: r.maMH, TenMH: r.tenMH }));
     } else {
         confirmBtn.setAttribute("disabled", "true");
+        currentImportList = [];
     }
 }
 
+function bindImportPreviewInputs() {
+    document.querySelectorAll("#tblImportPreview .import-edit-input").forEach(input => {
+        input.addEventListener("input", event => {
+            const target = event.target;
+            const rowIndex = Number(target.dataset.importIndex);
+            const field = target.dataset.importField;
+            const row = currentImportRows.find(item => item.index === rowIndex);
+
+            if (!row) {
+                return;
+            }
+
+            if (field === "maMH") {
+                forceUppercaseInput(target);
+                row.maMH = normalizeSubjectCode(target.value);
+            } else {
+                row.tenMH = target.value.trim();
+            }
+
+            clearTimeout(importValidationTimer);
+            importValidationTimer = setTimeout(validateImportPreviewRows, 300);
+        });
+    });
+}
 function confirmImport() {
     if (currentImportList.length === 0) return;
 

@@ -42,7 +42,7 @@ namespace DMS_Examify.Services
                 CommandType = CommandType.StoredProcedure
             };
 
-            cmd.Parameters.Add("@MaMH", SqlDbType.NChar, 5).Value = monHoc.MaMH.Trim();
+            cmd.Parameters.Add("@MaMH", SqlDbType.NChar, 5).Value = NormalizeSubjectCode(monHoc.MaMH);
             cmd.Parameters.Add("@TenMH", SqlDbType.NVarChar, 40).Value = monHoc.TenMH.Trim();
             cmd.ExecuteNonQuery();
         }
@@ -55,7 +55,7 @@ namespace DMS_Examify.Services
                 CommandType = CommandType.StoredProcedure
             };
 
-            cmd.Parameters.Add("@MaMH", SqlDbType.NChar, 5).Value = monHoc.MaMH.Trim();
+            cmd.Parameters.Add("@MaMH", SqlDbType.NChar, 5).Value = NormalizeSubjectCode(monHoc.MaMH);
             cmd.Parameters.Add("@TenMH", SqlDbType.NVarChar, 40).Value = monHoc.TenMH.Trim();
             cmd.ExecuteNonQuery();
         }
@@ -68,7 +68,7 @@ namespace DMS_Examify.Services
                 CommandType = CommandType.StoredProcedure
             };
 
-            cmd.Parameters.Add("@MaMH", SqlDbType.NChar, 5).Value = maMH.Trim();
+            cmd.Parameters.Add("@MaMH", SqlDbType.NChar, 5).Value = NormalizeSubjectCode(maMH);
             cmd.ExecuteNonQuery();
         }
 
@@ -104,7 +104,7 @@ namespace DMS_Examify.Services
 
             using var conn = _connectionFactory.CreateConnection();
             using var cmd = new SqlCommand("SELECT TrangThai FROM MONHOC WHERE MaMH = @MaMH", conn);
-            cmd.Parameters.Add("@MaMH", SqlDbType.NChar, 5).Value = maMH.Trim();
+            cmd.Parameters.Add("@MaMH", SqlDbType.NChar, 5).Value = NormalizeSubjectCode(maMH);
 
             using var reader = cmd.ExecuteReader();
             if (reader.Read())
@@ -150,7 +150,7 @@ namespace DMS_Examify.Services
             using var conn = _connectionFactory.CreateConnection();
             using var cmd = new SqlCommand("SELECT TrangThai FROM MONHOC WHERE TenMH = @TenMH AND MaMH <> @MaMH", conn);
             cmd.Parameters.Add("@TenMH", SqlDbType.NVarChar, 40).Value = tenMH.Trim();
-            cmd.Parameters.Add("@MaMH", SqlDbType.NChar, 5).Value = maMH.Trim();
+            cmd.Parameters.Add("@MaMH", SqlDbType.NChar, 5).Value = NormalizeSubjectCode(maMH);
 
             using var reader = cmd.ExecuteReader();
             bool exists = false;
@@ -164,6 +164,11 @@ namespace DMS_Examify.Services
                 }
             }
             return new SubjectDuplicateCheckResult(exists, isActive);
+        }
+
+        private static string NormalizeSubjectCode(string? value)
+        {
+            return value?.Trim().ToUpperInvariant() ?? string.Empty;
         }
     }
 }

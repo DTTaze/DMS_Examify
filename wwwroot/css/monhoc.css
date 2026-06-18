@@ -115,6 +115,11 @@
     transform: translateY(0);
 }
 
+.import-code-input,
+#txtMaMH {
+    text-transform: uppercase;
+}
+
 /* Premium Styles for Import Modal */
 #importModal .modal-content {
     background: rgba(255, 255, 255, 0.98);

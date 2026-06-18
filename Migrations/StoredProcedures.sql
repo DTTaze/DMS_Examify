@@ -115,6 +115,14 @@ BEGIN
 END
 GO
 
+IF OBJECT_ID(N'dbo.CK_MONHOC_MAMH_UPPER', N'C') IS NULL
+BEGIN
+    ALTER TABLE dbo.MONHOC
+    ADD CONSTRAINT CK_MONHOC_MAMH_UPPER
+        CHECK (MAMH COLLATE Latin1_General_BIN2 = UPPER(MAMH) COLLATE Latin1_General_BIN2);
+END
+GO
+
 IF OBJECT_ID(N'dbo.trg_BODE_KiemTraTruocKhiXoa', N'TR') IS NOT NULL
 BEGIN
     DROP TRIGGER dbo.trg_BODE_KiemTraTruocKhiXoa;
@@ -732,28 +740,55 @@ GRANT EXECUTE ON [dbo].[usp_MonHoc_GetAll] TO [PGV];
 GO
 GRANT EXECUTE ON [dbo].[usp_MonHoc_GetAll] TO [Giangvien];
 GO
-GRANT EXECUTE ON [dbo].[usp_MonHoc_GetAll] TO [Sinhvien];
-GO
 
 CREATE OR ALTER PROCEDURE dbo.usp_MonHoc_Search
     @Keyword NVARCHAR(250) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
+
+    SET @Keyword = NULLIF(LTRIM(RTRIM(@Keyword)), N'');
+
+    IF @Keyword IS NULL
+    BEGIN
+        SELECT MAMH, TENMH
+        FROM dbo.MONHOC
+        WHERE TrangThai = 1
+        ORDER BY MAMH
+        OPTION (RECOMPILE);
+        RETURN;
+    END
+
+    IF EXISTS (
+        SELECT 1
+        FROM dbo.MONHOC
+        WHERE TrangThai = 1
+          AND (MAMH LIKE @Keyword + N'%'
+               OR TENMH LIKE @Keyword + N'%')
+    )
+    BEGIN
+        SELECT MAMH, TENMH
+        FROM dbo.MONHOC
+        WHERE TrangThai = 1
+          AND (MAMH LIKE @Keyword + N'%'
+               OR TENMH LIKE @Keyword + N'%')
+        ORDER BY MAMH
+        OPTION (RECOMPILE);
+        RETURN;
+    END
+
     SELECT MAMH, TENMH
-    FROM MONHOC
+    FROM dbo.MONHOC
     WHERE TrangThai = 1
-      AND (@Keyword IS NULL OR @Keyword = ''
-           OR MAMH LIKE '%' + @Keyword + '%'
-           OR TENMH LIKE '%' + @Keyword + '%')
+      AND (MAMH LIKE N'%' + @Keyword + N'%'
+           OR TENMH LIKE N'%' + @Keyword + N'%')
+    ORDER BY MAMH
     OPTION (RECOMPILE);
 END
 GO
 GRANT EXECUTE ON dbo.usp_MonHoc_Search TO [PGV];
 GO
 GRANT EXECUTE ON dbo.usp_MonHoc_Search TO [Giangvien];
-GO
-GRANT EXECUTE ON dbo.usp_MonHoc_Search TO [Sinhvien];
 GO
 
 CREATE OR ALTER PROCEDURE dbo.usp_MonHoc_Delete
@@ -817,21 +852,23 @@ CREATE OR ALTER PROCEDURE dbo.usp_MonHoc_Insert
 AS
 BEGIN
     SET NOCOUNT ON;
+    SET @MaMH = UPPER(LTRIM(RTRIM(@MaMH)));
+    SET @TenMH = LTRIM(RTRIM(@TenMH));
     
     IF EXISTS (SELECT 1 FROM dbo.MONHOC WHERE MaMH = @MaMH)
     BEGIN
-        UPDATE dbo.MONHOC
-        SET TenMH = @TenMH,
-            TrangThai = 1
-        WHERE MaMH = @MaMH;
-        PRINT N'INFO: Đã phục hồi môn học đã xóa mềm trước đó.';
+        THROW 50001, N'Mã môn học đã tồn tại. Không thể thêm mới.', 1;
     END
-    ELSE
+
+    IF EXISTS (SELECT 1 FROM dbo.MONHOC WHERE TenMH = @TenMH)
     BEGIN
-        INSERT INTO dbo.MONHOC (MaMH, TenMH, TrangThai)
-        VALUES (@MaMH, @TenMH, 1);
-        PRINT N'INFO: Đã thêm mới môn học.';
+        THROW 50002, N'Tên môn học đã tồn tại. Không thể thêm mới.', 1;
     END
+
+    INSERT INTO dbo.MONHOC (MaMH, TenMH, TrangThai)
+    VALUES (@MaMH, @TenMH, 1);
+
+    PRINT N'INFO: Đã thêm mới môn học.';
 END
 GO
 GRANT EXECUTE ON [dbo].[usp_MonHoc_Insert] TO [PGV];
@@ -843,6 +880,8 @@ CREATE OR ALTER PROCEDURE dbo.usp_MonHoc_Update
 AS
 BEGIN
     SET NOCOUNT ON;
+    SET @MaMH = UPPER(LTRIM(RTRIM(@MaMH)));
+    SET @TenMH = LTRIM(RTRIM(@TenMH));
 
     UPDATE dbo.MONHOC
     SET TenMH = @TenMH
