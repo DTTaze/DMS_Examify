@@ -197,6 +197,22 @@ INCLUDE (TENMH);
 -- =============================================
 -- 4. INSERT DATA
 -- =============================================
+INSERT [dbo].[GIAOVIEN] ([MAGV], [HO], [TEN], [DIACHI]) VALUES (N'TH101   ', N'KIEU DAC', N'THIEN', N'9,3A, Q.BINH TAN')
+INSERT [dbo].[GIAOVIEN] ([MAGV], [HO], [TEN], [DIACHI]) VALUES (N'TH123   ', N'PHAN VAN ', N'HAI', N'15/72 LE VAN THO F8 GO VAP')
+INSERT [dbo].[GIAOVIEN] ([MAGV], [HO], [TEN], [DIACHI]) VALUES (N'TH234   ', N'DAO VAN ', N'TUYET', N'14/7 BUI DINH TUY TAN BINH')
+INSERT [dbo].[GIAOVIEN] ([MAGV], [HO], [TEN], [DIACHI]) VALUES (N'TH657   ', N'PHAN HONG', N'NGOC', N'')
+
+INSERT [dbo].[LOP] ([MALOP], [TENLOP]) VALUES (N'D18CQCN01      ', N'Ngành CNTT Khóa 2018 -1')
+INSERT [dbo].[LOP] ([MALOP], [TENLOP]) VALUES (N'TH04           ', N'TIN HOC 2004')
+INSERT [dbo].[LOP] ([MALOP], [TENLOP]) VALUES (N'TH05           ', N'TIN HOC 2005')
+INSERT [dbo].[LOP] ([MALOP], [TENLOP]) VALUES (N'TH06           ', N'TIN HOC 2006')
+INSERT [dbo].[LOP] ([MALOP], [TENLOP]) VALUES (N'TH07           ', N'TIN HOC 2007')
+INSERT [dbo].[LOP] ([MALOP], [TENLOP]) VALUES (N'TH08           ', N'TIN HOC 2008')
+INSERT [dbo].[LOP] ([MALOP], [TENLOP]) VALUES (N'VT04           ', N'VIỄN THÔNG 2004')
+INSERT [dbo].[MONHOC] ([MAMH], [TENMH]) VALUES (N'AVCB ', N'ANH VĂN CĂN BẢN')
+INSERT [dbo].[MONHOC] ([MAMH], [TENMH]) VALUES (N'CTDL ', N'CẤU TRÚC DỮ LIỆU')
+INSERT [dbo].[MONHOC] ([MAMH], [TENMH]) VALUES (N'CSDL ', N'CƠ SỞ DỮ LIỆU')
+INSERT [dbo].[MONHOC] ([MAMH], [TENMH]) VALUES (N'MMTCB', N'MẠNG MÁY TÍNH CĂN BẢN')
 SET IDENTITY_INSERT [dbo].[BODE] ON
 GO
 INSERT [dbo].[BODE] ([CAUHOI], [MAMH], [TRINHDO], [NOIDUNG], [A], [B], [C], [D], [DAP_AN], [MAGV]) VALUES (1, N'MMTCB', N'A', N'mạng máy tính(compute netword) so với hệ thống tập trung multi-user', N'dễ phát triển hệ thống', N'tăng độ tin cậy', N'tiết kiệm chi phí', N'tất cả đều đúng', N'D', N'TH657   ')
@@ -422,30 +438,15 @@ INSERT [dbo].[BODE] ([CAUHOI], [MAMH], [TRINHDO], [NOIDUNG], [A], [B], [C], [D],
 INSERT [dbo].[BODE] ([CAUHOI], [MAMH], [TRINHDO], [NOIDUNG], [A], [B], [C], [D], [DAP_AN], [MAGV]) VALUES (220, N'MMTCB', N'C', N'Địa chỉ MAC ', N'Gồm có 32 bit', N'Còn gọi là địa chỉ logic', N'Nằm trong cấp Network', N'Dùng để phân biệt các máy trong mạng', N'D', N'TH123   ')
 SET IDENTITY_INSERT [dbo].[BODE] OFF
 GO
-INSERT [dbo].[GIAOVIEN] ([MAGV], [HO], [TEN], [DIACHI]) VALUES (N'TH101   ', N'KIEU DAC', N'THIEN', N'9,3A, Q.BINH TAN')
-INSERT [dbo].[GIAOVIEN] ([MAGV], [HO], [TEN], [DIACHI]) VALUES (N'TH123   ', N'PHAN VAN ', N'HAI', N'15/72 LE VAN THO F8 GO VAP')
-INSERT [dbo].[GIAOVIEN] ([MAGV], [HO], [TEN], [DIACHI]) VALUES (N'TH234   ', N'DAO VAN ', N'TUYET', N'14/7 BUI DINH TUY TAN BINH')
-INSERT [dbo].[GIAOVIEN] ([MAGV], [HO], [TEN], [DIACHI]) VALUES (N'TH657   ', N'PHAN HONG', N'NGOC', N'')
 
-INSERT [dbo].[LOP] ([MALOP], [TENLOP]) VALUES (N'D18CQCN01      ', N'Ngành CNTT Khóa 2018 -1')
-INSERT [dbo].[LOP] ([MALOP], [TENLOP]) VALUES (N'TH04           ', N'TIN HOC 2004')
-INSERT [dbo].[LOP] ([MALOP], [TENLOP]) VALUES (N'TH05           ', N'TIN HOC 2005')
-INSERT [dbo].[LOP] ([MALOP], [TENLOP]) VALUES (N'TH06           ', N'TIN HOC 2006')
-INSERT [dbo].[LOP] ([MALOP], [TENLOP]) VALUES (N'TH07           ', N'TIN HOC 2007')
-INSERT [dbo].[LOP] ([MALOP], [TENLOP]) VALUES (N'TH08           ', N'TIN HOC 2008')
-INSERT [dbo].[LOP] ([MALOP], [TENLOP]) VALUES (N'VT04           ', N'VIỄN THÔNG 2004')
-INSERT [dbo].[MONHOC] ([MAMH], [TENMH]) VALUES (N'AVCB ', N'ANH VĂN CĂN BẢN')
-INSERT [dbo].[MONHOC] ([MAMH], [TENMH]) VALUES (N'CTDL ', N'CẤU TRÚC DỮ LIỆU')
-INSERT [dbo].[MONHOC] ([MAMH], [TENMH]) VALUES (N'CSDL ', N'CƠ SỞ DỮ LIỆU')
-INSERT [dbo].[MONHOC] ([MAMH], [TENMH]) VALUES (N'MMTCB', N'MẠNG MÁY TÍNH CĂN BẢN')
-INSERT [dbo].[SINHVIEN] ([MASV], [HO], [TEN], [NGAYSINH], [DIACHI], [MALOP]) VALUES (N'001     ', N'LÊ VĂN ', N'THÀNH', CAST(N'1985-03-06' AS Date), N'23/5 PHUNG KHAC KHOAN F3 Q3', N'TH04           ', '123')
-INSERT [dbo].[SINHVIEN] ([MASV], [HO], [TEN], [NGAYSINH], [DIACHI], [MALOP]) VALUES (N'002     ', N'DAO TRONG', N'KHAI', CAST(N'1979-08-19' AS Date), N'15/72 LE VAN THO F8 GOVAP', N'TH04           ', '123')
-INSERT [dbo].[SINHVIEN] ([MASV], [HO], [TEN], [NGAYSINH], [DIACHI], [MALOP]) VALUES (N'003     ', N'CAO TUAN', N'KHA', CAST(N'1985-12-06' AS Date), N'12/5 LE QUANG DINH F5 GO VAP', N'TH04           ', '123')
-INSERT [dbo].[SINHVIEN] ([MASV], [HO], [TEN], [NGAYSINH], [DIACHI], [MALOP]) VALUES (N'004     ', N'HA THANH ', N'BINH', CAST(N'1984-03-24' AS Date), N'23/4 HOANG HOA THAM', N'TH04           ', '123')
-INSERT [dbo].[SINHVIEN] ([MASV], [HO], [TEN], [NGAYSINH], [DIACHI], [MALOP]) VALUES (N'005     ', N'NGUYEN THÚY ', N'VÂN', CAST(N'1987-11-06' AS Date), N'7 HUYNH THUC KHANG', N'TH05           ', '123')
-INSERT [dbo].[SINHVIEN] ([MASV], [HO], [TEN], [NGAYSINH], [DIACHI], [MALOP]) VALUES (N'006     ', N'NGUYEN NGOC ', N'YEN', CAST(N'1980-11-23' AS Date), N'3/5 AN DUONG VUONG', N'TH05           ', '123')
-INSERT [dbo].[SINHVIEN] ([MASV], [HO], [TEN], [NGAYSINH], [DIACHI], [MALOP]) VALUES (N'007     ', N'NGUYEN THUY ', N'DUNG', CAST(N'1988-05-23' AS Date), N'8 HUYNH VAN BANH f1 q binh thanh', N'TH05           ', '123')
-INSERT [dbo].[SINHVIEN] ([MASV], [HO], [TEN], [NGAYSINH], [DIACHI], [MALOP]) VALUES (N'008     ', N'TRINH', N'PHONG', CAST(N'1985-12-10' AS Date), N'', N'TH06           ', '123')
-INSERT [dbo].[SINHVIEN] ([MASV], [HO], [TEN], [NGAYSINH], [DIACHI], [MALOP]) VALUES (N'009     ', N'TRAN THANH', N'HUNG', CAST(N'1985-03-28' AS Date), N'', N'TH05           ', '123')
-INSERT [dbo].[SINHVIEN] ([MASV], [HO], [TEN], [NGAYSINH], [DIACHI], [MALOP]) VALUES (N'011     ', N'PHAN HONG', N'NGOC', CAST(N'1986-01-17' AS Date), N'PHAN VAN HAN BINH THANH', N'TH05           ', '123')
+INSERT [dbo].[SINHVIEN] ([MASV], [HO], [TEN], [NGAYSINH], [DIACHI], [MALOP], [MATKHAU]) VALUES (N'001     ', N'LÊ VĂN ', N'THÀNH', CAST(N'1985-03-06' AS Date), N'23/5 PHUNG KHAC KHOAN F3 Q3', N'TH04           ', '123')
+INSERT [dbo].[SINHVIEN] ([MASV], [HO], [TEN], [NGAYSINH], [DIACHI], [MALOP], [MATKHAU]) VALUES (N'002     ', N'DAO TRONG', N'KHAI', CAST(N'1979-08-19' AS Date), N'15/72 LE VAN THO F8 GOVAP', N'TH04           ', '123')
+INSERT [dbo].[SINHVIEN] ([MASV], [HO], [TEN], [NGAYSINH], [DIACHI], [MALOP], [MATKHAU]) VALUES (N'003     ', N'CAO TUAN', N'KHA', CAST(N'1985-12-06' AS Date), N'12/5 LE QUANG DINH F5 GO VAP', N'TH04           ', '123')
+INSERT [dbo].[SINHVIEN] ([MASV], [HO], [TEN], [NGAYSINH], [DIACHI], [MALOP], [MATKHAU]) VALUES (N'004     ', N'HA THANH ', N'BINH', CAST(N'1984-03-24' AS Date), N'23/4 HOANG HOA THAM', N'TH04           ', '123')
+INSERT [dbo].[SINHVIEN] ([MASV], [HO], [TEN], [NGAYSINH], [DIACHI], [MALOP], [MATKHAU]) VALUES (N'005     ', N'NGUYEN THÚY ', N'VÂN', CAST(N'1987-11-06' AS Date), N'7 HUYNH THUC KHANG', N'TH05           ', '123')
+INSERT [dbo].[SINHVIEN] ([MASV], [HO], [TEN], [NGAYSINH], [DIACHI], [MALOP], [MATKHAU]) VALUES (N'006     ', N'NGUYEN NGOC ', N'YEN', CAST(N'1980-11-23' AS Date), N'3/5 AN DUONG VUONG', N'TH05           ', '123')
+INSERT [dbo].[SINHVIEN] ([MASV], [HO], [TEN], [NGAYSINH], [DIACHI], [MALOP], [MATKHAU]) VALUES (N'007     ', N'NGUYEN THUY ', N'DUNG', CAST(N'1988-05-23' AS Date), N'8 HUYNH VAN BANH f1 q binh thanh', N'TH05           ', '123')
+INSERT [dbo].[SINHVIEN] ([MASV], [HO], [TEN], [NGAYSINH], [DIACHI], [MALOP], [MATKHAU]) VALUES (N'008     ', N'TRINH', N'PHONG', CAST(N'1985-12-10' AS Date), N'', N'TH06           ', '123')
+INSERT [dbo].[SINHVIEN] ([MASV], [HO], [TEN], [NGAYSINH], [DIACHI], [MALOP], [MATKHAU]) VALUES (N'009     ', N'TRAN THANH', N'HUNG', CAST(N'1985-03-28' AS Date), N'', N'TH05           ', '123')
+INSERT [dbo].[SINHVIEN] ([MASV], [HO], [TEN], [NGAYSINH], [DIACHI], [MALOP], [MATKHAU]) VALUES (N'011     ', N'PHAN HONG', N'NGOC', CAST(N'1986-01-17' AS Date), N'PHAN VAN HAN BINH THANH', N'TH05           ', '123')
 GO
