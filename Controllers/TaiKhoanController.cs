@@ -21,6 +21,11 @@ namespace DMS_Examify.Controllers
             ViewData["Title"] = "Tài khoản & Phân quyền";
             ViewData["Subtitle"] = "Tạo tài khoản và quản lý quyền hạn";
 
+            if (TempData["ErrorMessage"] != null)
+            {
+                ViewBag.ErrorMessage = TempData["ErrorMessage"];
+            }
+
             List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> roles = new List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>();
             string connectionString = ConnectionString;
             try
@@ -123,13 +128,6 @@ namespace DMS_Examify.Controllers
             }
         }
 
-        [HttpGet]
-        public IActionResult Create(){
-            if (!CheckRole("PGV")) return Denied();
-
-            return View(new TaoTaiKhoanViewModel());
-        } 
-
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult Create(TaoTaiKhoanViewModel model)
@@ -146,7 +144,8 @@ namespace DMS_Examify.Controllers
                 if (model.Role != "PGV" && model.Role != "Giangvien")
                 {
                     ModelState.AddModelError("Role", "Chỉ được phép tạo tài khoản cho Giảng viên hoặc PGV.");
-                    return View(model);
+                    TempData["ErrorMessage"] = "Chỉ được phép tạo tài khoản cho Giảng viên hoặc PGV.";
+                    return RedirectToAction("Index");
                 }
 
                 string connectionString = ConnectionString;
@@ -203,8 +202,14 @@ namespace DMS_Examify.Controllers
                 }
             }
 
-            // Nếu có lỗi, hiển thị lại Form với các thông báo lỗi
-            return View(model);
+            // Nếu có lỗi, gom tất cả lỗi và truyền qua TempData, sau đó quay về Index
+            var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList();
+            if (errors.Any())
+            {
+                TempData["ErrorMessage"] = string.Join("<br/>", errors);
+            }
+
+            return RedirectToAction("Index");
         }
     }
 }
