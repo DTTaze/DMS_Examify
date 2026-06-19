@@ -8,6 +8,17 @@ namespace DMS_Examify.Services
     {
         private readonly IDbConnectionFactory _connectionFactory;
 
+        private static class StoredProcedures
+        {
+            public const string Search = "dbo.usp_SinhVien_Search";
+            public const string Insert = "dbo.usp_SinhVien_Insert";
+            public const string Update = "dbo.usp_SinhVien_Update";
+            public const string Delete = "dbo.usp_SinhVien_Delete";
+            public const string GetByLop = "dbo.usp_SinhVien_GetByLop";
+            public const string GetExistingIds = "dbo.usp_SinhVien_GetExistingIds";
+            public const string ExistsMaSV = "dbo.usp_SinhVien_ExistsMaSV";
+        }
+
         public SinhVienService(IDbConnectionFactory connectionFactory)
         {
             _connectionFactory = connectionFactory;
@@ -17,25 +28,13 @@ namespace DMS_Examify.Services
         {
             var list = new List<SinhVien>();
             using var conn = _connectionFactory.CreateConnection();
-            using var cmd = new SqlCommand("dbo.usp_SinhVien_Search", conn)
-            {
-                CommandType = CommandType.StoredProcedure
-            };
+            using var cmd = CreateStoredProcedureCommand(StoredProcedures.Search, conn);
             cmd.Parameters.Add("@Keyword", SqlDbType.NVarChar, 250).Value =
                 string.IsNullOrWhiteSpace(keyword) ? DBNull.Value : keyword.Trim();
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
             {
-                list.Add(new SinhVien
-                {
-                    MaSV = reader["MaSV"].ToString() ?? "",
-                    Ho = reader["Ho"].ToString() ?? "",
-                    Ten = reader["Ten"].ToString() ?? "",
-                    NgaySinh = reader["NgaySinh"] as DateTime? ?? DateTime.MinValue,
-                    DiaChi = reader["DiaChi"].ToString() ?? "",
-                    MaLop = reader["MaLop"].ToString() ?? "",
-                    MatKhau = reader["MatKhau"].ToString() ?? ""
-                });
+                list.Add(MapSinhVien(reader));
             }
             return list;
         }
@@ -43,10 +42,7 @@ namespace DMS_Examify.Services
         public void Insert(SinhVien sinhVien)
         {
             using var conn = _connectionFactory.CreateConnection();
-            using var cmd = new SqlCommand("dbo.usp_SinhVien_Insert", conn)
-            {
-                CommandType = CommandType.StoredProcedure
-            };
+            using var cmd = CreateStoredProcedureCommand(StoredProcedures.Insert, conn);
             cmd.Parameters.Add("@MaSV", SqlDbType.NChar, 8).Value = sinhVien.MaSV;
             cmd.Parameters.Add("@Ho", SqlDbType.NVarChar, 40).Value = sinhVien.Ho;
             cmd.Parameters.Add("@Ten", SqlDbType.NVarChar, 10).Value = sinhVien.Ten;
@@ -60,10 +56,7 @@ namespace DMS_Examify.Services
         public void Update(SinhVien sinhVien)
         {
             using var conn = _connectionFactory.CreateConnection();
-            using var cmd = new SqlCommand("dbo.usp_SinhVien_Update", conn)
-            {
-                CommandType = CommandType.StoredProcedure
-            };
+            using var cmd = CreateStoredProcedureCommand(StoredProcedures.Update, conn);
             cmd.Parameters.Add("@MaSV", SqlDbType.NChar, 8).Value = sinhVien.MaSV;
             cmd.Parameters.Add("@Ho", SqlDbType.NVarChar, 40).Value = sinhVien.Ho;
             cmd.Parameters.Add("@Ten", SqlDbType.NVarChar, 10).Value = sinhVien.Ten;
@@ -77,10 +70,7 @@ namespace DMS_Examify.Services
         public void Delete(string maSV)
         {
             using var conn = _connectionFactory.CreateConnection();
-            using var cmd = new SqlCommand("dbo.usp_SinhVien_Delete", conn)
-            {
-                CommandType = CommandType.StoredProcedure
-            };
+            using var cmd = CreateStoredProcedureCommand(StoredProcedures.Delete, conn);
             cmd.Parameters.Add("@MaSV", SqlDbType.NChar, 8).Value = maSV;
             cmd.ExecuteNonQuery();
         }
@@ -89,24 +79,12 @@ namespace DMS_Examify.Services
         {
             var list = new List<SinhVien>();
             using var conn = _connectionFactory.CreateConnection();
-            using var cmd = new SqlCommand("dbo.usp_SinhVien_GetByLop", conn)
-            {
-                CommandType = CommandType.StoredProcedure
-            };
+            using var cmd = CreateStoredProcedureCommand(StoredProcedures.GetByLop, conn);
             cmd.Parameters.Add("@MaLop", SqlDbType.NChar, 8).Value = maLop;
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
             {
-                list.Add(new SinhVien
-                {
-                    MaSV = reader["MaSV"].ToString() ?? "",
-                    Ho = reader["Ho"].ToString() ?? "",
-                    Ten = reader["Ten"].ToString() ?? "",
-                    NgaySinh = reader["NgaySinh"] as DateTime? ?? DateTime.MinValue,
-                    DiaChi = reader["DiaChi"].ToString() ?? "",
-                    MaLop = reader["MaLop"].ToString() ?? "",
-                    MatKhau = reader["MatKhau"].ToString() ?? ""
-                });
+                list.Add(MapSinhVien(reader));
             }
             return list;
         }
@@ -115,10 +93,7 @@ namespace DMS_Examify.Services
         {
             var ids = new HashSet<string>();
             using var conn = _connectionFactory.CreateConnection();
-            using var cmd = new SqlCommand("dbo.usp_SinhVien_GetExistingIds", conn)
-            {
-                CommandType = CommandType.StoredProcedure
-            };
+            using var cmd = CreateStoredProcedureCommand(StoredProcedures.GetExistingIds, conn);
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
             {
@@ -164,14 +139,37 @@ namespace DMS_Examify.Services
 
         public bool ExistsMaSV(string maSV)
         {
-            if (string.IsNullOrWhiteSpace(maSV)) return false;
-            using var conn = _connectionFactory.CreateConnection();
-            using var cmd = new SqlCommand("dbo.usp_SinhVien_ExistsMaSV", conn)
+            if (string.IsNullOrWhiteSpace(maSV))
             {
-                CommandType = CommandType.StoredProcedure
-            };
+                return false;
+            }
+            using var conn = _connectionFactory.CreateConnection();
+            using var cmd = CreateStoredProcedureCommand(StoredProcedures.ExistsMaSV, conn);
             cmd.Parameters.Add("@MASV", SqlDbType.NChar, 8).Value = maSV.Trim();
             return (int)cmd.ExecuteScalar() > 0;
         }
+
+        private static SqlCommand CreateStoredProcedureCommand(string procedureName, SqlConnection connection)
+        {
+            return new SqlCommand(procedureName, connection)
+            {
+                CommandType = CommandType.StoredProcedure
+            };
+        }
+
+        private static SinhVien MapSinhVien(SqlDataReader reader)
+        {
+            return new SinhVien
+            {
+                MaSV = reader["MaSV"].ToString() ?? string.Empty,
+                Ho = reader["Ho"].ToString() ?? string.Empty,
+                Ten = reader["Ten"].ToString() ?? string.Empty,
+                NgaySinh = reader["NgaySinh"] as DateTime? ?? DateTime.MinValue,
+                DiaChi = reader["DiaChi"].ToString() ?? string.Empty,
+                MaLop = reader["MaLop"].ToString() ?? string.Empty,
+                MatKhau = reader["MatKhau"].ToString() ?? string.Empty
+            };
+        }
     }
 }
+
