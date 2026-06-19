@@ -186,7 +186,24 @@ namespace DMS_Examify.Controllers
                 || string.IsNullOrWhiteSpace(question.DapAnB)
                 || string.IsNullOrWhiteSpace(question.DapAnC)
                 || string.IsNullOrWhiteSpace(question.DapAnD)
-                || string.IsNullOrWhiteSpace(question.DapAn);
+                || string.IsNullOrWhiteSpace(question.DapAn)
+                || string.IsNullOrWhiteSpace(question.TrinhDo)
+                || !IsValidTrinhDo(question.TrinhDo)
+                || !IsValidDapAn(question.DapAn);
+        }
+
+        private static bool IsValidTrinhDo(string? trinhDo)
+        {
+            if (string.IsNullOrWhiteSpace(trinhDo)) return false;
+            var t = trinhDo.Trim().ToUpper();
+            return t == "A" || t == "B" || t == "C";
+        }
+
+        private static bool IsValidDapAn(string? dapAn)
+        {
+            if (string.IsNullOrWhiteSpace(dapAn)) return false;
+            var d = dapAn.Trim().ToUpper();
+            return d == "A" || d == "B" || d == "C" || d == "D";
         }
 
         private static bool IsInvalidQuestionKey(int cauHoi, string? maMH)

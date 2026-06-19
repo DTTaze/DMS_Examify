@@ -586,7 +586,6 @@ BEGIN
             SELECT 1
             FROM dbo.LOP
             WHERE MALOP = @MALOP
-              AND TrangThai = 1
         )
         THEN 1 ELSE 0
     END;
@@ -615,7 +614,6 @@ BEGIN
             SELECT 1
             FROM dbo.LOP
             WHERE TENLOP = @TENLOP
-              AND TrangThai = 1
         )
         THEN 1 ELSE 0
     END;
@@ -646,7 +644,6 @@ BEGIN
             FROM dbo.LOP
             WHERE TENLOP = @TENLOP
               AND MALOP <> @MALOP
-              AND TrangThai = 1
         )
         THEN 1 ELSE 0
     END;
@@ -767,6 +764,12 @@ CREATE OR ALTER PROCEDURE dbo.usp_GiaoVien_Insert
 AS
 BEGIN
     SET NOCOUNT ON;
+
+    IF EXISTS (SELECT 1 FROM dbo.GIAOVIEN WHERE MAGV = @MaGV)
+    BEGIN
+        RAISERROR(N'Mã giáo viên đã tồn tại', 16, 1);
+        RETURN;
+    END
 
     INSERT INTO dbo.GIAOVIEN (MAGV, HO, TEN, SODTLL, DIACHI)
     VALUES (@MaGV, @Ho, @Ten, @SoDTLL, @DiaChi);
@@ -1057,26 +1060,13 @@ BEGIN
 
     IF NOT EXISTS (SELECT 1 FROM LOP WHERE MALOP = @MaLop AND TrangThai = 1)
     BEGIN
-        RAISERROR(N'Lop khong ton tai hoac da ngung su dung', 16, 1);
+        RAISERROR(N'Lớp không tồn tại hoặc đã ngừng sử dụng', 16, 1);
         RETURN;
     END
 
     IF EXISTS (SELECT 1 FROM SINHVIEN WHERE MASV = @MaSV)
     BEGIN
-        UPDATE SINHVIEN
-        SET Ho = @Ho,
-            Ten = @Ten,
-            NgaySinh = @NgaySinh,
-            DiaChi = @DiaChi,
-            MaLop = @MaLop,
-            MatKhau = @MatKhau,
-            TrangThai = 1
-        WHERE MASV = @MaSV
-          AND TrangThai = 0;
-
-        IF @@ROWCOUNT = 0
-            RAISERROR(N'Ma sinh vien da ton tai', 16, 1);
-
+        RAISERROR(N'Mã sinh viên đã tồn tại', 16, 1);
         RETURN;
     END
 
@@ -1205,7 +1195,6 @@ BEGIN
             SELECT 1
             FROM dbo.SINHVIEN
             WHERE MASV = @MASV
-              AND TrangThai = 1
         )
         THEN 1 ELSE 0
     END;
