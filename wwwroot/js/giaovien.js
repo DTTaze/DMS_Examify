@@ -112,7 +112,8 @@ function resetGiaoVienForm() {
     document.getElementById("txtSoDTLL").value = "";
     document.getElementById("txtDiaChiGV").value = "";
     document.getElementById("txtMaGV").disabled = false;
-    selectedRow = null;    const fields = ["txtMaGV", "txtHoGV", "txtTenGV", "txtSoDTLL", "txtDiaChiGV"];
+    selectedRow = null;
+    const fields = ["txtMaGV", "txtHoGV", "txtTenGV", "txtSoDTLL", "txtDiaChiGV"];
     fields.forEach(f => document.getElementById(f).classList.remove("is-invalid"));
     
     const errors = ["errMaGV", "errHoGV", "errTenGV", "errSoDTLL", "errDiaChiGV"];
@@ -170,6 +171,11 @@ function themGV() {
     row.dataset.ten = d.Ten;
     row.dataset.sdt = d.SoDTLL;
     row.dataset.diachi = d.DiaChi;
+    row.dataset.originalHo = "";
+    row.dataset.originalTen = "";
+    row.dataset.originalSdt = "";
+    row.dataset.originalDiachi = "";
+    row.dataset.id = d.MaGV;
 
     row.innerHTML = `
         <td>${d.MaGV}</td>
@@ -206,12 +212,37 @@ function hieuChinhGV() {
 
     pushState();
 
+    const oHo = selectedRow.dataset.originalHo !== undefined ? selectedRow.dataset.originalHo : selectedRow.dataset.ho;
+    const oTen = selectedRow.dataset.originalTen !== undefined ? selectedRow.dataset.originalTen : selectedRow.dataset.ten;
+    const oSdt = selectedRow.dataset.originalSdt !== undefined ? selectedRow.dataset.originalSdt : (selectedRow.dataset.sdt || "");
+    const oDiaChi = selectedRow.dataset.originalDiachi !== undefined ? selectedRow.dataset.originalDiachi : (selectedRow.dataset.diachi || "");
+
+    const newIdx = newItems.findIndex(x => x.MaGV === id);
+    const isNew = newIdx >= 0;
+
+    const isHoChanged = d.Ho !== oHo;
+    const isTenChanged = d.Ten !== oTen;
+    const isSdtChanged = d.SoDTLL !== oSdt;
+    const isDiaChiChanged = d.DiaChi !== oDiaChi;
+
     selectedRow.innerHTML = `
         <td>${id}</td>
-        <td>${d.Ho}</td>
-        <td>${d.Ten}</td>
-        <td>${d.SoDTLL}</td>
-        <td>${d.DiaChi}</td>
+        <td class="${(!isNew && isHoChanged) ? 'cell-edited' : ''}">
+            ${d.Ho}
+            ${(!isNew && isHoChanged) ? `<div class="original-val text-muted small mt-1" style="font-size: 0.8rem;">(Gốc: <span class="text-decoration-line-through">${oHo}</span>)</div>` : ''}
+        </td>
+        <td class="${(!isNew && isTenChanged) ? 'cell-edited' : ''}">
+            ${d.Ten}
+            ${(!isNew && isTenChanged) ? `<div class="original-val text-muted small mt-1" style="font-size: 0.8rem;">(Gốc: <span class="text-decoration-line-through">${oTen}</span>)</div>` : ''}
+        </td>
+        <td class="${(!isNew && isSdtChanged) ? 'cell-edited' : ''}">
+            ${d.SoDTLL}
+            ${(!isNew && isSdtChanged) ? `<div class="original-val text-muted small mt-1" style="font-size: 0.8rem;">(Gốc: <span class="text-decoration-line-through">${oSdt}</span>)</div>` : ''}
+        </td>
+        <td class="${(!isNew && isDiaChiChanged) ? 'cell-edited' : ''}">
+            ${d.DiaChi}
+            ${(!isNew && isDiaChiChanged) ? `<div class="original-val text-muted small mt-1" style="font-size: 0.8rem;">(Gốc: <span class="text-decoration-line-through">${oDiaChi}</span>)</div>` : ''}
+        </td>
         <td class="text-center">
             <div class="d-flex gap-2 justify-content-center">
                 <button type="button" class="btn btn-link p-0 text-warning btn-edit" title="Sửa">
@@ -231,14 +262,18 @@ function hieuChinhGV() {
         diachi: d.DiaChi
     });
 
-    const newIdx = newItems.findIndex(x => x.MaGV === id);
-    if (newIdx >= 0) {
+    if (isNew) {
         newItems[newIdx] = d;
         AppCommon.setChangeState(selectedRow, "new");
     } else {
         updatedItems = updatedItems.filter(x => x.MaGV !== id);
-        updatedItems.push(d);
-        AppCommon.setChangeState(selectedRow, "updated");
+        const hasChanges = isHoChanged || isTenChanged || isSdtChanged || isDiaChiChanged;
+        if (hasChanges) {
+            updatedItems.push(d);
+            AppCommon.setChangeState(selectedRow, "updated");
+        } else {
+            AppCommon.setChangeState(selectedRow, null);
+        }
     }
 
     bindRows();
@@ -284,14 +319,16 @@ async function ghiGV() {
     redoHistoryStack = [];
     updateUndoRedoButtonStates();
 
-    try {        for (const ma of deletedItems) {
+    try {
+        for (const ma of deletedItems) {
             const res = await fetch(`/GiaoVien/Delete?maGV=${ma}`, { method: "POST" });
             if (!res.ok) {
                 const err = await res.text();
                 hienThongBao(`Lỗi khi xóa giáo viên <strong>${ma}</strong>: ${err}`, "Lỗi");
                 return;
             }
-        }        for (const u of updatedItems) {
+        }
+        for (const u of updatedItems) {
             const res = await fetch(`/GiaoVien/Update`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -302,7 +339,8 @@ async function ghiGV() {
                 hienThongBao(`Lỗi khi sửa giáo viên <strong>${u.MaGV}</strong>: ${err}`, "Lỗi");
                 return;
             }
-        }        for (const n of newItems) {
+        }
+        for (const n of newItems) {
             const res = await fetch(`/GiaoVien/Insert`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -366,7 +404,8 @@ function validateGiaoVienInputs() {
     const errHoGV = document.getElementById("errHoGV");
     const errTenGV = document.getElementById("errTenGV");
     const errSoDTLL = document.getElementById("errSoDTLL");
-    const errDiaChiGV = document.getElementById("errDiaChiGV");    errMaGV.textContent = "";
+    const errDiaChiGV = document.getElementById("errDiaChiGV");
+    errMaGV.textContent = "";
     errHoGV.textContent = "";
     errTenGV.textContent = "";
     errSoDTLL.textContent = "";
@@ -376,7 +415,8 @@ function validateGiaoVienInputs() {
     txtHoGV.classList.remove("is-invalid");
     txtTenGV.classList.remove("is-invalid");
     txtSoDTLL.classList.remove("is-invalid");
-    txtDiaChiGV.classList.remove("is-invalid");    if (isEditing && selectedRow) {
+    txtDiaChiGV.classList.remove("is-invalid");
+    if (isEditing && selectedRow) {
         const hasChanges = (
             d.Ho !== (selectedRow.dataset.ho || "").trim() ||
             d.Ten !== (selectedRow.dataset.ten || "").trim() ||
@@ -392,29 +432,34 @@ function validateGiaoVienInputs() {
         }
     }
 
-    let hasClientError = false;    if (!d.MaGV) {
+    let hasClientError = false;
+    if (!d.MaGV) {
         hasClientError = true;
     } else if (d.MaGV.length > 8) {
         errMaGV.textContent = "Mã giáo viên tối đa 8 ký tự.";
         txtMaGV.classList.add("is-invalid");
         hasClientError = true;
-    }    if (!d.Ho) {
+    }
+    if (!d.Ho) {
         hasClientError = true;
     } else if (d.Ho.length > 50) {
         errHoGV.textContent = "Họ tối đa 50 ký tự.";
         txtHoGV.classList.add("is-invalid");
         hasClientError = true;
-    }    if (!d.Ten) {
+    }
+    if (!d.Ten) {
         hasClientError = true;
     } else if (d.Ten.length > 10) {
         errTenGV.textContent = "Tên tối đa 10 ký tự.";
         txtTenGV.classList.add("is-invalid");
         hasClientError = true;
-    }    if (d.SoDTLL && d.SoDTLL.length > 15) {
+    }
+    if (d.SoDTLL && d.SoDTLL.length > 15) {
         errSoDTLL.textContent = "Số điện thoại tối đa 15 ký tự.";
         txtSoDTLL.classList.add("is-invalid");
         hasClientError = true;
-    }    if (d.DiaChi && d.DiaChi.length > 40) {
+    }
+    if (d.DiaChi && d.DiaChi.length > 40) {
         errDiaChiGV.textContent = "Địa chỉ tối đa 40 ký tự.";
         txtDiaChiGV.classList.add("is-invalid");
         hasClientError = true;
@@ -425,7 +470,8 @@ function validateGiaoVienInputs() {
         let reasonSua = isEditing ? "Thông tin giáo viên nhập không hợp lệ." : "Vui lòng chọn giáo viên trên lưới để hiệu chỉnh";
         updateTeacherButtonStates(true, reasonThem, true, reasonSua);
         return;
-    }    if (!isEditing) {
+    }
+    if (!isEditing) {
         const exists = [...document.querySelectorAll("#gvTable tr")]
             .some(r => !AppCommon.isPendingDelete(r) && r.dataset.magv === d.MaGV);
         if (exists) {
@@ -463,7 +509,8 @@ function validateGiaoVienInputs() {
                             true, "Mã GV đã tồn tại trong CSDL.",
                             true, "Vui lòng chọn giáo viên trên lưới để hiệu chỉnh"
                         );
-                    } else {                        updateTeacherButtonStates(false, "", true, "Vui lòng chọn giáo viên trên lưới để hiệu chỉnh");
+                    } else {
+                        updateTeacherButtonStates(false, "", true, "Vui lòng chọn giáo viên trên lưới để hiệu chỉnh");
                     }
                 })
                 .catch(error => {
@@ -471,7 +518,8 @@ function validateGiaoVienInputs() {
                     updateTeacherButtonStates(false, "", true, "Vui lòng chọn giáo viên trên lưới để hiệu chỉnh");
                 });
         }, 250);
-    } else {        updateTeacherButtonStates(true, "Đang ở chế độ hiệu chỉnh (Reset để thêm mới)", false, "");
+    } else {
+        updateTeacherButtonStates(true, "Đang ở chế độ hiệu chỉnh (Reset để thêm mới)", false, "");
     }
 }
 
@@ -695,7 +743,8 @@ function validateExcelData(rawData) {
     if (candidates.length === 0) {
         renderPreview(processedRows);
         return;
-    }    fetch('/GiaoVien/CheckImport', {
+    }
+    fetch('/GiaoVien/CheckImport', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(candidates.map(c => ({ MaGV: c.maGV })))
@@ -784,6 +833,11 @@ function confirmImport() {
         row.dataset.ten = item.Ten;
         row.dataset.sdt = item.SoDTLL;
         row.dataset.diachi = item.DiaChi;
+        row.dataset.originalHo = "";
+        row.dataset.originalTen = "";
+        row.dataset.originalSdt = "";
+        row.dataset.originalDiachi = "";
+        row.dataset.id = item.MaGV;
 
         row.innerHTML = `
             <td>${item.MaGV}</td>

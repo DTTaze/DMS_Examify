@@ -64,6 +64,7 @@ function executeSearch() {
                 row.dataset.id = subject.maMH;
                 row.dataset.mamh = subject.maMH;
                 row.dataset.tenmh = subject.tenMH;
+                row.dataset.originalTenmh = subject.tenMH;
 
                 row.innerHTML = `
                     <td>${index + 1}</td>
@@ -105,6 +106,7 @@ function addSubject() {
     row.dataset.id = newId;
     row.dataset.mamh = formValues.MaMH;
     row.dataset.tenmh = formValues.TenMH;
+    row.dataset.originalTenmh = "";
 
     row.innerHTML = `
         <td>...</td>
@@ -141,13 +143,23 @@ function editSubject() {
     }
 
     const subjectId = parseInt(selectedTableRow.dataset.id);
+    const isNew = !isNaN(subjectId) && subjectId < 0;
 
     pushState();
 
+    const originalTenMH = selectedTableRow.dataset.originalTenmh !== undefined && selectedTableRow.dataset.originalTenmh !== null
+        ? selectedTableRow.dataset.originalTenmh
+        : selectedTableRow.dataset.tenmh;
+
+    const isTenMHChanged = formValues.TenMH !== originalTenMH;
+
     selectedTableRow.innerHTML = `
-        <td>${subjectId > 0 ? subjectId : "..."}</td>
+        <td>${isNew ? "..." : (selectedTableRow.dataset.id || "")}</td>
         <td>${formValues.MaMH}</td>
-        <td>${formValues.TenMH}</td>
+        <td class="${(!isNew && isTenMHChanged) ? 'cell-edited' : ''}">
+            ${formValues.TenMH}
+            ${(!isNew && isTenMHChanged) ? `<div class="original-val text-muted small mt-1" style="font-size: 0.8rem;">(Gốc: <span class="text-decoration-line-through">${originalTenMH}</span>)</div>` : ''}
+        </td>
         <td class="text-center">
             <button type="button" class="btn btn-link text-warning p-0 me-2 btn-edit" title="Hiệu chỉnh">
                 <i class="bi bi-pencil-square fs-5"></i>
@@ -161,7 +173,7 @@ function editSubject() {
     selectedTableRow.dataset.mamh = formValues.MaMH;
     selectedTableRow.dataset.tenmh = formValues.TenMH;
 
-    if (subjectId < 0) {
+    if (isNew) {
         const itemIndex = pendingNewItems.findIndex(item => item.Id === subjectId);
         if (itemIndex >= 0) {
             pendingNewItems[itemIndex] = { Id: subjectId, ...formValues };
@@ -169,10 +181,16 @@ function editSubject() {
         AppCommon.setChangeState(selectedTableRow, "new");
     } else {
         pendingUpdatedItems = pendingUpdatedItems.filter(item => item.MaMH !== formValues.MaMH);
-        pendingUpdatedItems.push(formValues);
-        AppCommon.setChangeState(selectedTableRow, "updated");
+        if (isTenMHChanged) {
+            pendingUpdatedItems.push(formValues);
+            AppCommon.setChangeState(selectedTableRow, "updated");
+        } else {
+            AppCommon.setChangeState(selectedTableRow, null);
+        }
     }
 
+    bindRowEventHandlers();
+    updateSTT();
     validateFormInputs();
     updateSaveButtonState();
     updateUndoRedoButtonStates();
@@ -568,7 +586,11 @@ function updateSaveButtonState() {
 function updateSTT() {
     const rows = document.querySelectorAll("#tbl tbody tr");
     rows.forEach((row, index) => {
-        row.cells[0].textContent = index + 1;
+        const badge = row.cells[0].querySelector(".change-state-badge");
+        row.cells[0].innerHTML = index + 1;
+        if (badge) {
+            row.cells[0].appendChild(badge);
+        }
     });
     const lblCount = document.getElementById("lblCount");
     if (lblCount) {
@@ -964,6 +986,7 @@ function confirmImport() {
         row.dataset.id = newId;
         row.dataset.mamh = item.MaMH;
         row.dataset.tenmh = item.TenMH;
+        row.dataset.originalTenmh = "";
 
         row.innerHTML = `
             <td>...</td>
@@ -1012,7 +1035,7 @@ function changePage(page) {
     updatePagination();
 }
 
-function changePageSize(size) {
+    function changePageSize(size) {
     rowsPerPage = parseInt(size, 10) || AppCommon.DEFAULT_PAGE_SIZE;
     currentPage = 1;
     updatePagination();

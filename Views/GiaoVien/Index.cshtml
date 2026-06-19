@@ -114,7 +114,9 @@
                         <tbody id="gvTable">
                             @foreach (var gv in Model)
                             {
-                                <tr data-magv="@gv.MaGV" data-ho="@gv.Ho" data-ten="@gv.Ten" data-sdt="@gv.SoDTLL" data-diachi="@gv.DiaChi">
+                                <tr data-magv="@gv.MaGV" data-ho="@gv.Ho" data-ten="@gv.Ten" data-sdt="@gv.SoDTLL" data-diachi="@gv.DiaChi"
+                                    data-original-ho="@gv.Ho" data-original-ten="@gv.Ten" data-original-sdt="@gv.SoDTLL" data-original-diachi="@gv.DiaChi"
+                                    data-id="@gv.MaGV">
                                     <td>@gv.MaGV</td>
                                     <td>@gv.Ho</td>
                                     <td>@gv.Ten</td>

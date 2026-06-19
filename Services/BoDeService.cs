@@ -63,7 +63,7 @@ namespace DMS_Examify.Services
             return Convert.ToInt32(command.ExecuteScalar());
         }
 
-        public bool Update(BoDe model, string role, string maGV)
+        public void Update(BoDe model, string role, string maGV)
         {
             using var connection = _connectionFactory.CreateConnection();
             using var command = CreateStoredProcedureCommand(StoredProcedures.Update, connection);
@@ -71,10 +71,10 @@ namespace DMS_Examify.Services
             command.Parameters.Add("@CauHoi", SqlDbType.Int).Value = model.CauHoi;
             AddQuestionParameters(command, model);
             command.Parameters.Add("@MAGV", SqlDbType.NChar, 8).Value = GetTeacherFilterValue(role, maGV);
-            return command.ExecuteNonQuery() > 0;
+            command.ExecuteNonQuery();
         }
 
-        public bool Delete(int cauHoi, string maMH, string role, string maGV)
+        public void Delete(int cauHoi, string maMH, string role, string maGV)
         {
             using var connection = _connectionFactory.CreateConnection();
             using var command = CreateStoredProcedureCommand(StoredProcedures.Delete, connection);
@@ -82,7 +82,7 @@ namespace DMS_Examify.Services
             command.Parameters.Add("@CauHoi", SqlDbType.Int).Value = cauHoi;
             command.Parameters.Add("@MaMH", SqlDbType.NChar, 5).Value = Trim(maMH);
             command.Parameters.Add("@MAGV", SqlDbType.NChar, 8).Value = GetTeacherFilterValue(role, maGV);
-            return command.ExecuteNonQuery() > 0;
+            command.ExecuteNonQuery();
         }
 
         public List<BoDe> Search(string? keyword, string role, string maGV)

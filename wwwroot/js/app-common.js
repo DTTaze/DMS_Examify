@@ -159,7 +159,8 @@
         }
 
         const title = options.title ? ` title="${escapeHtml(options.title)}"` : "";
-        item.innerHTML = `<button type="button" class="page-link shadow-none"${title} onclick="changePage(${options.page})">${content}</button>`;
+        const handler = options.handler || "changePage";
+        item.innerHTML = `<button type="button" class="page-link shadow-none"${title} onclick="${handler}(${options.page})">${content}</button>`;
         return item;
     }
 
@@ -200,7 +201,7 @@
         });
 
         updatePaginationSummary(config.summaryId, totalRows, startIndex, endIndex);
-        renderPaginationButtons(config.paginationId, currentPage, totalPages, config.compact);
+        renderPaginationButtons(config.paginationId, currentPage, totalPages, config.compact, config.handler);
 
         return currentPage;
     }
@@ -216,7 +217,7 @@
         summary.textContent = `Hiển thị từ ${from} đến ${to} trong tổng số ${totalRows} dòng`;
     }
 
-    function renderPaginationButtons(paginationId, currentPage, totalPages, compact = false) {
+    function renderPaginationButtons(paginationId, currentPage, totalPages, compact = false, handler = "changePage") {
         const pagination = byId(paginationId);
         if (!pagination) {
             return;
@@ -226,31 +227,35 @@
         pagination.appendChild(createPageItem('<i class="bi bi-chevron-double-left"></i>', {
             page: 1,
             disabled: currentPage === 1,
-            title: "Trang đầu"
+            title: "Trang đầu",
+            handler
         }));
 
         pagination.appendChild(createPageItem('<i class="bi bi-chevron-left"></i>', {
             page: currentPage - 1,
             disabled: currentPage === 1,
-            title: "Trang trước"
+            title: "Trang trước",
+            handler
         }));
 
         getPaginationPages(currentPage, totalPages, compact).forEach(page => {
             pagination.appendChild(page === "..."
                 ? createPageItem("", { ellipsis: true, disabled: true })
-                : createPageItem(page, { page, active: currentPage === page }));
+                : createPageItem(page, { page, active: currentPage === page, handler }));
         });
 
         pagination.appendChild(createPageItem('<i class="bi bi-chevron-right"></i>', {
             page: currentPage + 1,
             disabled: currentPage === totalPages,
-            title: "Trang sau"
+            title: "Trang sau",
+            handler
         }));
 
         pagination.appendChild(createPageItem('<i class="bi bi-chevron-double-right"></i>', {
             page: totalPages,
             disabled: currentPage === totalPages,
-            title: "Trang cuối"
+            title: "Trang cuối",
+            handler
         }));
     }
 

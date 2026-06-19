@@ -17,11 +17,14 @@ let historyLopRedo = [];
 
 let currentPage = 1;
 let rowsPerPage = 10;
+let currentLopPage = 1;
+let lopsPerPage = 5;
 let classDebounceTimer = null;
 let studentDebounceTimer = null;
 
 AppCommon.onReady(() => {
     bindLopRows();
+    updateLopPagination();
     bindRows();
 
     ["txtMaSV", "txtHo", "txtTen", "txtDiaChi", "txtMatKhau"]
@@ -64,20 +67,23 @@ function locLop() {
         const ten = (li.dataset.tenlop || "").toLowerCase();
         
         if (ma.includes(keyword) || ten.includes(keyword)) {
-            li.classList.remove("d-none");
+            li.classList.remove("search-hidden");
             visibleCount++;
         } else {
-            li.classList.add("d-none");
+            li.classList.add("search-hidden");
         }
     });
 
-    document.getElementById("lblLopCount").innerText = `Hiển thị ${visibleCount}/${items.length} lớp`;
+    document.getElementById("lblLopCount").innerText = `Tìm thấy ${visibleCount}/${items.length} lớp`;
 
     if (visibleCount === 0 && items.length > 0) {
         emptyState.classList.remove("d-none");
     } else {
         emptyState.classList.add("d-none");
     }
+
+    currentLopPage = 1;
+    updateLopPagination();
 }
 
 function clearSearchLop() {
@@ -136,13 +142,15 @@ function executeChonLop(el) {
 
     clearLopInputs();
 
-    document.getElementById("currentLop").innerText = el.dataset.tenlop;    newItems = [];
+    document.getElementById("currentLop").innerText = el.dataset.tenlop;
+    newItems = [];
     updatedItems = [];
     deletedItems = [];
     undoHistoryStack = [];
     redoHistoryStack = [];
     selectedRow = null;
-    resetStudentForm();    document.getElementById("btnExport").removeAttribute("disabled");
+    resetStudentForm();
+    document.getElementById("btnExport").removeAttribute("disabled");
     document.getElementById("btnImport").removeAttribute("disabled");
 
     loadSinhVien();
@@ -156,7 +164,8 @@ function themLop() {
     if (!ma || !ten) {
         hienThongBao("Vui lòng nhập đầy đủ Mã và Tên lớp.", "Thông báo");
         return;
-    }    const exists = [...document.querySelectorAll("#lopList li")].some(li => li.dataset.malop === ma);
+    }
+    const exists = [...document.querySelectorAll("#lopList li")].some(li => li.dataset.malop === ma);
     if (exists) {
         hienThongBao("Mã lớp này đã tồn tại trong danh sách.", "Thông báo");
         return;
@@ -169,6 +178,7 @@ function themLop() {
     li.className = "list-group-item list-group-item-action border-light";
     li.dataset.malop = ma;
     li.dataset.tenlop = ten;
+    li.dataset.originalTenlop = "";
     li.innerHTML = `
         <div class="d-flex justify-content-between align-items-center">
             <div>
@@ -209,11 +219,18 @@ function suaLop() {
     }
 
     pushStateLop();
+    const originalTenLop = selectedLopRow.dataset.originalTenlop !== undefined && selectedLopRow.dataset.originalTenlop !== null
+        ? selectedLopRow.dataset.originalTenlop
+        : selectedLopRow.dataset.tenlop;
+
+    const isTenChanged = ten !== originalTenLop;
     selectedLopRow.dataset.tenlop = ten;
+    
     selectedLopRow.innerHTML = `
         <div class="d-flex justify-content-between align-items-center">
             <div>
                 <span class="fw-semibold text-dark">${ten}</span>
+                ${isTenChanged ? `<span class="original-val text-muted small ms-2" style="font-size: 0.8rem;">(Gốc: <span class="text-decoration-line-through">${originalTenLop}</span>)</span>` : ''}
                 <span class="badge bg-light text-secondary border border-light ms-2">${oldMa}</span>
             </div>
             <div class="d-flex gap-2">
@@ -233,8 +250,12 @@ function suaLop() {
         AppCommon.setChangeState(selectedLopRow, "new");
     } else {
         updatedLops = updatedLops.filter(x => x.MaLop !== oldMa);
-        updatedLops.push({ MaLop: oldMa, TenLop: ten });
-        AppCommon.setChangeState(selectedLopRow, "updated");
+        if (isTenChanged) {
+            updatedLops.push({ MaLop: oldMa, TenLop: ten });
+            AppCommon.setChangeState(selectedLopRow, "updated");
+        } else {
+            AppCommon.setChangeState(selectedLopRow, null);
+        }
     }
 
     document.getElementById("currentLop").innerText = ten;
@@ -392,9 +413,11 @@ function clearLopInputs() {
 }
 
 function resetLopForm() {
-    clearLopInputs();    selectedLopRow = null;
+    clearLopInputs();
+    selectedLopRow = null;
     selectedLop = null;
-    document.querySelectorAll("#lopList li").forEach(x => x.classList.remove("active"));    document.getElementById("currentLop").innerText = "Chưa chọn lớp";
+    document.querySelectorAll("#lopList li").forEach(x => x.classList.remove("active"));
+    document.getElementById("currentLop").innerText = "Chưa chọn lớp";
     newItems = [];
     updatedItems = [];
     deletedItems = [];
@@ -402,7 +425,8 @@ function resetLopForm() {
     redoHistoryStack = [];
     selectedRow = null;
     document.getElementById("svTable").innerHTML = "";
-    resetStudentForm();    document.getElementById("btnExport").setAttribute("disabled", "true");
+    resetStudentForm();
+    document.getElementById("btnExport").setAttribute("disabled", "true");
     document.getElementById("btnImport").setAttribute("disabled", "true");
 }
 
@@ -421,10 +445,12 @@ function validateClassInputs() {
     const errTenLop = document.getElementById("errTenLop");
 
     const txtMaLop = document.getElementById("txtMaLop");
-    const txtTenLop = document.getElementById("txtTenLop");    errMaLop.textContent = "";
+    const txtTenLop = document.getElementById("txtTenLop");
+    errMaLop.textContent = "";
     errTenLop.textContent = "";
     txtMaLop.classList.remove("is-invalid");
-    txtTenLop.classList.remove("is-invalid");    if (isEditing && selectedLopRow) {
+    txtTenLop.classList.remove("is-invalid");
+    if (isEditing && selectedLopRow) {
         const originalTenLop = (selectedLopRow.dataset.tenlop || "").trim();
         if (tenLop === originalTenLop) {
             updateClassButtonStates(
@@ -463,7 +489,8 @@ function validateClassInputs() {
             : "Vui lòng chọn lớp trong danh sách để hiệu chỉnh";
         updateClassButtonStates(true, reasonThem, true, reasonSua);
         return;
-    }    let isLocalDuplicate = false;
+    }
+    let isLocalDuplicate = false;
     let localReasonMa = "";
     let localReasonTen = "";
 
@@ -670,7 +697,8 @@ function clearStudentInputs() {
     document.getElementById("txtNgaySinh").value = "";
     document.getElementById("txtDiaChi").value = "";
     document.getElementById("txtMatKhau").value = "";
-    document.getElementById("txtMaSV").disabled = false;    const fields = ["txtMaSV", "txtHo", "txtTen", "txtNgaySinh", "txtDiaChi", "txtMatKhau"];
+    document.getElementById("txtMaSV").disabled = false;
+    const fields = ["txtMaSV", "txtHo", "txtTen", "txtNgaySinh", "txtDiaChi", "txtMatKhau"];
     fields.forEach(f => document.getElementById(f).classList.remove("is-invalid"));
     
     const errors = ["errMaSV", "errHo", "errTen", "errNgaySinh", "errDiaChi", "errMatKhau"];
@@ -718,6 +746,11 @@ async function loadSinhVien() {
             row.dataset.ngaysinh = sv.ngaySinh ? sv.ngaySinh.slice(0, 10) : "";
             row.dataset.diachi = sv.diaChi;
             row.dataset.matkhau = sv.matKhau || "";
+            row.dataset.originalHo = sv.ho;
+            row.dataset.originalTen = sv.ten;
+            row.dataset.originalNgaysinh = sv.ngaySinh ? sv.ngaySinh.slice(0, 10) : "";
+            row.dataset.originalDiachi = sv.diaChi;
+            row.dataset.originalMatkhau = sv.matKhau || "";
 
             row.innerHTML = `
                 <td>${sv.maSV}</td>
@@ -766,6 +799,11 @@ function themSV() {
     row.dataset.ngaysinh = d.NgaySinh;
     row.dataset.diachi = d.DiaChi;
     row.dataset.matkhau = d.MatKhau;
+    row.dataset.originalHo = "";
+    row.dataset.originalTen = "";
+    row.dataset.originalNgaysinh = "";
+    row.dataset.originalDiachi = "";
+    row.dataset.originalMatkhau = "";
 
     row.innerHTML = `
         <td>${d.MaSV}</td>
@@ -803,12 +841,42 @@ function suaSV() {
 
     pushState();
 
+    const oHo = selectedRow.dataset.originalHo !== undefined ? selectedRow.dataset.originalHo : selectedRow.dataset.ho;
+    const oTen = selectedRow.dataset.originalTen !== undefined ? selectedRow.dataset.originalTen : selectedRow.dataset.ten;
+    const oNgaySinh = selectedRow.dataset.originalNgaysinh !== undefined ? selectedRow.dataset.originalNgaysinh : selectedRow.dataset.ngaysinh;
+    const oDiaChi = selectedRow.dataset.originalDiachi !== undefined ? selectedRow.dataset.originalDiachi : selectedRow.dataset.diachi;
+    const oMatKhau = selectedRow.dataset.originalMatkhau !== undefined ? selectedRow.dataset.originalMatkhau : (selectedRow.dataset.matkhau || "");
+
+    const newIdx = newItems.findIndex(x => x.MaSV === id);
+    const isNew = newIdx >= 0;
+
+    const isHoChanged = d.Ho !== oHo;
+    const isTenChanged = d.Ten !== oTen;
+    const isNgaySinhChanged = d.NgaySinh !== oNgaySinh;
+    const isDiaChiChanged = d.DiaChi !== oDiaChi;
+    const isMatKhauChanged = d.MatKhau !== oMatKhau;
+
+    const nsFormatted = d.NgaySinh ? new Date(d.NgaySinh).toLocaleDateString('vi-VN') : "";
+    const oNsFormatted = oNgaySinh ? new Date(oNgaySinh).toLocaleDateString('vi-VN') : "";
+
     selectedRow.innerHTML = `
         <td>${id}</td>
-        <td>${d.Ho}</td>
-        <td>${d.Ten}</td>
-        <td>${d.NgaySinh ? new Date(d.NgaySinh).toLocaleDateString('vi-VN') : ""}</td>
-        <td>${d.DiaChi}</td>
+        <td class="${(!isNew && isHoChanged) ? 'cell-edited' : ''}">
+            ${d.Ho}
+            ${(!isNew && isHoChanged) ? `<div class="original-val text-muted small mt-1" style="font-size: 0.8rem;">(Gốc: <span class="text-decoration-line-through">${oHo}</span>)</div>` : ''}
+        </td>
+        <td class="${(!isNew && isTenChanged) ? 'cell-edited' : ''}">
+            ${d.Ten}
+            ${(!isNew && isTenChanged) ? `<div class="original-val text-muted small mt-1" style="font-size: 0.8rem;">(Gốc: <span class="text-decoration-line-through">${oTen}</span>)</div>` : ''}
+        </td>
+        <td class="${(!isNew && isNgaySinhChanged) ? 'cell-edited' : ''}">
+            ${nsFormatted}
+            ${(!isNew && isNgaySinhChanged) ? `<div class="original-val text-muted small mt-1" style="font-size: 0.8rem;">(Gốc: <span class="text-decoration-line-through">${oNsFormatted}</span>)</div>` : ''}
+        </td>
+        <td class="${(!isNew && isDiaChiChanged) ? 'cell-edited' : ''}">
+            ${d.DiaChi}
+            ${(!isNew && isDiaChiChanged) ? `<div class="original-val text-muted small mt-1" style="font-size: 0.8rem;">(Gốc: <span class="text-decoration-line-through">${oDiaChi}</span>)</div>` : ''}
+        </td>
         <td class="text-center">
             <div class="d-flex gap-2 justify-content-center">
                 <button type="button" class="btn btn-link p-0 text-warning" onclick="editSVClick(event, this.closest('tr'))" title="Sửa">
@@ -829,15 +897,18 @@ function suaSV() {
         matkhau: d.MatKhau
     });
 
-    // If it's a newly added student (local-only)
-    const newIdx = newItems.findIndex(x => x.MaSV === id);
-    if (newIdx >= 0) {
+    if (isNew) {
         newItems[newIdx] = d;
         AppCommon.setChangeState(selectedRow, "new");
     } else {
         updatedItems = updatedItems.filter(x => x.MaSV !== id);
-        updatedItems.push(d);
-        AppCommon.setChangeState(selectedRow, "updated");
+        const hasChanges = isHoChanged || isTenChanged || isNgaySinhChanged || isDiaChiChanged || isMatKhauChanged;
+        if (hasChanges) {
+            updatedItems.push(d);
+            AppCommon.setChangeState(selectedRow, "updated");
+        } else {
+            AppCommon.setChangeState(selectedRow, null);
+        }
     }
 
     bindRows();
@@ -974,7 +1045,8 @@ function validateStudentInputs() {
             true, "Vui lòng chọn lớp học trước."
         );
         return;
-    }    if (isEditing && selectedRow) {
+    }
+    if (isEditing && selectedRow) {
         const hasChanges = (
             d.Ho !== (selectedRow.dataset.ho || "").trim() ||
             d.Ten !== (selectedRow.dataset.ten || "").trim() ||
@@ -991,33 +1063,39 @@ function validateStudentInputs() {
         }
     }
 
-    let hasClientError = false;    if (!d.MaSV) {
+    let hasClientError = false;
+    if (!d.MaSV) {
         hasClientError = true;
     } else if (d.MaSV.length > 8) {
         errMaSV.textContent = "Mã sinh viên tối đa 8 ký tự.";
         txtMaSV.classList.add("is-invalid");
         hasClientError = true;
-    }    if (!d.Ho) {
+    }
+    if (!d.Ho) {
         hasClientError = true;
     } else if (d.Ho.length > 50) {
         errHo.textContent = "Họ tối đa 50 ký tự.";
         txtHo.classList.add("is-invalid");
         hasClientError = true;
-    }    if (!d.Ten) {
+    }
+    if (!d.Ten) {
         hasClientError = true;
     } else if (d.Ten.length > 10) {
         errTen.textContent = "Tên tối đa 10 ký tự.";
         txtTen.classList.add("is-invalid");
         hasClientError = true;
-    }    if (!d.NgaySinh) {
+    }
+    if (!d.NgaySinh) {
         hasClientError = true;
-    }    if (!d.DiaChi) {
+    }
+    if (!d.DiaChi) {
         hasClientError = true;
     } else if (d.DiaChi.length > 40) {
         errDiaChi.textContent = "Địa chỉ tối đa 40 ký tự.";
         txtDiaChi.classList.add("is-invalid");
         hasClientError = true;
-    }    if (!d.MatKhau) {
+    }
+    if (!d.MatKhau) {
         hasClientError = true;
     } else if (d.MatKhau.length > 20) {
         errMatKhau.textContent = "Mật khẩu tối đa 20 ký tự.";
@@ -1030,7 +1108,8 @@ function validateStudentInputs() {
         let reasonSua = isEditing ? "Thông tin sinh viên nhập không hợp lệ." : "Vui lòng chọn sinh viên trên lưới để hiệu chỉnh";
         updateStudentButtonStates(true, reasonThem, true, reasonSua);
         return;
-    }    if (!isEditing) {
+    }
+    if (!isEditing) {
         const exists = [...document.querySelectorAll("#svTable tr")].some(r => r.dataset.masv === d.MaSV);
         if (exists) {
             errMaSV.textContent = "Mã SV này đã trùng trong danh sách tạm thời.";
@@ -1067,7 +1146,8 @@ function validateStudentInputs() {
                             true, "Mã SV đã tồn tại trong CSDL.",
                             true, "Vui lòng chọn sinh viên trên lưới để hiệu chỉnh"
                         );
-                    } else {                        updateStudentButtonStates(false, "", true, "Vui lòng chọn sinh viên trên lưới để hiệu chỉnh");
+                    } else {
+                        updateStudentButtonStates(false, "", true, "Vui lòng chọn sinh viên trên lưới để hiệu chỉnh");
                     }
                 })
                 .catch(error => {
@@ -1075,7 +1155,8 @@ function validateStudentInputs() {
                     updateStudentButtonStates(false, "", true, "Vui lòng chọn sinh viên trên lưới để hiệu chỉnh");
                 });
         }, 250);
-    } else {        updateStudentButtonStates(true, "Đang ở chế độ hiệu chỉnh (Reset để thêm mới)", false, "");
+    } else {
+        updateStudentButtonStates(true, "Đang ở chế độ hiệu chỉnh (Reset để thêm mới)", false, "");
     }
 }
 
@@ -1156,6 +1237,30 @@ function changePageSize(size) {
     rowsPerPage = parseInt(size, 10) || AppCommon.DEFAULT_PAGE_SIZE;
     currentPage = 1;
     updatePagination();
+}
+
+function updateLopPagination() {
+    currentLopPage = AppCommon.renderPagination({
+        visibleRowSelector: "#lopList li:not(.search-hidden)",
+        allRowSelector: "#lopList li",
+        currentPage: currentLopPage,
+        rowsPerPage: lopsPerPage,
+        summaryId: "lblLopPaginationSummary",
+        paginationId: "ulLopPagination",
+        compact: true,
+        handler: "changeLopPage"
+    });
+}
+
+function changeLopPage(page) {
+    currentLopPage = page;
+    updateLopPagination();
+}
+
+function changeLopPageSize(size) {
+    lopsPerPage = parseInt(size, 10) || 5;
+    currentLopPage = 1;
+    updateLopPagination();
 }
 
 
@@ -1348,7 +1453,8 @@ function validateExcelData(rawData) {
     if (candidates.length === 0) {
         renderPreview(processedRows);
         return;
-    }    fetch('/LopSinhVien/CheckStudentImport', {
+    }
+    fetch('/LopSinhVien/CheckStudentImport', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(candidates.map(c => ({ MaSV: c.maSV })))
@@ -1534,7 +1640,8 @@ function deleteLopClick(event, li) {
             selectedLopRow = null;
             selectedLop = null;
             document.getElementById("currentLop").innerText = "Chưa chọn";
-            document.getElementById("svTable").innerHTML = "";            document.getElementById("btnExport").setAttribute("disabled", "true");
+            document.getElementById("svTable").innerHTML = "";
+            document.getElementById("btnExport").setAttribute("disabled", "true");
             document.getElementById("btnImport").setAttribute("disabled", "true");
             
             resetLopForm();

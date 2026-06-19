@@ -276,7 +276,15 @@ function addQuestion() {
         b: d.DapAnB,
         c: d.DapAnC,
         d: d.DapAnD,
-        dapan: d.DapAn
+        dapan: d.DapAn,
+        originalMamh: "",
+        originalTrinhdo: "",
+        originalNoidung: "",
+        originalA: "",
+        originalB: "",
+        originalC: "",
+        originalD: "",
+        originalDapan: ""
     });
 
     row.innerHTML = `
@@ -316,15 +324,46 @@ function editQuestion() {
     }
 
     const id = parseInt(selectedRow.dataset.id);
+    const isNew = !isNaN(id) && id < 0;
 
     pushState();
 
+    const oMaMH = selectedRow.dataset.originalMamh !== undefined ? selectedRow.dataset.originalMamh : selectedRow.dataset.mamh;
+    const oTrinhDo = selectedRow.dataset.originalTrinhdo !== undefined ? selectedRow.dataset.originalTrinhdo : selectedRow.dataset.trinhdo;
+    const oNoiDung = selectedRow.dataset.originalNoidung !== undefined ? selectedRow.dataset.originalNoidung : selectedRow.dataset.noidung;
+    const oA = selectedRow.dataset.originalA !== undefined ? selectedRow.dataset.originalA : selectedRow.dataset.a;
+    const oB = selectedRow.dataset.originalB !== undefined ? selectedRow.dataset.originalB : selectedRow.dataset.b;
+    const oC = selectedRow.dataset.originalC !== undefined ? selectedRow.dataset.originalC : selectedRow.dataset.c;
+    const oD = selectedRow.dataset.originalD !== undefined ? selectedRow.dataset.originalD : selectedRow.dataset.d;
+    const oDapAn = selectedRow.dataset.originalDapan !== undefined ? selectedRow.dataset.originalDapan : selectedRow.dataset.dapan;
+
+    const isMaMHChanged = d.MaMH !== oMaMH;
+    const isTrinhDoChanged = d.TrinhDo !== oTrinhDo;
+    const isNoiDungChanged = d.NoiDung !== oNoiDung;
+    const isAChanged = d.DapAnA !== oA;
+    const isBChanged = d.DapAnB !== oB;
+    const isCChanged = d.DapAnC !== oC;
+    const isDChanged = d.DapAnD !== oD;
+    const isDapAnChanged = d.DapAn !== oDapAn;
+
     selectedRow.innerHTML = `
-        <td>${id > 0 ? id : "..."}</td>
-        <td class="text-truncate" style="max-width: 250px;">${d.NoiDung}</td>
-        <td>${d.MaMH}</td>
-        <td>${d.TrinhDo}</td>
-        <td class="text-center"><span class="badge bg-secondary">${d.DapAn}</span></td>
+        <td>${isNew ? "..." : id}</td>
+        <td class="text-truncate ${(!isNew && isNoiDungChanged) ? 'cell-edited' : ''}" style="max-width: 250px;">
+            ${d.NoiDung}
+            ${(!isNew && isNoiDungChanged) ? `<div class="original-val text-muted small mt-1" style="font-size: 0.8rem; white-space: normal;">(Gốc: <span class="text-decoration-line-through">${oNoiDung}</span>)</div>` : ''}
+        </td>
+        <td class="${(!isNew && isMaMHChanged) ? 'cell-edited' : ''}">
+            ${d.MaMH}
+            ${(!isNew && isMaMHChanged) ? `<div class="original-val text-muted small mt-1" style="font-size: 0.8rem;">(Gốc: <span class="text-decoration-line-through">${oMaMH}</span>)</div>` : ''}
+        </td>
+        <td class="${(!isNew && isTrinhDoChanged) ? 'cell-edited' : ''}">
+            ${d.TrinhDo}
+            ${(!isNew && isTrinhDoChanged) ? `<div class="original-val text-muted small mt-1" style="font-size: 0.8rem;">(Gốc: <span class="text-decoration-line-through">${oTrinhDo}</span>)</div>` : ''}
+        </td>
+        <td class="text-center ${(!isNew && isDapAnChanged) ? 'cell-edited' : ''}">
+            <span class="badge bg-secondary">${d.DapAn}</span>
+            ${(!isNew && isDapAnChanged) ? `<div class="original-val text-muted small mt-1" style="font-size: 0.8rem;">(Gốc: <span class="text-decoration-line-through">${oDapAn}</span>)</div>` : ''}
+        </td>
         <td class="text-center">
             <div class="d-flex gap-2 justify-content-center">
                 <button type="button" class="btn btn-link p-0 text-warning btn-edit" title="Sửa">
@@ -348,14 +387,19 @@ function editQuestion() {
         dapan: d.DapAn
     });
 
-    if (id < 0) {
+    if (isNew) {
         const i = newItems.findIndex(x => x.CauHoi === id);
         if (i >= 0) newItems[i] = { CauHoi: id, ...d };
         AppCommon.setChangeState(selectedRow, "new");
     } else {
         updatedItems = updatedItems.filter(x => x.CauHoi !== id);
-        updatedItems.push({ CauHoi: id, ...d });
-        AppCommon.setChangeState(selectedRow, "updated");
+        const hasChanges = isMaMHChanged || isTrinhDoChanged || isNoiDungChanged || isAChanged || isBChanged || isCChanged || isDChanged || isDapAnChanged;
+        if (hasChanges) {
+            updatedItems.push({ CauHoi: id, ...d });
+            AppCommon.setChangeState(selectedRow, "updated");
+        } else {
+            AppCommon.setChangeState(selectedRow, null);
+        }
     }
 
     bindRows();
@@ -400,14 +444,16 @@ async function saveAll() {
     redoHistoryStack = [];
     updateUndoRedoButtonStates();
 
-    try {        for (const d of deletedItems) {
+    try {
+        for (const d of deletedItems) {
             const res = await fetch(`/BoDe/Delete?cauHoi=${d.CauHoi}&maMH=${d.MaMH}`, { method: "POST" });
             if (!res.ok) {
                 const err = await res.text();
                 hienThongBao(`Lỗi khi xóa câu hỏi <strong>${d.CauHoi}</strong>: ${err}`, "Lỗi");
                 return;
             }
-        }        for (const u of updatedItems) {
+        }
+        for (const u of updatedItems) {
             const res = await fetch(`/BoDe/Update`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -418,7 +464,8 @@ async function saveAll() {
                 hienThongBao(`Lỗi khi sửa câu hỏi <strong>${u.CauHoi}</strong>: ${err}`, "Lỗi");
                 return;
             }
-        }        for (const n of newItems) {
+        }
+        for (const n of newItems) {
             const res = await fetch(`/BoDe/Insert`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -891,7 +938,15 @@ function confirmImport() {
             b: item.DapAnB,
             c: item.DapAnC,
             d: item.DapAnD,
-            dapan: item.DapAn
+            dapan: item.DapAn,
+            originalMamh: "",
+            originalTrinhdo: "",
+            originalNoidung: "",
+            originalA: "",
+            originalB: "",
+            originalC: "",
+            originalD: "",
+            originalDapan: ""
         });
 
         row.innerHTML = `

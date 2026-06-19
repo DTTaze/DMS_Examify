@@ -70,9 +70,8 @@ namespace DMS_Examify.Controllers
             {
                 if (HasDuplicateQuestion(model!)) return BadRequest(DuplicateQuestionMessage);
 
-                return _boDeService.Update(model!, CurrentRole, CurrentTeacherId)
-                    ? Ok()
-                    : NotFound(QuestionNotFoundOrDeniedMessage);
+                _boDeService.Update(model!, CurrentRole, CurrentTeacherId);
+                return Ok();
             }
             catch (SqlException ex)
             {
@@ -85,9 +84,15 @@ namespace DMS_Examify.Controllers
         {
             if (IsInvalidQuestionKey(cauHoi, maMH)) return BadRequest(InvalidQuestionMessage);
 
-            return _boDeService.Delete(cauHoi, maMH, CurrentRole, CurrentTeacherId)
-                ? Ok()
-                : NotFound(QuestionNotFoundOrDeniedMessage);
+            try
+            {
+                _boDeService.Delete(cauHoi, maMH, CurrentRole, CurrentTeacherId);
+                return Ok();
+            }
+            catch (SqlException ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         [HttpGet]

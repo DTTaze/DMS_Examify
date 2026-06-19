@@ -166,7 +166,10 @@
                             @foreach (var ch in Model.BoDes)
                             {
                                 <tr data-id="@ch.CauHoi" data-mamh="@ch.MaMH" data-trinhdo="@ch.TrinhDo" data-noidung="@ch.NoiDung"
-                                    data-a="@ch.DapAnA" data-b="@ch.DapAnB" data-c="@ch.DapAnC" data-d="@ch.DapAnD" data-dapan="@ch.DapAn">
+                                    data-a="@ch.DapAnA" data-b="@ch.DapAnB" data-c="@ch.DapAnC" data-d="@ch.DapAnD" data-dapan="@ch.DapAn"
+                                    data-original-mamh="@ch.MaMH" data-original-trinhdo="@ch.TrinhDo" data-original-noidung="@ch.NoiDung"
+                                    data-original-a="@ch.DapAnA" data-original-b="@ch.DapAnB" data-original-c="@ch.DapAnC"
+                                    data-original-d="@ch.DapAnD" data-original-dapan="@ch.DapAn">
                                     <td>@ch.CauHoi</td>
                                     <td class="text-truncate" style="max-width: 250px;">@ch.NoiDung</td>
                                     <td>@ch.MaMH</td>

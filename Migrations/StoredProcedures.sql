@@ -1,4 +1,4 @@
-﻿USE THITRACNGHIEM
+USE THITRACNGHIEM
 GO
 
 CREATE OR ALTER PROCEDURE [dbo].[usp_TaiKhoan_LayThongTin]
@@ -1338,15 +1338,22 @@ BEGIN
 
     IF NOT EXISTS (SELECT 1 FROM LOP WHERE MALOP = @MALOP AND TrangThai = 1)
     BEGIN
-        RAISERROR(N'Khong tim thay lop dang hoat dong', 16, 1);
+        RAISERROR(N'Không tìm thấy lớp đang hoạt động', 16, 1);
         RETURN;
     END
 
-    IF EXISTS (SELECT 1 FROM SINHVIEN WHERE MALOP = @MALOP AND TrangThai = 1)
-    BEGIN
-        RAISERROR(N'Khong the xoa lop vi con sinh vien dang hoat dong', 16, 1);
-        RETURN;
-    END
+    -- Deactivate or delete students of this class
+    -- For students without exam results: delete them
+    DELETE FROM SINHVIEN
+    WHERE MALOP = @MALOP
+      AND TrangThai = 1
+      AND MASV NOT IN (SELECT MASV FROM BANGDIEM);
+
+    -- For students with exam results: deactivate them
+    UPDATE SINHVIEN
+    SET TrangThai = 0
+    WHERE MALOP = @MALOP
+      AND TrangThai = 1;
 
     IF EXISTS (SELECT 1 FROM SINHVIEN WHERE MALOP = @MALOP)
        OR EXISTS (SELECT 1 FROM GIAOVIEN_DANGKY WHERE MALOP = @MALOP)
