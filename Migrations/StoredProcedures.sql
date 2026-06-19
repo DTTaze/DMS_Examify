@@ -1,4 +1,12 @@
-USE THITRACNGHIEM
+USE [THITRACNGHIEM]
+GO
+
+-- ============================================================
+-- Tài Khoản / Hệ Thống / Quyền
+-- ============================================================
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
 GO
 
 CREATE OR ALTER PROCEDURE [dbo].[usp_TaiKhoan_LayThongTin]
@@ -48,11 +56,1171 @@ END
 GO
 
 GRANT EXECUTE ON [dbo].[usp_TaiKhoan_LayThongTin] TO [PGV];
-GO
 GRANT EXECUTE ON [dbo].[usp_TaiKhoan_LayThongTin] TO [Giangvien];
 GO
 
-PRINT N'OK: usp_TaiKhoan_LayThongTin đã được cập nhật.';
+PRINT N'OK: [dbo].[usp_TaiKhoan_LayThongTin] đã sẵn sàng.';
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE [dbo].[SP_TAOTAIKHOAN]
+    @LGNAME  VARCHAR(50),
+    @PASS    VARCHAR(50),
+    @USERNAME VARCHAR(50),
+    @ROLE    VARCHAR(50)
+AS
+BEGIN
+    IF EXISTS (SELECT * FROM sys.server_principals WHERE name = @LGNAME)
+        RETURN 1;
+
+    IF EXISTS (SELECT * FROM sys.database_principals WHERE name = @USERNAME)
+        RETURN 2;
+
+    BEGIN TRY
+        EXEC sp_addlogin @loginame = @LGNAME, @passwd = @PASS;
+
+        EXEC sp_adduser @loginame = @LGNAME, @name_in_db = @USERNAME;
+
+        EXEC sp_addrolemember @rolename = @ROLE, @membername = @USERNAME;
+
+        RETURN 0;
+    END TRY
+    BEGIN CATCH
+        IF EXISTS (SELECT * FROM sys.server_principals WHERE name = @LGNAME)
+            EXEC sp_droplogin @loginame = @LGNAME;
+
+        RETURN 3;
+    END CATCH
+END
+GO
+
+GRANT EXECUTE ON [dbo].[SP_TAOTAIKHOAN] TO [PGV];
+GO
+
+PRINT N'OK: [dbo].[SP_TAOTAIKHOAN] đã sẵn sàng.';
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE [dbo].[usp_LayDanhSachQuyen_TaoTaiKhoan]
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT
+        name AS TenNhomQuyen
+    FROM
+        sys.database_principals
+    WHERE
+        type = 'R'
+        AND name IN ('PGV', 'Giangvien')
+    ORDER BY
+        name;
+END
+GO
+
+GRANT EXECUTE ON [dbo].[usp_LayDanhSachQuyen_TaoTaiKhoan] TO [PGV];
+GO
+
+PRINT N'OK: [dbo].[usp_LayDanhSachQuyen_TaoTaiKhoan] đã sẵn sàng.';
+GO
+
+-- ============================================================
+-- Môn Học (MONHOC)
+-- ============================================================
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_MonHoc_GetAll
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT MaMH, TenMH
+    FROM MONHOC
+    WHERE TrangThai = 1;
+END
+GO
+
+GRANT EXECUTE ON [dbo].[usp_MonHoc_GetAll] TO [PGV];
+GRANT EXECUTE ON [dbo].[usp_MonHoc_GetAll] TO [Giangvien];
+GO
+
+PRINT N'OK: dbo.usp_MonHoc_GetAll đã sẵn sàng.';
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_MonHoc_Search
+    @Keyword NVARCHAR(250) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SET @Keyword = NULLIF(LTRIM(RTRIM(@Keyword)), N'');
+
+    IF @Keyword IS NULL
+    BEGIN
+        SELECT MAMH, TENMH
+        FROM dbo.MONHOC
+        WHERE TrangThai = 1
+        ORDER BY MAMH
+        OPTION (RECOMPILE);
+        RETURN;
+    END
+
+    DECLARE @PrefixResults TABLE (
+        MAMH NCHAR(5) PRIMARY KEY,
+        TENMH NVARCHAR(40)
+    );
+
+    INSERT INTO @PrefixResults (MAMH, TENMH)
+    SELECT MAMH, TENMH
+    FROM dbo.MONHOC
+    WHERE TrangThai = 1
+      AND (MAMH LIKE @Keyword + N'%'
+           OR TENMH LIKE @Keyword + N'%')
+    OPTION (RECOMPILE);
+
+    IF @@ROWCOUNT > 0
+    BEGIN
+        SELECT MAMH, TENMH
+        FROM @PrefixResults
+        ORDER BY MAMH;
+        RETURN;
+    END
+
+    SELECT MAMH, TENMH
+    FROM dbo.MONHOC
+    WHERE TrangThai = 1
+      AND (MAMH LIKE N'%' + @Keyword + N'%'
+           OR TENMH LIKE N'%' + @Keyword + N'%')
+    ORDER BY MAMH
+    OPTION (RECOMPILE);
+END
+GO
+
+GRANT EXECUTE ON dbo.usp_MonHoc_Search TO [PGV];
+GRANT EXECUTE ON dbo.usp_MonHoc_Search TO [Giangvien];
+GO
+
+PRINT N'OK: dbo.usp_MonHoc_Search đã sẵn sàng.';
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_MonHoc_Insert
+    @MaMH NCHAR(5),
+    @TenMH NVARCHAR(40)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET @MaMH = UPPER(LTRIM(RTRIM(@MaMH)));
+    SET @TenMH = LTRIM(RTRIM(@TenMH));
+    
+    IF EXISTS (SELECT 1 FROM dbo.MONHOC WHERE MaMH = @MaMH)
+    BEGIN
+        THROW 50001, N'Mã môn học đã tồn tại. Không thể thêm mới.', 1;
+    END
+
+    IF EXISTS (SELECT 1 FROM dbo.MONHOC WHERE TenMH = @TenMH)
+    BEGIN
+        THROW 50002, N'Tên môn học đã tồn tại. Không thể thêm mới.', 1;
+    END
+
+    INSERT INTO dbo.MONHOC (MaMH, TenMH, TrangThai)
+    VALUES (@MaMH, @TenMH, 1);
+
+    PRINT N'INFO: Đã thêm mới môn học.';
+END
+GO
+
+GRANT EXECUTE ON [dbo].[usp_MonHoc_Insert] TO [PGV];
+GO
+
+PRINT N'OK: dbo.usp_MonHoc_Insert đã sẵn sàng.';
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_MonHoc_Update
+    @MaMH NCHAR(5),
+    @TenMH NVARCHAR(40)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET @MaMH = UPPER(LTRIM(RTRIM(@MaMH)));
+    SET @TenMH = LTRIM(RTRIM(@TenMH));
+
+    UPDATE dbo.MONHOC
+    SET TenMH = @TenMH
+    WHERE MaMH = @MaMH
+      AND TrangThai = 1;
+END
+GO
+
+GRANT EXECUTE ON [dbo].[usp_MonHoc_Update] TO [PGV];
+GO
+
+PRINT N'OK: dbo.usp_MonHoc_Update đã sẵn sàng.';
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_MonHoc_Delete
+    @MaMH NCHAR(5)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF EXISTS (SELECT 1 FROM [dbo].[BANGDIEM] WHERE [MAMH] = @MaMH)
+       OR EXISTS (SELECT 1 FROM [dbo].[BODE] WHERE [MAMH] = @MaMH)
+       OR EXISTS (SELECT 1 FROM [dbo].[GIAOVIEN_DANGKY] WHERE [MAMH] = @MaMH)
+    BEGIN
+        UPDATE [dbo].[MONHOC]
+        SET [TrangThai] = 0
+        WHERE [MaMH] = @MaMH;
+        PRINT N'INFO: Đã chuyển môn học sang trạng thái Ngừng dùng (Xóa mềm) do có dữ liệu liên kết.';
+    END
+    ELSE
+    BEGIN
+        DELETE FROM [dbo].[MONHOC]
+        WHERE [MaMH] = @MaMH;
+        PRINT N'INFO: Đã xóa cứng môn học hoàn toàn khỏi Database.';
+    END
+END
+GO
+
+GRANT EXECUTE ON [dbo].[usp_MonHoc_Delete] TO [PGV];
+GO
+
+PRINT N'OK: dbo.usp_MonHoc_Delete đã sẵn sàng.';
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_MonHoc_Restore
+    @MaMH NCHAR(5)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    UPDATE [dbo].[MONHOC]
+    SET [TrangThai] = 1
+    WHERE [MaMH] = @MaMH;
+    PRINT N'OK: Đã phục hồi môn học.';
+END
+GO
+
+GRANT EXECUTE ON [dbo].[usp_MonHoc_Restore] TO [PGV];
+GO
+
+PRINT N'OK: dbo.usp_MonHoc_Restore đã sẵn sàng.';
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_LayDanhSachMonHoc
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT MAMH, TENMH
+    FROM dbo.MONHOC
+    WHERE TrangThai = 1
+    ORDER BY TENMH ASC;
+END
+GO
+
+GRANT EXECUTE ON dbo.usp_LayDanhSachMonHoc TO [PGV];
+GRANT EXECUTE ON dbo.usp_LayDanhSachMonHoc TO [Giangvien];
+GO
+
+PRINT N'OK: dbo.usp_LayDanhSachMonHoc đã sẵn sàng.';
+GO
+
+-- ============================================================
+-- Lớp (LOP)
+-- ============================================================
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_Lop_GetAll
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT
+        MALOP,
+        TENLOP
+    FROM LOP
+    WHERE TrangThai = 1
+    ORDER BY MALOP;
+END
+GO
+
+GRANT EXECUTE ON [dbo].[usp_Lop_GetAll] TO [PGV];
+GO
+
+PRINT N'OK: dbo.usp_Lop_GetAll đã sẵn sàng.';
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_Lop_Search
+    @KEYWORD NVARCHAR(100) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SET @KEYWORD = NULLIF(LTRIM(RTRIM(@KEYWORD)), N'');
+
+    IF @KEYWORD IS NULL
+    BEGIN
+        SELECT MALOP, TENLOP
+        FROM LOP
+        WHERE TrangThai = 1
+        ORDER BY MALOP
+        OPTION (RECOMPILE);
+        RETURN;
+    END
+
+    DECLARE @PrefixResults TABLE (
+        MALOP NCHAR(8) PRIMARY KEY,
+        TENLOP NVARCHAR(40)
+    );
+
+    INSERT INTO @PrefixResults (MALOP, TENLOP)
+    SELECT MALOP, TENLOP
+    FROM LOP
+    WHERE TrangThai = 1
+      AND (MALOP LIKE @KEYWORD + N'%'
+           OR TENLOP LIKE @KEYWORD + N'%')
+    OPTION (RECOMPILE);
+
+    IF @@ROWCOUNT > 0
+    BEGIN
+        SELECT MALOP, TENLOP
+        FROM @PrefixResults
+        ORDER BY MALOP;
+        RETURN;
+    END
+
+    SELECT MALOP, TENLOP
+    FROM LOP
+    WHERE TrangThai = 1
+      AND (MALOP LIKE N'%' + @KEYWORD + N'%'
+           OR TENLOP LIKE N'%' + @KEYWORD + N'%')
+    ORDER BY MALOP
+    OPTION (RECOMPILE);
+END
+GO
+
+GRANT EXECUTE ON dbo.usp_Lop_Search TO [PGV];
+GRANT EXECUTE ON dbo.usp_Lop_Search TO [Giangvien];
+GO
+
+PRINT N'OK: dbo.usp_Lop_Search đã sẵn sàng.';
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+-- ------------------------------------------------------------
+-- Stored Procedures for Lop
+-- ------------------------------------------------------------
+CREATE OR ALTER PROCEDURE usp_Lop_Insert
+    @MALOP NCHAR(15),
+    @TENLOP NVARCHAR(50)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF EXISTS (SELECT 1 FROM LOP WHERE MALOP = @MALOP)
+    BEGIN
+        RAISERROR(N'Ma lop da ton tai', 16, 1);
+        RETURN;
+    END
+
+    IF EXISTS (SELECT 1 FROM LOP WHERE TENLOP = @TENLOP)
+    BEGIN
+        RAISERROR(N'Ten lop da ton tai', 16, 1);
+        RETURN;
+    END
+
+    INSERT INTO LOP(MALOP, TENLOP, TrangThai)
+    VALUES(@MALOP, @TENLOP, 1);
+END
+GO
+
+GRANT EXECUTE ON [dbo].[usp_Lop_Insert] TO [PGV];
+GO
+
+PRINT N'OK: usp_Lop_Insert đã sẵn sàng.';
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_Lop_Update
+    @MALOP NCHAR(8),
+    @TENLOP NVARCHAR(40)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF NOT EXISTS (SELECT 1 FROM LOP WHERE MALOP = @MALOP AND TrangThai = 1)
+    BEGIN
+        RAISERROR(N'Khong tim thay lop dang hoat dong', 16, 1);
+        RETURN;
+    END
+
+    UPDATE LOP
+    SET TENLOP = @TENLOP
+    WHERE MALOP = @MALOP;
+END
+GO
+
+GRANT EXECUTE ON [dbo].[usp_Lop_Update] TO [PGV];
+GO
+
+PRINT N'OK: dbo.usp_Lop_Update đã sẵn sàng.';
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_Lop_Delete
+    @MALOP NCHAR(8)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF NOT EXISTS (SELECT 1 FROM LOP WHERE MALOP = @MALOP AND TrangThai = 1)
+    BEGIN
+        RAISERROR(N'Không tìm thấy lớp đang hoạt động', 16, 1);
+        RETURN;
+    END
+
+    -- Deactivate or delete students of this class
+    -- For students without exam results: delete them
+    DELETE FROM SINHVIEN
+    WHERE MALOP = @MALOP
+      AND TrangThai = 1
+      AND MASV NOT IN (SELECT MASV FROM BANGDIEM);
+
+    -- For students with exam results: deactivate them
+    UPDATE SINHVIEN
+    SET TrangThai = 0
+    WHERE MALOP = @MALOP
+      AND TrangThai = 1;
+
+    IF EXISTS (SELECT 1 FROM SINHVIEN WHERE MALOP = @MALOP)
+       OR EXISTS (SELECT 1 FROM GIAOVIEN_DANGKY WHERE MALOP = @MALOP)
+    BEGIN
+        UPDATE LOP
+        SET TrangThai = 0
+        WHERE MALOP = @MALOP;
+        RETURN;
+    END
+
+    DELETE FROM LOP
+    WHERE MALOP = @MALOP;
+END
+GO
+
+GRANT EXECUTE ON [dbo].[usp_Lop_Delete] TO [PGV];
+GO
+
+PRINT N'OK: dbo.usp_Lop_Delete đã sẵn sàng.';
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_Lop_ExistsMaLop
+    @MALOP NCHAR(8)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT CASE
+        WHEN EXISTS (
+            SELECT 1
+            FROM dbo.LOP
+            WHERE MALOP = @MALOP
+              AND TrangThai = 1
+        )
+        THEN 1 ELSE 0
+    END;
+END
+GO
+
+GRANT EXECUTE ON dbo.usp_Lop_ExistsMaLop TO [PGV];
+GO
+
+PRINT N'OK: dbo.usp_Lop_ExistsMaLop đã sẵn sàng.';
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_Lop_ExistsTenLop
+    @TENLOP NVARCHAR(40)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT CASE
+        WHEN EXISTS (
+            SELECT 1
+            FROM dbo.LOP
+            WHERE TENLOP = @TENLOP
+              AND TrangThai = 1
+        )
+        THEN 1 ELSE 0
+    END;
+END
+GO
+
+GRANT EXECUTE ON dbo.usp_Lop_ExistsTenLop TO [PGV];
+GO
+
+PRINT N'OK: dbo.usp_Lop_ExistsTenLop đã sẵn sàng.';
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_Lop_ExistsTenLopExcludingMaLop
+    @TENLOP NVARCHAR(40),
+    @MALOP NCHAR(8)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT CASE
+        WHEN EXISTS (
+            SELECT 1
+            FROM dbo.LOP
+            WHERE TENLOP = @TENLOP
+              AND MALOP <> @MALOP
+              AND TrangThai = 1
+        )
+        THEN 1 ELSE 0
+    END;
+END
+GO
+
+GRANT EXECUTE ON dbo.usp_Lop_ExistsTenLopExcludingMaLop TO [PGV];
+GO
+
+PRINT N'OK: dbo.usp_Lop_ExistsTenLopExcludingMaLop đã sẵn sàng.';
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_LayDanhSachLop
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT
+        MALOP,
+        TENLOP
+    FROM dbo.LOP
+    WHERE TrangThai = 1
+    ORDER BY MALOP ASC;
+END
+GO
+
+GRANT EXECUTE ON dbo.usp_LayDanhSachLop TO [PGV];
+GRANT EXECUTE ON dbo.usp_LayDanhSachLop TO [Giangvien];
+GO
+
+PRINT N'OK: dbo.usp_LayDanhSachLop đã sẵn sàng.';
+GO
+
+-- ============================================================
+-- Giáo Viên (GIAOVIEN)
+-- ============================================================
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_GiaoVien_GetAll
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT MAGV AS MaGV, HO AS Ho, TEN AS Ten, SODTLL AS SoDTLL, DIACHI AS DiaChi
+    FROM dbo.GIAOVIEN
+    WHERE TrangThai = 1
+    ORDER BY HO, TEN, MAGV;
+END
+GO
+
+GRANT EXECUTE ON dbo.usp_GiaoVien_GetAll TO [PGV];
+GO
+
+PRINT N'OK: dbo.usp_GiaoVien_GetAll đã sẵn sàng.';
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_GiaoVien_Search
+    @Keyword NVARCHAR(250) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @SearchKeyword NVARCHAR(250) = NULLIF(LTRIM(RTRIM(@Keyword)), N'');
+
+    IF @SearchKeyword IS NULL
+    BEGIN
+        SELECT MAGV AS MaGV, HO AS Ho, TEN AS Ten, SODTLL AS SoDTLL, DIACHI AS DiaChi
+        FROM dbo.GIAOVIEN
+        WHERE TrangThai = 1
+        ORDER BY HO, TEN, MAGV;
+
+        RETURN;
+    END;
+
+    SELECT MAGV AS MaGV, HO AS Ho, TEN AS Ten, SODTLL AS SoDTLL, DIACHI AS DiaChi
+    FROM dbo.GIAOVIEN
+    WHERE TrangThai = 1
+      AND (MAGV = CONVERT(NCHAR(8), @SearchKeyword)
+           OR HO LIKE @SearchKeyword + N'%'
+           OR TEN LIKE @SearchKeyword + N'%'
+           OR SODTLL LIKE @SearchKeyword + N'%'
+           OR DIACHI LIKE @SearchKeyword + N'%')
+    ORDER BY HO, TEN, MAGV
+    OPTION (RECOMPILE);
+END
+GO
+
+GRANT EXECUTE ON dbo.usp_GiaoVien_Search TO [PGV];
+GO
+
+PRINT N'OK: dbo.usp_GiaoVien_Search đã sẵn sàng.';
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_GiaoVien_Insert
+    @MaGV   NCHAR(8),
+    @Ho     NVARCHAR(40),
+    @Ten    NVARCHAR(10),
+    @SoDTLL NCHAR(15) = NULL,
+    @DiaChi NVARCHAR(50) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    INSERT INTO dbo.GIAOVIEN (MAGV, HO, TEN, SODTLL, DIACHI)
+    VALUES (@MaGV, @Ho, @Ten, @SoDTLL, @DiaChi);
+END
+GO
+
+GRANT EXECUTE ON dbo.usp_GiaoVien_Insert TO [PGV];
+GO
+
+PRINT N'OK: dbo.usp_GiaoVien_Insert đã sẵn sàng.';
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_GiaoVien_Update
+    @MaGV   NCHAR(8),
+    @Ho     NVARCHAR(40),
+    @Ten    NVARCHAR(10),
+    @SoDTLL NCHAR(15) = NULL,
+    @DiaChi NVARCHAR(50) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    UPDATE dbo.GIAOVIEN
+    SET HO = @Ho,
+        TEN = @Ten,
+        SODTLL = @SoDTLL,
+        DIACHI = @DiaChi
+    WHERE MAGV = @MaGV;
+END
+GO
+
+GRANT EXECUTE ON dbo.usp_GiaoVien_Update TO [PGV];
+GO
+
+PRINT N'OK: dbo.usp_GiaoVien_Update đã sẵn sàng.';
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_GiaoVien_Delete
+    @MaGV NCHAR(8)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF EXISTS (SELECT 1 FROM dbo.BODE WHERE MAGV = @MaGV)
+       OR EXISTS (SELECT 1 FROM dbo.GIAOVIEN_DANGKY WHERE MAGV = @MaGV)
+    BEGIN
+        UPDATE dbo.GIAOVIEN
+        SET TrangThai = 0
+        WHERE MAGV = @MaGV;
+
+        RETURN;
+    END;
+
+    DELETE FROM dbo.GIAOVIEN
+    WHERE MAGV = @MaGV;
+END
+GO
+
+GRANT EXECUTE ON dbo.usp_GiaoVien_Delete TO [PGV];
+GO
+
+PRINT N'OK: dbo.usp_GiaoVien_Delete đã sẵn sàng.';
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_GiaoVien_GetExistingIds
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT MAGV
+    FROM dbo.GIAOVIEN
+    ORDER BY MAGV;
+END
+GO
+
+GRANT EXECUTE ON dbo.usp_GiaoVien_GetExistingIds TO [PGV];
+GO
+
+PRINT N'OK: dbo.usp_GiaoVien_GetExistingIds đã sẵn sàng.';
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_GiaoVien_ExistsMaGV
+    @MaGV NCHAR(8)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT CASE
+        WHEN EXISTS (
+            SELECT 1
+            FROM dbo.GIAOVIEN
+            WHERE MAGV = @MaGV
+        )
+        THEN 1
+        ELSE 0
+    END;
+END
+GO
+
+GRANT EXECUTE ON dbo.usp_GiaoVien_ExistsMaGV TO [PGV];
+GO
+
+PRINT N'OK: dbo.usp_GiaoVien_ExistsMaGV đã sẵn sàng.';
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE [dbo].[usp_LayThongTinGiaoVienTheoMa]
+    @MAGV NCHAR(8)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT
+        MAGV,
+        HO,
+        TEN,
+        SODTLL,
+        DIACHI
+    FROM dbo.GIAOVIEN
+    WHERE MAGV = @MAGV;
+END
+GO
+
+GRANT EXECUTE ON dbo.usp_LayThongTinGiaoVienTheoMa TO [PGV];
+GRANT EXECUTE ON dbo.usp_LayThongTinGiaoVienTheoMa TO [Giangvien];
+GO
+
+PRINT N'OK: [dbo].[usp_LayThongTinGiaoVienTheoMa] đã sẵn sàng.';
+GO
+
+-- ============================================================
+-- Sinh Viên (SINHVIEN)
+-- ============================================================
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_SinhVien_GetAll
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT MaSV, Ho, Ten, NgaySinh, DiaChi, MaLop, MatKhau
+    FROM SINHVIEN
+    WHERE TrangThai = 1;
+END
+GO
+
+GRANT EXECUTE ON [dbo].[usp_SinhVien_GetAll] TO [PGV];
+GO
+
+PRINT N'OK: dbo.usp_SinhVien_GetAll đã sẵn sàng.';
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_SinhVien_GetByLop
+    @MaLop NCHAR(8)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT MaSV, Ho, Ten, NgaySinh, DiaChi, MaLop, MatKhau
+    FROM SINHVIEN
+    WHERE MaLop = @MaLop
+      AND TrangThai = 1;
+END
+GO
+
+GRANT EXECUTE ON [dbo].[usp_SinhVien_GetByLop] TO [PGV];
+GO
+
+PRINT N'OK: dbo.usp_SinhVien_GetByLop đã sẵn sàng.';
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_SinhVien_Search
+    @Keyword NVARCHAR(250) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SET @Keyword = NULLIF(LTRIM(RTRIM(@Keyword)), N'');
+
+    IF @Keyword IS NULL
+    BEGIN
+        SELECT MASV, HO, TEN, NGAYSINH, DIACHI, MALOP, MATKHAU
+        FROM SINHVIEN
+        WHERE TrangThai = 1
+        ORDER BY MASV
+        OPTION (RECOMPILE);
+        RETURN;
+    END
+
+    DECLARE @PrefixResults TABLE (
+        MASV NCHAR(8) PRIMARY KEY,
+        HO NVARCHAR(40),
+        TEN NVARCHAR(10),
+        NGAYSINH DATE,
+        DIACHI NVARCHAR(100),
+        MALOP NCHAR(8),
+        MATKHAU NVARCHAR(128)
+    );
+
+    INSERT INTO @PrefixResults (MASV, HO, TEN, NGAYSINH, DIACHI, MALOP, MATKHAU)
+    SELECT MASV, HO, TEN, NGAYSINH, DIACHI, MALOP, MATKHAU
+    FROM SINHVIEN
+    WHERE TrangThai = 1
+      AND (MASV  LIKE @Keyword + N'%'
+           OR MALOP LIKE @Keyword + N'%'
+           OR HO    LIKE @Keyword + N'%'
+           OR TEN   LIKE @Keyword + N'%')
+    OPTION (RECOMPILE);
+
+    IF @@ROWCOUNT > 0
+    BEGIN
+        SELECT MASV, HO, TEN, NGAYSINH, DIACHI, MALOP, MATKHAU
+        FROM @PrefixResults
+        ORDER BY MASV;
+        RETURN;
+    END
+
+    SELECT MASV, HO, TEN, NGAYSINH, DIACHI, MALOP, MATKHAU
+    FROM SINHVIEN
+    WHERE TrangThai = 1
+      AND (MASV   LIKE N'%' + @Keyword + N'%'
+           OR HO     LIKE N'%' + @Keyword + N'%'
+           OR TEN    LIKE N'%' + @Keyword + N'%'
+           OR DIACHI LIKE N'%' + @Keyword + N'%'
+           OR MALOP  LIKE N'%' + @Keyword + N'%')
+    ORDER BY MASV
+    OPTION (RECOMPILE);
+END
+GO
+
+GRANT EXECUTE ON dbo.usp_SinhVien_Search TO [PGV];
+GO
+
+PRINT N'OK: dbo.usp_SinhVien_Search đã sẵn sàng.';
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_SinhVien_Insert
+    @MaSV NCHAR(8),
+    @Ho NVARCHAR(40),
+    @Ten NVARCHAR(10),
+    @NgaySinh DATE,
+    @DiaChi NVARCHAR(100),
+    @MaLop NCHAR(8),
+    @MatKhau NVARCHAR(128)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF NOT EXISTS (SELECT 1 FROM LOP WHERE MALOP = @MaLop AND TrangThai = 1)
+    BEGIN
+        RAISERROR(N'Lop khong ton tai hoac da ngung su dung', 16, 1);
+        RETURN;
+    END
+
+    IF EXISTS (SELECT 1 FROM SINHVIEN WHERE MASV = @MaSV)
+    BEGIN
+        UPDATE SINHVIEN
+        SET Ho = @Ho,
+            Ten = @Ten,
+            NgaySinh = @NgaySinh,
+            DiaChi = @DiaChi,
+            MaLop = @MaLop,
+            MatKhau = @MatKhau,
+            TrangThai = 1
+        WHERE MASV = @MaSV
+          AND TrangThai = 0;
+
+        IF @@ROWCOUNT = 0
+            RAISERROR(N'Ma sinh vien da ton tai', 16, 1);
+
+        RETURN;
+    END
+
+    INSERT INTO SINHVIEN (MaSV, Ho, Ten, NgaySinh, DiaChi, MaLop, MatKhau, TrangThai)
+    VALUES (@MaSV, @Ho, @Ten, @NgaySinh, @DiaChi, @MaLop, @MatKhau, 1);
+END
+GO
+
+GRANT EXECUTE ON [dbo].[usp_SinhVien_Insert] TO [PGV];
+GO
+
+PRINT N'OK: dbo.usp_SinhVien_Insert đã sẵn sàng.';
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_SinhVien_Update
+    @MaSV NCHAR(8),
+    @Ho NVARCHAR(40),
+    @Ten NVARCHAR(10),
+    @NgaySinh DATE,
+    @DiaChi NVARCHAR(100),
+    @MaLop NCHAR(8),
+    @MatKhau NVARCHAR(128)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF NOT EXISTS (SELECT 1 FROM SINHVIEN WHERE MASV = @MaSV AND TrangThai = 1)
+    BEGIN
+        RAISERROR(N'Khong tim thay sinh vien dang hoat dong', 16, 1);
+        RETURN;
+    END
+
+    IF NOT EXISTS (SELECT 1 FROM LOP WHERE MALOP = @MaLop AND TrangThai = 1)
+    BEGIN
+        RAISERROR(N'Lop khong ton tai hoac da ngung su dung', 16, 1);
+        RETURN;
+    END
+
+    UPDATE SINHVIEN
+    SET Ho = @Ho, Ten = @Ten, NgaySinh = @NgaySinh, DiaChi = @DiaChi, MaLop = @MaLop, MatKhau = @MatKhau
+    WHERE MaSV = @MaSV;
+END
+GO
+
+GRANT EXECUTE ON [dbo].[usp_SinhVien_Update] TO [PGV];
+GO
+
+PRINT N'OK: dbo.usp_SinhVien_Update đã sẵn sàng.';
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_SinhVien_Delete
+    @MaSV NCHAR(8)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF NOT EXISTS (SELECT 1 FROM SINHVIEN WHERE MASV = @MaSV AND TrangThai = 1)
+    BEGIN
+        RAISERROR(N'Khong tim thay sinh vien dang hoat dong', 16, 1);
+        RETURN;
+    END
+
+    IF EXISTS (SELECT 1 FROM BANGDIEM WHERE MASV = @MaSV)
+    BEGIN
+        UPDATE SINHVIEN
+        SET TrangThai = 0
+        WHERE MASV = @MaSV;
+        RETURN;
+    END
+
+    DELETE FROM SINHVIEN WHERE MaSV = @MaSV;
+END
+GO
+
+GRANT EXECUTE ON [dbo].[usp_SinhVien_Delete] TO [PGV];
+GO
+
+PRINT N'OK: dbo.usp_SinhVien_Delete đã sẵn sàng.';
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_SinhVien_GetExistingIds
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT MASV
+    FROM dbo.SINHVIEN
+    WHERE TrangThai = 1;
+END
+GO
+
+GRANT EXECUTE ON dbo.usp_SinhVien_GetExistingIds TO [PGV];
+GO
+
+PRINT N'OK: dbo.usp_SinhVien_GetExistingIds đã sẵn sàng.';
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_SinhVien_ExistsMaSV
+    @MASV NCHAR(8)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT CASE
+        WHEN EXISTS (
+            SELECT 1
+            FROM dbo.SINHVIEN
+            WHERE MASV = @MASV
+              AND TrangThai = 1
+        )
+        THEN 1 ELSE 0
+    END;
+END
+GO
+
+GRANT EXECUTE ON dbo.usp_SinhVien_ExistsMaSV TO [PGV];
+GO
+
+PRINT N'OK: dbo.usp_SinhVien_ExistsMaSV đã sẵn sàng.';
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
 GO
 
 CREATE OR ALTER PROCEDURE dbo.usp_SinhVien_Login
@@ -104,29 +1272,32 @@ GO
 GRANT EXECUTE ON [dbo].[usp_SinhVien_Login] TO [Sinhvien];
 GO
 
-PRINT N'OK: Da tao usp_SinhVien_Login.';
+PRINT N'OK: dbo.usp_SinhVien_Login đã sẵn sàng.';
 GO
 
-IF COL_LENGTH('dbo.BODE', 'TrangThai') IS NULL
-BEGIN
-    ALTER TABLE dbo.BODE
-    ADD TrangThai BIT NOT NULL
-        CONSTRAINT DF_BODE_TrangThai DEFAULT (1);
-END
+REVOKE EXECUTE ON [dbo].[usp_SinhVien_GetAll] FROM [Giangvien];
+GO
+REVOKE EXECUTE ON [dbo].[usp_SinhVien_GetByLop] FROM [Giangvien];
+GO
+REVOKE EXECUTE ON [dbo].[usp_SinhVien_Insert] FROM [Giangvien];
+GO
+REVOKE EXECUTE ON [dbo].[usp_SinhVien_Update] FROM [Giangvien];
+GO
+REVOKE EXECUTE ON [dbo].[usp_SinhVien_Delete] FROM [Giangvien];
 GO
 
-IF OBJECT_ID(N'dbo.CK_MONHOC_MAMH_UPPER', N'C') IS NULL
-BEGIN
-    ALTER TABLE dbo.MONHOC
-    ADD CONSTRAINT CK_MONHOC_MAMH_UPPER
-        CHECK (MAMH COLLATE Latin1_General_BIN2 = UPPER(MAMH) COLLATE Latin1_General_BIN2);
-END
-GO
-
+-- ============================================================
+-- Bộ Đề (BODE)
+-- ============================================================
 IF OBJECT_ID(N'dbo.trg_BODE_KiemTraTruocKhiXoa', N'TR') IS NOT NULL
 BEGIN
     DROP TRIGGER dbo.trg_BODE_KiemTraTruocKhiXoa;
 END
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
 GO
 
 CREATE OR ALTER PROCEDURE dbo.usp_BoDe_GetAll
@@ -141,133 +1312,99 @@ BEGIN
 END
 GO
 
-PRINT N'OK: usp_BoDe_GetAll đã được cập nhật.';
+PRINT N'OK: dbo.usp_BoDe_GetAll đã sẵn sàng.';
 GO
 
-IF NOT EXISTS (
-    SELECT 1
-    FROM sys.indexes
-    WHERE name = N'IX_BODE_TrangThai_MAGV_CAUHOI'
-      AND object_id = OBJECT_ID(N'dbo.BODE')
-)
-BEGIN
-    CREATE NONCLUSTERED INDEX [IX_BODE_TrangThai_MAGV_CAUHOI]
-    ON [dbo].[BODE] ([TrangThai] ASC, [MAGV] ASC, [CAUHOI] ASC)
-    INCLUDE ([MAMH], [TRINHDO], [DAP_AN]);
-END
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
 GO
 
-IF NOT EXISTS (
-    SELECT 1
-    FROM sys.indexes
-    WHERE name = N'IX_BODE_TrangThai_MAMH_TRINHDO_CAUHOI'
-      AND object_id = OBJECT_ID(N'dbo.BODE')
-)
-BEGIN
-    CREATE NONCLUSTERED INDEX [IX_BODE_TrangThai_MAMH_TRINHDO_CAUHOI]
-    ON [dbo].[BODE] ([TrangThai] ASC, [MAMH] ASC, [TRINHDO] ASC, [CAUHOI] ASC)
-    INCLUDE ([DAP_AN], [MAGV]);
-END
-GO
-
-IF NOT EXISTS (
-    SELECT 1
-    FROM sys.indexes
-    WHERE name = N'IX_BODE_MAGV_CAUHOI'
-      AND object_id = OBJECT_ID(N'dbo.BODE')
-)
-BEGIN
-    CREATE NONCLUSTERED INDEX [IX_BODE_MAGV_CAUHOI]
-    ON [dbo].[BODE] ([MAGV] ASC, [CAUHOI] ASC)
-    INCLUDE ([MAMH], [TRINHDO], [DAP_AN]);
-END
-GO
-
-IF NOT EXISTS (
-    SELECT 1
-    FROM sys.indexes
-    WHERE name = N'IX_BODE_MAGV_MAMH_CAUHOI'
-      AND object_id = OBJECT_ID(N'dbo.BODE')
-)
-BEGIN
-    CREATE NONCLUSTERED INDEX [IX_BODE_MAGV_MAMH_CAUHOI]
-    ON [dbo].[BODE] ([MAGV] ASC, [MAMH] ASC, [CAUHOI] ASC)
-    INCLUDE ([TRINHDO], [DAP_AN]);
-END
-GO
-
-IF NOT EXISTS (
-    SELECT 1
-    FROM sys.indexes
-    WHERE name = N'IX_BODE_MAMH_TRINHDO_CAUHOI'
-      AND object_id = OBJECT_ID(N'dbo.BODE')
-)
-BEGIN
-    CREATE NONCLUSTERED INDEX [IX_BODE_MAMH_TRINHDO_CAUHOI]
-    ON [dbo].[BODE] ([MAMH] ASC, [TRINHDO] ASC, [CAUHOI] ASC)
-    INCLUDE ([DAP_AN], [MAGV]);
-END
-GO
-
-IF NOT EXISTS (
-    SELECT 1
-    FROM sys.indexes
-    WHERE name = N'IX_BODE_DuplicateCheck'
-      AND object_id = OBJECT_ID(N'dbo.BODE')
-)
-BEGIN
-    CREATE NONCLUSTERED INDEX [IX_BODE_DuplicateCheck]
-    ON [dbo].[BODE] ([TrangThai] ASC, [MAMH] ASC, [TRINHDO] ASC)
-    INCLUDE ([CAUHOI], [NOIDUNG], [A], [B], [C], [D]);
-END
-GO
-
-PRINT N'OK: Index BODE da san sang.';
-GO
-
-CREATE OR ALTER PROCEDURE dbo.usp_BoDe_CheckDuplicate
-    @CauHoi  INT = NULL,
-    @MaMH    NCHAR(5),
-    @TrinhDo CHAR(1),
-    @NoiDung NVARCHAR(200),
-    @DapAnA  NVARCHAR(50) = NULL,
-    @DapAnB  NVARCHAR(50) = NULL,
-    @DapAnC  NVARCHAR(50) = NULL,
-    @DapAnD  NVARCHAR(50) = NULL
+CREATE OR ALTER PROCEDURE dbo.usp_BoDe_GetDanhSach
+    @MAGV NCHAR(8) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
 
-    DECLARE @CleanNoiDung NVARCHAR(200) = LTRIM(RTRIM(ISNULL(@NoiDung, N'')));
-    DECLARE @DuplicateLevel NVARCHAR(30) = N'None';
-    DECLARE @DuplicateMessage NVARCHAR(255) = N'';
-
-    IF EXISTS (
-        SELECT 1
-        FROM dbo.BODE
-        WHERE TrangThai = 1
-          AND MAMH = @MaMH
-          AND LTRIM(RTRIM(NOIDUNG)) = @CleanNoiDung
-          AND (@CauHoi IS NULL OR CAUHOI <> @CauHoi)
-    )
-    BEGIN
-        SET @DuplicateLevel = N'Content';
-        SET @DuplicateMessage = N'Noi dung cau hoi da ton tai trong ngan hang de cua mon hoc nay.';
-    END
-
-    SELECT
-        @DuplicateLevel AS DuplicateLevel,
-        @DuplicateMessage AS DuplicateMessage,
-        CAST(CASE WHEN @DuplicateLevel = N'None' THEN 0 ELSE 1 END AS BIT) AS HasDuplicate;
+    SELECT CAUHOI, MAMH, TRINHDO, NOIDUNG,
+           A, B, C, D, DAP_AN, MAGV
+    FROM dbo.BODE
+    WHERE TrangThai = 1
+      AND (@MAGV IS NULL OR MAGV = @MAGV)
+    ORDER BY CAUHOI;
 END
 GO
 
-GRANT EXECUTE ON dbo.usp_BoDe_CheckDuplicate TO [PGV];
-GO
-GRANT EXECUTE ON dbo.usp_BoDe_CheckDuplicate TO [Giangvien];
+GRANT EXECUTE ON dbo.usp_BoDe_GetDanhSach TO [PGV];
+GRANT EXECUTE ON dbo.usp_BoDe_GetDanhSach TO [Giangvien];
 GO
 
-PRINT N'OK: usp_BoDe_CheckDuplicate da duoc cap nhat.';
+PRINT N'OK: dbo.usp_BoDe_GetDanhSach đã sẵn sàng.';
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_GetCauHoiByGiangVien
+    @MAGV NCHAR(8) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    EXEC dbo.usp_BoDe_GetDanhSach @MAGV = @MAGV;
+END
+GO
+
+GRANT EXECUTE ON dbo.usp_GetCauHoiByGiangVien TO [PGV];
+GRANT EXECUTE ON dbo.usp_GetCauHoiByGiangVien TO [Giangvien];
+GO
+
+PRINT N'OK: dbo.usp_GetCauHoiByGiangVien đã sẵn sàng.';
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_BoDe_Search
+    @Keyword NVARCHAR(250) = NULL,
+    @MAGV NCHAR(8) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @SearchKeyword NVARCHAR(250) = NULLIF(LTRIM(RTRIM(@Keyword)), N'');
+
+    SELECT CAUHOI, MAMH, TRINHDO, NOIDUNG,
+           A, B, C, D, DAP_AN, MAGV
+    FROM dbo.BODE
+    WHERE TrangThai = 1
+      AND (@MAGV IS NULL OR MAGV = @MAGV)
+      AND (
+          @SearchKeyword IS NULL
+          OR (LEN(@SearchKeyword) <= 5 AND MAMH = CONVERT(NCHAR(5), @SearchKeyword))
+          OR (LEN(@SearchKeyword) <= 8 AND MAGV = CONVERT(NCHAR(8), @SearchKeyword))
+          OR MAMH LIKE @SearchKeyword + N'%'
+          OR NOIDUNG LIKE N'%' + @SearchKeyword + N'%'
+      )
+    ORDER BY CAUHOI
+    OPTION (RECOMPILE);
+END
+GO
+
+GRANT EXECUTE ON dbo.usp_BoDe_Search TO [PGV];
+GRANT EXECUTE ON dbo.usp_BoDe_Search TO [Giangvien];
+GO
+
+PRINT N'OK: dbo.usp_BoDe_Search đã sẵn sàng.';
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
 GO
 
 CREATE OR ALTER PROCEDURE dbo.usp_BoDe_Insert
@@ -317,11 +1454,15 @@ END
 GO
 
 GRANT EXECUTE ON dbo.usp_BoDe_Insert TO [PGV];
-GO
 GRANT EXECUTE ON dbo.usp_BoDe_Insert TO [Giangvien];
 GO
 
-PRINT N'OK: usp_BoDe_Insert đã được cập nhật.';
+PRINT N'OK: dbo.usp_BoDe_Insert đã sẵn sàng.';
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
 GO
 
 CREATE OR ALTER PROCEDURE dbo.usp_BoDe_Update
@@ -380,11 +1521,15 @@ END
 GO
 
 GRANT EXECUTE ON dbo.usp_BoDe_Update TO [PGV];
-GO
 GRANT EXECUTE ON dbo.usp_BoDe_Update TO [Giangvien];
 GO
 
-PRINT N'OK: usp_BoDe_Update đã được cập nhật.';
+PRINT N'OK: dbo.usp_BoDe_Update đã sẵn sàng.';
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
 GO
 
 CREATE OR ALTER PROCEDURE dbo.usp_BoDe_Delete
@@ -441,45 +1586,64 @@ END
 GO
 
 GRANT EXECUTE ON dbo.usp_BoDe_Delete TO [PGV];
-GO
 GRANT EXECUTE ON dbo.usp_BoDe_Delete TO [Giangvien];
 GO
 
-PRINT N'OK: usp_BoDe_Delete da duoc cap nhat.';
+PRINT N'OK: dbo.usp_BoDe_Delete đã sẵn sàng.';
 GO
 
-CREATE OR ALTER PROCEDURE dbo.usp_BoDe_Search
-    @Keyword NVARCHAR(250) = NULL,
-    @MAGV NCHAR(8) = NULL
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_BoDe_CheckDuplicate
+    @CauHoi  INT = NULL,
+    @MaMH    NCHAR(5),
+    @TrinhDo CHAR(1),
+    @NoiDung NVARCHAR(200),
+    @DapAnA  NVARCHAR(50) = NULL,
+    @DapAnB  NVARCHAR(50) = NULL,
+    @DapAnC  NVARCHAR(50) = NULL,
+    @DapAnD  NVARCHAR(50) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
 
-    DECLARE @SearchKeyword NVARCHAR(250) = NULLIF(LTRIM(RTRIM(@Keyword)), N'');
+    DECLARE @CleanNoiDung NVARCHAR(200) = LTRIM(RTRIM(ISNULL(@NoiDung, N'')));
+    DECLARE @DuplicateLevel NVARCHAR(30) = N'None';
+    DECLARE @DuplicateMessage NVARCHAR(255) = N'';
 
-    SELECT CAUHOI, MAMH, TRINHDO, NOIDUNG,
-           A, B, C, D, DAP_AN, MAGV
-    FROM dbo.BODE
-    WHERE TrangThai = 1
-      AND (@MAGV IS NULL OR MAGV = @MAGV)
-      AND (
-          @SearchKeyword IS NULL
-          OR (LEN(@SearchKeyword) <= 5 AND MAMH = CONVERT(NCHAR(5), @SearchKeyword))
-          OR (LEN(@SearchKeyword) <= 8 AND MAGV = CONVERT(NCHAR(8), @SearchKeyword))
-          OR MAMH LIKE @SearchKeyword + N'%'
-          OR NOIDUNG LIKE N'%' + @SearchKeyword + N'%'
-      )
-    ORDER BY CAUHOI
-    OPTION (RECOMPILE);
+    IF EXISTS (
+        SELECT 1
+        FROM dbo.BODE
+        WHERE TrangThai = 1
+          AND MAMH = @MaMH
+          AND LTRIM(RTRIM(NOIDUNG)) = @CleanNoiDung
+          AND (@CauHoi IS NULL OR CAUHOI <> @CauHoi)
+    )
+    BEGIN
+        SET @DuplicateLevel = N'Content';
+        SET @DuplicateMessage = N'Noi dung cau hoi da ton tai trong ngan hang de cua mon hoc nay.';
+    END
+
+    SELECT
+        @DuplicateLevel AS DuplicateLevel,
+        @DuplicateMessage AS DuplicateMessage,
+        CAST(CASE WHEN @DuplicateLevel = N'None' THEN 0 ELSE 1 END AS BIT) AS HasDuplicate;
 END
 GO
 
-GRANT EXECUTE ON dbo.usp_BoDe_Search TO [PGV];
-GO
-GRANT EXECUTE ON dbo.usp_BoDe_Search TO [Giangvien];
+GRANT EXECUTE ON dbo.usp_BoDe_CheckDuplicate TO [PGV];
+GRANT EXECUTE ON dbo.usp_BoDe_CheckDuplicate TO [Giangvien];
 GO
 
-PRINT N'OK: usp_BoDe_Search đã được cập nhật.';
+PRINT N'OK: dbo.usp_BoDe_CheckDuplicate đã sẵn sàng.';
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
 GO
 
 CREATE OR ALTER PROCEDURE dbo.usp_BoDe_GetActiveSubjectCodes
@@ -495,52 +1659,15 @@ END
 GO
 
 GRANT EXECUTE ON dbo.usp_BoDe_GetActiveSubjectCodes TO [PGV];
-GO
 GRANT EXECUTE ON dbo.usp_BoDe_GetActiveSubjectCodes TO [Giangvien];
 GO
 
-PRINT N'OK: usp_BoDe_GetActiveSubjectCodes da duoc cap nhat.';
+PRINT N'OK: dbo.usp_BoDe_GetActiveSubjectCodes đã sẵn sàng.';
 GO
 
-CREATE OR ALTER PROCEDURE dbo.usp_BoDe_GetDanhSach
-    @MAGV NCHAR(8) = NULL
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    SELECT CAUHOI, MAMH, TRINHDO, NOIDUNG,
-           A, B, C, D, DAP_AN, MAGV
-    FROM dbo.BODE
-    WHERE TrangThai = 1
-      AND (@MAGV IS NULL OR MAGV = @MAGV)
-    ORDER BY CAUHOI;
-END
+SET ANSI_NULLS ON
 GO
-
-GRANT EXECUTE ON dbo.usp_BoDe_GetDanhSach TO [PGV];
-GO
-GRANT EXECUTE ON dbo.usp_BoDe_GetDanhSach TO [Giangvien];
-GO
-
-PRINT N'OK: Đã tạo usp_BoDe_GetDanhSach.';
-GO
-
-CREATE OR ALTER PROCEDURE dbo.usp_GetCauHoiByGiangVien
-    @MAGV NCHAR(8) = NULL
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    EXEC dbo.usp_BoDe_GetDanhSach @MAGV = @MAGV;
-END
-GO
-
-GRANT EXECUTE ON dbo.usp_GetCauHoiByGiangVien TO [PGV];
-GO
-GRANT EXECUTE ON dbo.usp_GetCauHoiByGiangVien TO [Giangvien];
-GO
-
-PRINT N'OK: Đã tạo usp_GetCauHoiByGiangVien compatibility wrapper.';
+SET QUOTED_IDENTIFIER ON
 GO
 
 CREATE OR ALTER PROCEDURE dbo.usp_BoDe_GetLatestCauHoi
@@ -554,124 +1681,15 @@ END
 GO
 
 GRANT EXECUTE ON dbo.usp_BoDe_GetLatestCauHoi TO [PGV];
-GO
 GRANT EXECUTE ON dbo.usp_BoDe_GetLatestCauHoi TO [Giangvien];
 GO
 
-PRINT N'OK: Đã tạo usp_BoDe_GetLatestCauHoi.';
+PRINT N'OK: dbo.usp_BoDe_GetLatestCauHoi đã sẵn sàng.';
 GO
 
-CREATE OR ALTER PROCEDURE dbo.usp_Lop_Search
-    @KEYWORD NVARCHAR(100) = NULL
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    SET @KEYWORD = NULLIF(LTRIM(RTRIM(@KEYWORD)), N'');
-
-    IF @KEYWORD IS NULL
-    BEGIN
-        SELECT MALOP, TENLOP
-        FROM LOP
-        WHERE TrangThai = 1
-        ORDER BY MALOP
-        OPTION (RECOMPILE);
-        RETURN;
-    END
-
-    IF EXISTS (
-        SELECT 1
-        FROM LOP
-        WHERE TrangThai = 1
-          AND (MALOP LIKE @KEYWORD + N'%'
-               OR TENLOP LIKE @KEYWORD + N'%')
-    )
-    BEGIN
-        SELECT MALOP, TENLOP
-        FROM LOP
-        WHERE TrangThai = 1
-          AND (MALOP LIKE @KEYWORD + N'%'
-               OR TENLOP LIKE @KEYWORD + N'%')
-        ORDER BY MALOP
-        OPTION (RECOMPILE);
-        RETURN;
-    END
-
-    SELECT MALOP, TENLOP
-    FROM LOP
-    WHERE TrangThai = 1
-      AND (MALOP LIKE N'%' + @KEYWORD + N'%'
-           OR TENLOP LIKE N'%' + @KEYWORD + N'%')
-    ORDER BY MALOP
-    OPTION (RECOMPILE);
-END
+SET ANSI_NULLS ON
 GO
-
-GRANT EXECUTE ON dbo.usp_Lop_Search TO [PGV];
-GO
-GRANT EXECUTE ON dbo.usp_Lop_Search TO [Giangvien];
-GO
-
-PRINT N'OK: Đã tạo usp_Lop_Search.';
-GO
-
-CREATE OR ALTER PROCEDURE dbo.usp_SinhVien_Search
-    @Keyword NVARCHAR(250) = NULL
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    SET @Keyword = NULLIF(LTRIM(RTRIM(@Keyword)), N'');
-
-    IF @Keyword IS NULL
-    BEGIN
-        SELECT MASV, HO, TEN, NGAYSINH, DIACHI, MALOP, MATKHAU
-        FROM SINHVIEN
-        WHERE TrangThai = 1
-        ORDER BY MASV
-        OPTION (RECOMPILE);
-        RETURN;
-    END
-
-    IF EXISTS (
-        SELECT 1
-        FROM SINHVIEN
-        WHERE TrangThai = 1
-          AND (MASV  LIKE @Keyword + N'%'
-               OR MALOP LIKE @Keyword + N'%'
-               OR HO    LIKE @Keyword + N'%'
-               OR TEN   LIKE @Keyword + N'%')
-    )
-    BEGIN
-        SELECT MASV, HO, TEN, NGAYSINH, DIACHI, MALOP, MATKHAU
-        FROM SINHVIEN
-        WHERE TrangThai = 1
-          AND (MASV  LIKE @Keyword + N'%'
-               OR MALOP LIKE @Keyword + N'%'
-               OR HO    LIKE @Keyword + N'%'
-               OR TEN   LIKE @Keyword + N'%')
-        ORDER BY MASV
-        OPTION (RECOMPILE);
-        RETURN;
-    END
-
-    SELECT MASV, HO, TEN, NGAYSINH, DIACHI, MALOP, MATKHAU
-    FROM SINHVIEN
-    WHERE TrangThai = 1
-      AND (MASV   LIKE N'%' + @Keyword + N'%'
-           OR HO     LIKE N'%' + @Keyword + N'%'
-           OR TEN    LIKE N'%' + @Keyword + N'%'
-           OR DIACHI LIKE N'%' + @Keyword + N'%'
-           OR MALOP  LIKE N'%' + @Keyword + N'%')
-    ORDER BY MASV
-    OPTION (RECOMPILE);
-END
-GO
-
-GRANT EXECUTE ON dbo.usp_SinhVien_Search TO [PGV];
-GO
-
-PRINT N'OK: usp_SinhVien_Search đã được cập nhật.';
+SET QUOTED_IDENTIFIER ON
 GO
 
 CREATE OR ALTER PROCEDURE [dbo].[usp_BoDe_TimKiemNangCao]
@@ -700,906 +1718,32 @@ BEGIN
         b.D,
         b.DAP_AN,
         b.MAGV,
-        dbo.udf_LayHoTen(gv.HO, gv.TEN)       AS TenGV
-    FROM [dbo].[BODE] b
+        LTRIM(RTRIM(ISNULL(gv.HO, N'') + N' ' + ISNULL(gv.TEN, N''))) AS TenGV
+    FROM (
+        SELECT CAUHOI, MAMH, TRINHDO, NOIDUNG, A, B, C, D, DAP_AN, MAGV
+        FROM [dbo].[BODE]
+        WHERE TrangThai = 1
+          AND (MAGV = @MAGV OR @MAGV IS NULL)
+          AND (MAMH = @MAMH OR @MAMH IS NULL)
+          AND (TRINHDO = @TRINHDO OR @TRINHDO IS NULL)
+          AND (
+              @Keyword IS NULL
+              OR @Keyword = N''
+              OR NOIDUNG LIKE N'%' + @Keyword + N'%'
+          )
+    ) b
     JOIN      [dbo].[MONHOC]   mh ON b.MAMH = mh.MAMH
     LEFT JOIN [dbo].[GIAOVIEN] gv ON b.MAGV = gv.MAGV
-    WHERE
-        b.TrangThai = 1
-        AND (b.MAGV = @MAGV OR @MAGV IS NULL)
-        AND (b.MAMH = @MAMH OR @MAMH IS NULL)
-        AND (b.TRINHDO = @TRINHDO OR @TRINHDO IS NULL)
-        AND (
-            @Keyword IS NULL
-            OR @Keyword = N''
-            OR b.NOIDUNG LIKE N'%' + @Keyword + N'%'
-        )
-    ORDER BY b.MAMH ASC, b.TRINHDO ASC, b.CAUHOI ASC;
+    ORDER BY b.MAMH ASC, b.TRINHDO ASC, b.CAUHOI ASC
+    OPTION (RECOMPILE);
 END
 GO
 
 GRANT EXECUTE ON [dbo].[usp_BoDe_TimKiemNangCao] TO [PGV];
-GO
 GRANT EXECUTE ON [dbo].[usp_BoDe_TimKiemNangCao] TO [Giangvien];
 GO
 
-PRINT N'OK: Da tao SP usp_BoDe_TimKiemNangCao.';
-GO
-
-
-CREATE OR ALTER PROCEDURE dbo.usp_MonHoc_GetAll
-AS
-BEGIN
-    SET NOCOUNT ON;
-    SELECT MaMH, TenMH
-    FROM MONHOC
-    WHERE TrangThai = 1;
-END
-GO
-GRANT EXECUTE ON [dbo].[usp_MonHoc_GetAll] TO [PGV];
-GO
-GRANT EXECUTE ON [dbo].[usp_MonHoc_GetAll] TO [Giangvien];
-GO
-
-CREATE OR ALTER PROCEDURE dbo.usp_MonHoc_Search
-    @Keyword NVARCHAR(250) = NULL
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    SET @Keyword = NULLIF(LTRIM(RTRIM(@Keyword)), N'');
-
-    IF @Keyword IS NULL
-    BEGIN
-        SELECT MAMH, TENMH
-        FROM dbo.MONHOC
-        WHERE TrangThai = 1
-        ORDER BY MAMH
-        OPTION (RECOMPILE);
-        RETURN;
-    END
-
-    IF EXISTS (
-        SELECT 1
-        FROM dbo.MONHOC
-        WHERE TrangThai = 1
-          AND (MAMH LIKE @Keyword + N'%'
-               OR TENMH LIKE @Keyword + N'%')
-    )
-    BEGIN
-        SELECT MAMH, TENMH
-        FROM dbo.MONHOC
-        WHERE TrangThai = 1
-          AND (MAMH LIKE @Keyword + N'%'
-               OR TENMH LIKE @Keyword + N'%')
-        ORDER BY MAMH
-        OPTION (RECOMPILE);
-        RETURN;
-    END
-
-    SELECT MAMH, TENMH
-    FROM dbo.MONHOC
-    WHERE TrangThai = 1
-      AND (MAMH LIKE N'%' + @Keyword + N'%'
-           OR TENMH LIKE N'%' + @Keyword + N'%')
-    ORDER BY MAMH
-    OPTION (RECOMPILE);
-END
-GO
-GRANT EXECUTE ON dbo.usp_MonHoc_Search TO [PGV];
-GO
-GRANT EXECUTE ON dbo.usp_MonHoc_Search TO [Giangvien];
-GO
-
-CREATE OR ALTER PROCEDURE dbo.usp_MonHoc_Delete
-    @MaMH NCHAR(5)
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    IF EXISTS (SELECT 1 FROM [dbo].[BANGDIEM] WHERE [MAMH] = @MaMH)
-       OR EXISTS (SELECT 1 FROM [dbo].[BODE] WHERE [MAMH] = @MaMH)
-       OR EXISTS (SELECT 1 FROM [dbo].[GIAOVIEN_DANGKY] WHERE [MAMH] = @MaMH)
-    BEGIN
-        UPDATE [dbo].[MONHOC]
-        SET [TrangThai] = 0
-        WHERE [MaMH] = @MaMH;
-        PRINT N'INFO: Đã chuyển môn học sang trạng thái Ngừng dùng (Xóa mềm) do có dữ liệu liên kết.';
-    END
-    ELSE
-    BEGIN
-        DELETE FROM [dbo].[MONHOC]
-        WHERE [MaMH] = @MaMH;
-        PRINT N'INFO: Đã xóa cứng môn học hoàn toàn khỏi Database.';
-    END
-END
-GO
-GRANT EXECUTE ON [dbo].[usp_MonHoc_Delete] TO [PGV];
-GO
-
-CREATE OR ALTER PROCEDURE dbo.usp_LayDanhSachMonHoc
-AS
-BEGIN
-    SET NOCOUNT ON;
-    SELECT MAMH, TENMH
-    FROM dbo.MONHOC
-    WHERE TrangThai = 1
-    ORDER BY TENMH ASC;
-END
-GO
-GRANT EXECUTE ON dbo.usp_LayDanhSachMonHoc TO [PGV];
-GO
-GRANT EXECUTE ON dbo.usp_LayDanhSachMonHoc TO [Giangvien];
-GO
-
-CREATE OR ALTER PROCEDURE dbo.usp_MonHoc_Restore
-    @MaMH NCHAR(5)
-AS
-BEGIN
-    SET NOCOUNT ON;
-    UPDATE [dbo].[MONHOC]
-    SET [TrangThai] = 1
-    WHERE [MaMH] = @MaMH;
-    PRINT N'OK: Đã phục hồi môn học.';
-END
-GO
-GRANT EXECUTE ON [dbo].[usp_MonHoc_Restore] TO [PGV];
-GO
-
-CREATE OR ALTER PROCEDURE dbo.usp_MonHoc_Insert
-    @MaMH NCHAR(5),
-    @TenMH NVARCHAR(40)
-AS
-BEGIN
-    SET NOCOUNT ON;
-    SET @MaMH = UPPER(LTRIM(RTRIM(@MaMH)));
-    SET @TenMH = LTRIM(RTRIM(@TenMH));
-    
-    IF EXISTS (SELECT 1 FROM dbo.MONHOC WHERE MaMH = @MaMH)
-    BEGIN
-        THROW 50001, N'Mã môn học đã tồn tại. Không thể thêm mới.', 1;
-    END
-
-    IF EXISTS (SELECT 1 FROM dbo.MONHOC WHERE TenMH = @TenMH)
-    BEGIN
-        THROW 50002, N'Tên môn học đã tồn tại. Không thể thêm mới.', 1;
-    END
-
-    INSERT INTO dbo.MONHOC (MaMH, TenMH, TrangThai)
-    VALUES (@MaMH, @TenMH, 1);
-
-    PRINT N'INFO: Đã thêm mới môn học.';
-END
-GO
-GRANT EXECUTE ON [dbo].[usp_MonHoc_Insert] TO [PGV];
-GO
-
-CREATE OR ALTER PROCEDURE dbo.usp_MonHoc_Update
-    @MaMH NCHAR(5),
-    @TenMH NVARCHAR(40)
-AS
-BEGIN
-    SET NOCOUNT ON;
-    SET @MaMH = UPPER(LTRIM(RTRIM(@MaMH)));
-    SET @TenMH = LTRIM(RTRIM(@TenMH));
-
-    UPDATE dbo.MONHOC
-    SET TenMH = @TenMH
-    WHERE MaMH = @MaMH
-      AND TrangThai = 1;
-END
-GO
-GRANT EXECUTE ON [dbo].[usp_MonHoc_Update] TO [PGV];
-GO
-
-PRINT N'OK: Các stored procedure cho MonHoc đã được cập nhật.';
-GO
-
-IF COL_LENGTH('dbo.GIAOVIEN', 'TrangThai') IS NULL
-BEGIN
-    ALTER TABLE dbo.GIAOVIEN
-    ADD TrangThai BIT NOT NULL
-        CONSTRAINT DF_GIAOVIEN_TrangThai DEFAULT (1);
-END
-GO
-
-IF NOT EXISTS (
-    SELECT 1
-    FROM sys.indexes
-    WHERE name = N'IX_GIAOVIEN_TrangThai_HO_TEN'
-      AND object_id = OBJECT_ID(N'dbo.GIAOVIEN')
-)
-BEGIN
-    CREATE NONCLUSTERED INDEX [IX_GIAOVIEN_TrangThai_HO_TEN]
-    ON [dbo].[GIAOVIEN] ([TrangThai] ASC, [HO] ASC, [TEN] ASC, [MAGV] ASC)
-    INCLUDE ([SODTLL], [DIACHI]);
-END
-GO
-
-IF NOT EXISTS (
-    SELECT 1
-    FROM sys.indexes
-    WHERE name = N'IX_GIAOVIEN_DANGKY_MAGV'
-      AND object_id = OBJECT_ID(N'dbo.GIAOVIEN_DANGKY')
-)
-BEGIN
-    CREATE NONCLUSTERED INDEX [IX_GIAOVIEN_DANGKY_MAGV]
-    ON [dbo].[GIAOVIEN_DANGKY] ([MAGV] ASC)
-    INCLUDE ([MAMH], [MALOP], [LAN]);
-END
-GO
-
-PRINT N'OK: Index GiaoVien soft-delete da san sang.';
-GO
-
-CREATE OR ALTER PROCEDURE dbo.usp_GiaoVien_GetAll
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    SELECT MAGV AS MaGV, HO AS Ho, TEN AS Ten, SODTLL AS SoDTLL, DIACHI AS DiaChi
-    FROM dbo.vw_GiaoVien_DanhSach
-    ORDER BY HO, TEN, MAGV;
-END
-GO
-
-CREATE OR ALTER PROCEDURE dbo.usp_GiaoVien_Insert
-    @MaGV   NCHAR(8),
-    @Ho     NVARCHAR(40),
-    @Ten    NVARCHAR(10),
-    @SoDTLL NCHAR(15) = NULL,
-    @DiaChi NVARCHAR(50) = NULL
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    INSERT INTO dbo.GIAOVIEN (MAGV, HO, TEN, SODTLL, DIACHI)
-    VALUES (@MaGV, @Ho, @Ten, @SoDTLL, @DiaChi);
-END
-GO
-
-CREATE OR ALTER PROCEDURE dbo.usp_GiaoVien_Update
-    @MaGV   NCHAR(8),
-    @Ho     NVARCHAR(40),
-    @Ten    NVARCHAR(10),
-    @SoDTLL NCHAR(15) = NULL,
-    @DiaChi NVARCHAR(50) = NULL
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    UPDATE dbo.GIAOVIEN
-    SET HO = @Ho,
-        TEN = @Ten,
-        SODTLL = @SoDTLL,
-        DIACHI = @DiaChi
-    WHERE MAGV = @MaGV;
-END
-GO
-
-CREATE OR ALTER PROCEDURE dbo.usp_GiaoVien_Delete
-    @MaGV NCHAR(8)
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    IF EXISTS (SELECT 1 FROM dbo.BODE WHERE MAGV = @MaGV)
-       OR EXISTS (SELECT 1 FROM dbo.GIAOVIEN_DANGKY WHERE MAGV = @MaGV)
-    BEGIN
-        UPDATE dbo.GIAOVIEN
-        SET TrangThai = 0
-        WHERE MAGV = @MaGV;
-
-        RETURN;
-    END;
-
-    DELETE FROM dbo.GIAOVIEN
-    WHERE MAGV = @MaGV;
-END
-GO
-
-CREATE OR ALTER PROCEDURE dbo.usp_GiaoVien_Search
-    @Keyword NVARCHAR(250) = NULL
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    DECLARE @SearchKeyword NVARCHAR(250) = NULLIF(LTRIM(RTRIM(@Keyword)), N'');
-
-    IF @SearchKeyword IS NULL
-    BEGIN
-        SELECT MAGV AS MaGV, HO AS Ho, TEN AS Ten, SODTLL AS SoDTLL, DIACHI AS DiaChi
-        FROM dbo.vw_GiaoVien_DanhSach
-        ORDER BY HO, TEN, MAGV;
-
-        RETURN;
-    END;
-
-    SELECT MAGV AS MaGV, HO AS Ho, TEN AS Ten, SODTLL AS SoDTLL, DIACHI AS DiaChi
-    FROM dbo.vw_GiaoVien_DanhSach
-    WHERE MAGV = CONVERT(NCHAR(8), @SearchKeyword)
-       OR HO LIKE @SearchKeyword + N'%'
-       OR TEN LIKE @SearchKeyword + N'%'
-       OR SODTLL LIKE @SearchKeyword + N'%'
-       OR DIACHI LIKE @SearchKeyword + N'%'
-    ORDER BY HO, TEN, MAGV
-    OPTION (RECOMPILE);
-END
-GO
-
-CREATE OR ALTER PROCEDURE dbo.usp_GiaoVien_GetExistingIds
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    SELECT MAGV
-    FROM dbo.GIAOVIEN
-    ORDER BY MAGV;
-END
-GO
-
-CREATE OR ALTER PROCEDURE dbo.usp_GiaoVien_ExistsMaGV
-    @MaGV NCHAR(8)
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    SELECT CASE
-        WHEN EXISTS (
-            SELECT 1
-            FROM dbo.GIAOVIEN
-            WHERE MAGV = @MaGV
-        )
-        THEN 1
-        ELSE 0
-    END;
-END
-GO
-
-GRANT EXECUTE ON dbo.usp_GiaoVien_GetAll TO [PGV];
-GO
-GRANT EXECUTE ON dbo.usp_GiaoVien_Insert TO [PGV];
-GO
-GRANT EXECUTE ON dbo.usp_GiaoVien_Update TO [PGV];
-GO
-GRANT EXECUTE ON dbo.usp_GiaoVien_Delete TO [PGV];
-GO
-GRANT EXECUTE ON dbo.usp_GiaoVien_Search TO [PGV];
-GO
-GRANT EXECUTE ON dbo.usp_GiaoVien_GetExistingIds TO [PGV];
-GO
-GRANT EXECUTE ON dbo.usp_GiaoVien_ExistsMaGV TO [PGV];
-GO
-
-PRINT N'OK: Da cap nhat SP va index GiaoVien.';
-GO
-
-CREATE OR ALTER PROCEDURE dbo.usp_SinhVien_GetAll
-AS
-BEGIN
-    SET NOCOUNT ON;
-    SELECT MaSV, Ho, Ten, NgaySinh, DiaChi, MaLop, MatKhau
-    FROM SINHVIEN
-    WHERE TrangThai = 1;
-END
-GO
-
-GRANT EXECUTE ON [dbo].[usp_SinhVien_GetAll] TO [PGV]
-GO
-
-CREATE OR ALTER PROCEDURE dbo.usp_SinhVien_GetByLop
-    @MaLop NCHAR(8)
-AS
-BEGIN
-    SET NOCOUNT ON;
-    SELECT MaSV, Ho, Ten, NgaySinh, DiaChi, MaLop, MatKhau
-    FROM SINHVIEN
-    WHERE MaLop = @MaLop
-      AND TrangThai = 1;
-END
-GO
-
-GRANT EXECUTE ON [dbo].[usp_SinhVien_GetByLop] TO [PGV]
-GO
-
-CREATE OR ALTER PROCEDURE dbo.usp_SinhVien_Insert
-    @MaSV NCHAR(8),
-    @Ho NVARCHAR(40),
-    @Ten NVARCHAR(10),
-    @NgaySinh DATE,
-    @DiaChi NVARCHAR(100),
-    @MaLop NCHAR(8),
-    @MatKhau NVARCHAR(128)
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    IF NOT EXISTS (SELECT 1 FROM LOP WHERE MALOP = @MaLop AND TrangThai = 1)
-    BEGIN
-        RAISERROR(N'Lop khong ton tai hoac da ngung su dung', 16, 1);
-        RETURN;
-    END
-
-    IF EXISTS (SELECT 1 FROM SINHVIEN WHERE MASV = @MaSV)
-    BEGIN
-        UPDATE SINHVIEN
-        SET Ho = @Ho,
-            Ten = @Ten,
-            NgaySinh = @NgaySinh,
-            DiaChi = @DiaChi,
-            MaLop = @MaLop,
-            MatKhau = @MatKhau,
-            TrangThai = 1
-        WHERE MASV = @MaSV
-          AND TrangThai = 0;
-
-        IF @@ROWCOUNT = 0
-            RAISERROR(N'Ma sinh vien da ton tai', 16, 1);
-
-        RETURN;
-    END
-
-    INSERT INTO SINHVIEN (MaSV, Ho, Ten, NgaySinh, DiaChi, MaLop, MatKhau, TrangThai)
-    VALUES (@MaSV, @Ho, @Ten, @NgaySinh, @DiaChi, @MaLop, @MatKhau, 1);
-END
-GO
-
-CREATE OR ALTER PROCEDURE dbo.usp_SinhVien_Update
-    @MaSV NCHAR(8),
-    @Ho NVARCHAR(40),
-    @Ten NVARCHAR(10),
-    @NgaySinh DATE,
-    @DiaChi NVARCHAR(100),
-    @MaLop NCHAR(8),
-    @MatKhau NVARCHAR(128)
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    IF NOT EXISTS (SELECT 1 FROM SINHVIEN WHERE MASV = @MaSV AND TrangThai = 1)
-    BEGIN
-        RAISERROR(N'Khong tim thay sinh vien dang hoat dong', 16, 1);
-        RETURN;
-    END
-
-    IF NOT EXISTS (SELECT 1 FROM LOP WHERE MALOP = @MaLop AND TrangThai = 1)
-    BEGIN
-        RAISERROR(N'Lop khong ton tai hoac da ngung su dung', 16, 1);
-        RETURN;
-    END
-
-    UPDATE SINHVIEN
-    SET Ho = @Ho, Ten = @Ten, NgaySinh = @NgaySinh, DiaChi = @DiaChi, MaLop = @MaLop, MatKhau = @MatKhau
-    WHERE MaSV = @MaSV;
-END
-GO
-
-CREATE OR ALTER PROCEDURE dbo.usp_SinhVien_Delete
-    @MaSV NCHAR(8)
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    IF NOT EXISTS (SELECT 1 FROM SINHVIEN WHERE MASV = @MaSV AND TrangThai = 1)
-    BEGIN
-        RAISERROR(N'Khong tim thay sinh vien dang hoat dong', 16, 1);
-        RETURN;
-    END
-
-    IF EXISTS (SELECT 1 FROM BANGDIEM WHERE MASV = @MaSV)
-    BEGIN
-        UPDATE SINHVIEN
-        SET TrangThai = 0
-        WHERE MASV = @MaSV;
-        RETURN;
-    END
-
-    DELETE FROM SINHVIEN WHERE MaSV = @MaSV;
-END
-GO
-
-CREATE PROCEDURE dbo.usp_SinhVien_Search
-    @Keyword NVARCHAR(250)
-AS
-BEGIN
-    SET NOCOUNT ON;
-    SELECT MaSV, Ho, Ten, NgaySinh, DiaChi, MaLop, MatKhau
-    FROM SINHVIEN
-    WHERE @Keyword IS NULL OR @Keyword = ''
-       OR MaSV LIKE '%' + @Keyword + '%'
-       OR Ho LIKE '%' + @Keyword + '%'
-       OR Ten LIKE '%' + @Keyword + '%'
-       OR DiaChi LIKE '%' + @Keyword + '%'
-       OR MaLop LIKE '%' + @Keyword + '%';
-END
-GO
-
-CREATE PROCEDURE dbo.usp_BoDe_Insert
-    @CauHoi INT,       -- LOI: CAUHOI la IDENTITY, khong the INSERT gia tri nay
-    @MaMH NVARCHAR(50),
-    @TrinhDo NVARCHAR(10),
-    @NoiDung NVARCHAR(MAX),
-    @DapAnA NVARCHAR(MAX),
-    @DapAnB NVARCHAR(MAX),
-    @DapAnC NVARCHAR(MAX),
-    @DapAnD NVARCHAR(MAX),
-    @DapAn NVARCHAR(10),
-    @MaGV NVARCHAR(50)
-AS
-BEGIN
-    SET NOCOUNT ON;
-    INSERT INTO BODE (CauHoi, MaMH, TrinhDo, NoiDung, DapAnA, DapAnB, DapAnC, DapAnD, DapAn, MaGV)
-    VALUES (@CauHoi, @MaMH, @TrinhDo, @NoiDung, @DapAnA, @DapAnB, @DapAnC, @DapAnD, @DapAn, @MaGV);
-END
-GO
-
-CREATE PROCEDURE dbo.usp_BoDe_Update
-    @CauHoi INT,
-    @MaMH NVARCHAR(50),
-    @TrinhDo NVARCHAR(10),
-    @NoiDung NVARCHAR(MAX),
-    @DapAnA NVARCHAR(MAX),
-    @DapAnB NVARCHAR(MAX),
-    @DapAnC NVARCHAR(MAX),
-    @DapAnD NVARCHAR(MAX),
-    @DapAn NVARCHAR(10),
-    @MaGV NVARCHAR(50)
-AS
-BEGIN
-    SET NOCOUNT ON;
-    UPDATE BODE
-    SET TrinhDo = @TrinhDo,
-        NoiDung = @NoiDung,
-        DapAnA = @DapAnA,
-        DapAnB = @DapAnB,
-        DapAnC = @DapAnC,
-        DapAnD = @DapAnD,
-        DapAn = @DapAn,
-        MaGV = @MaGV
-    WHERE CauHoi = @CauHoi AND MaMH = @MaMH;
-END
-GO
-
-CREATE PROCEDURE dbo.usp_BoDe_Delete
-    @CauHoi INT,
-    @MaMH NVARCHAR(50)
-AS
-BEGIN
-    SET NOCOUNT ON;
-    DELETE FROM BODE WHERE CauHoi = @CauHoi AND MaMH = @MaMH;
-END
-GO
-
-CREATE PROCEDURE dbo.usp_BoDe_Search
-    @Keyword NVARCHAR(250)
-AS
-BEGIN
-    SET NOCOUNT ON;
-    SELECT CauHoi, MaMH, TrinhDo, NoiDung, DapAnA, DapAnB, DapAnC, DapAnD, DapAn, MaGV
-    FROM BODE
-    WHERE @Keyword IS NULL OR @Keyword = ''
-       OR MaMH LIKE '%' + @Keyword + '%'
-       OR NoiDung LIKE '%' + @Keyword + '%'
-       OR MaGV LIKE '%' + @Keyword + '%';
-END
-GO
-
--- ------------------------------------------------------------
--- Stored Procedures for Lop
--- ------------------------------------------------------------
-CREATE PROCEDURE usp_Lop_Insert
-    @MALOP NCHAR(15),
-    @TENLOP NVARCHAR(50)
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    IF EXISTS (SELECT 1 FROM LOP WHERE MALOP = @MALOP)
-    BEGIN
-        RAISERROR(N'Ma lop da ton tai', 16, 1);
-        RETURN;
-    END
-
-    IF EXISTS (SELECT 1 FROM LOP WHERE TENLOP = @TENLOP)
-    BEGIN
-        RAISERROR(N'Ten lop da ton tai', 16, 1);
-        RETURN;
-    END
-
-    INSERT INTO LOP(MALOP, TENLOP, TrangThai)
-    VALUES(@MALOP, @TENLOP, 1);
-END
-GO
-
-CREATE OR ALTER PROCEDURE dbo.usp_Lop_Update
-    @MALOP NCHAR(8),
-    @TENLOP NVARCHAR(40)
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    IF NOT EXISTS (SELECT 1 FROM LOP WHERE MALOP = @MALOP AND TrangThai = 1)
-    BEGIN
-        RAISERROR(N'Khong tim thay lop dang hoat dong', 16, 1);
-        RETURN;
-    END
-
-    UPDATE LOP
-    SET TENLOP = @TENLOP
-    WHERE MALOP = @MALOP;
-END
-GO
-
-CREATE OR ALTER PROCEDURE dbo.usp_Lop_Delete
-    @MALOP NCHAR(8)
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    IF NOT EXISTS (SELECT 1 FROM LOP WHERE MALOP = @MALOP AND TrangThai = 1)
-    BEGIN
-        RAISERROR(N'Không tìm thấy lớp đang hoạt động', 16, 1);
-        RETURN;
-    END
-
-    -- Deactivate or delete students of this class
-    -- For students without exam results: delete them
-    DELETE FROM SINHVIEN
-    WHERE MALOP = @MALOP
-      AND TrangThai = 1
-      AND MASV NOT IN (SELECT MASV FROM BANGDIEM);
-
-    -- For students with exam results: deactivate them
-    UPDATE SINHVIEN
-    SET TrangThai = 0
-    WHERE MALOP = @MALOP
-      AND TrangThai = 1;
-
-    IF EXISTS (SELECT 1 FROM SINHVIEN WHERE MALOP = @MALOP)
-       OR EXISTS (SELECT 1 FROM GIAOVIEN_DANGKY WHERE MALOP = @MALOP)
-    BEGIN
-        UPDATE LOP
-        SET TrangThai = 0
-        WHERE MALOP = @MALOP;
-        RETURN;
-    END
-
-    DELETE FROM LOP
-    WHERE MALOP = @MALOP;
-END
-GO
-
-CREATE OR ALTER PROCEDURE dbo.usp_Lop_GetAll
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    SELECT
-        MALOP,
-        TENLOP
-    FROM LOP
-    WHERE TrangThai = 1
-    ORDER BY MALOP;
-END
-GO
-
-CREATE OR ALTER PROCEDURE dbo.usp_SinhVien_GetExistingIds
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    SELECT MASV
-    FROM dbo.SINHVIEN
-    WHERE TrangThai = 1;
-END
-GO
-
-CREATE OR ALTER PROCEDURE dbo.usp_SinhVien_ExistsMaSV
-    @MASV NCHAR(8)
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    SELECT CASE
-        WHEN EXISTS (
-            SELECT 1
-            FROM dbo.SINHVIEN
-            WHERE MASV = @MASV
-              AND TrangThai = 1
-        )
-        THEN 1 ELSE 0
-    END;
-END
-GO
-
-CREATE OR ALTER PROCEDURE dbo.usp_Lop_ExistsMaLop
-    @MALOP NCHAR(8)
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    SELECT CASE
-        WHEN EXISTS (
-            SELECT 1
-            FROM dbo.LOP
-            WHERE MALOP = @MALOP
-              AND TrangThai = 1
-        )
-        THEN 1 ELSE 0
-    END;
-END
-GO
-
-CREATE OR ALTER PROCEDURE dbo.usp_Lop_ExistsTenLop
-    @TENLOP NVARCHAR(40)
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    SELECT CASE
-        WHEN EXISTS (
-            SELECT 1
-            FROM dbo.LOP
-            WHERE TENLOP = @TENLOP
-              AND TrangThai = 1
-        )
-        THEN 1 ELSE 0
-    END;
-END
-GO
-
-CREATE OR ALTER PROCEDURE dbo.usp_Lop_ExistsTenLopExcludingMaLop
-    @TENLOP NVARCHAR(40),
-    @MALOP NCHAR(8)
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    SELECT CASE
-        WHEN EXISTS (
-            SELECT 1
-            FROM dbo.LOP
-            WHERE TENLOP = @TENLOP
-              AND MALOP <> @MALOP
-              AND TrangThai = 1
-        )
-        THEN 1 ELSE 0
-    END;
-END
-GO
-
-GRANT EXECUTE ON dbo.usp_SinhVien_GetExistingIds TO [PGV]
-GO
-GRANT EXECUTE ON dbo.usp_SinhVien_ExistsMaSV TO [PGV]
-GO
-GRANT EXECUTE ON dbo.usp_Lop_ExistsMaLop TO [PGV]
-GO
-GRANT EXECUTE ON dbo.usp_Lop_ExistsTenLop TO [PGV]
-GO
-GRANT EXECUTE ON dbo.usp_Lop_ExistsTenLopExcludingMaLop TO [PGV]
-GO
-
-GRANT EXECUTE ON [dbo].[usp_Lop_GetAll] TO [PGV]
-GO
-GRANT EXECUTE ON [dbo].[usp_Lop_Insert] TO [PGV]
-GO
-GRANT EXECUTE ON [dbo].[usp_Lop_Update] TO [PGV]
-GO
-GRANT EXECUTE ON [dbo].[usp_Lop_Delete] TO [PGV]
-GO
-GRANT EXECUTE ON [dbo].[usp_SinhVien_Insert] TO [PGV]
-GO
-GRANT EXECUTE ON [dbo].[usp_SinhVien_Update] TO [PGV]
-GO
-GRANT EXECUTE ON [dbo].[usp_SinhVien_Delete] TO [PGV]
-GO
-REVOKE EXECUTE ON [dbo].[usp_SinhVien_GetAll] FROM [Giangvien]
-GO
-REVOKE EXECUTE ON [dbo].[usp_SinhVien_GetByLop] FROM [Giangvien]
-GO
-REVOKE EXECUTE ON [dbo].[usp_SinhVien_Insert] FROM [Giangvien]
-GO
-REVOKE EXECUTE ON [dbo].[usp_SinhVien_Update] FROM [Giangvien]
-GO
-REVOKE EXECUTE ON [dbo].[usp_SinhVien_Delete] FROM [Giangvien]
-GO
-
-PRINT N'OK: Da tao toan bo SP CRUD (MonHoc, GiaoVien, SinhVien, BoDe, Lop).';
-GO
-
-GO
-
-USE [THITRACNGHIEM]
-GO
-
-CREATE PROCEDURE [dbo].[SP_TAOTAIKHOAN]
-    @LGNAME  VARCHAR(50),
-    @PASS    VARCHAR(50),
-    @USERNAME VARCHAR(50),
-    @ROLE    VARCHAR(50)
-AS
-BEGIN
-    IF EXISTS (SELECT * FROM sys.server_principals WHERE name = @LGNAME)
-        RETURN 1;
-
-    IF EXISTS (SELECT * FROM sys.database_principals WHERE name = @USERNAME)
-        RETURN 2;
-
-    BEGIN TRY
-        EXEC sp_addlogin @loginame = @LGNAME, @passwd = @PASS;
-
-        EXEC sp_adduser @loginame = @LGNAME, @name_in_db = @USERNAME;
-
-        EXEC sp_addrolemember @rolename = @ROLE, @membername = @USERNAME;
-
-        RETURN 0;
-    END TRY
-    BEGIN CATCH
-        IF EXISTS (SELECT * FROM sys.server_principals WHERE name = @LGNAME)
-            EXEC sp_droplogin @loginame = @LGNAME;
-
-        RETURN 3;
-    END CATCH
-END
-GO
-
-GRANT EXECUTE ON [dbo].[SP_TAOTAIKHOAN] TO [PGV];
-GO
-
-PRINT N'OK: Da tao SP_TAOTAIKHOAN.';
-GO
-
-CREATE PROCEDURE [dbo].[usp_LayDanhSachQuyen_TaoTaiKhoan]
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    SELECT
-        name AS TenNhomQuyen
-    FROM
-        sys.database_principals
-    WHERE
-        type = 'R'
-        AND name IN ('PGV', 'Giangvien')
-    ORDER BY
-        name;
-END
-GO
-
-GRANT EXECUTE ON [dbo].[usp_LayDanhSachQuyen_TaoTaiKhoan] TO [PGV];
-GO
-
-PRINT N'OK: Da tao usp_LayDanhSachQuyen_TaoTaiKhoan.';
-GO
-
-CREATE OR ALTER PROCEDURE [dbo].[usp_LayThongTinGiaoVienTheoMa]
-    @MAGV NCHAR(8)
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    SELECT
-        MAGV,
-        HO,
-        TEN,
-        SODTLL,
-        DIACHI
-    FROM dbo.GIAOVIEN
-    WHERE MAGV = @MAGV;
-END
-GO
-
-GRANT EXECUTE ON dbo.usp_LayThongTinGiaoVienTheoMa TO [PGV];
-GO
-GRANT EXECUTE ON dbo.usp_LayThongTinGiaoVienTheoMa TO [Giangvien];
-GO
-
-PRINT N'OK: Da tao usp_LayThongTinGiaoVienTheoMa.';
-GO
-
-GO
-
-USE [THITRACNGHIEM]
+PRINT N'OK: [dbo].[usp_BoDe_TimKiemNangCao] đã sẵn sàng.';
 GO
 
 SET ANSI_NULLS ON
@@ -1607,7 +1751,38 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 
-CREATE FUNCTION [dbo].[udf_DemSoCauTrongBoDe]
+CREATE OR ALTER PROCEDURE usp_LayDanhSachTrinhDo
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT DISTINCT
+        TRINHDO AS MaTrinhDo,
+        CASE TRINHDO
+            WHEN 'A' THEN N'A - Dai hoc chuyen nganh'
+            WHEN 'B' THEN N'B - Dai hoc khong chuyen nganh'
+            WHEN 'C' THEN N'C - Cao dang'
+            ELSE TRINHDO
+        END AS TenTrinhDo
+    FROM dbo.BODE
+    WHERE TrangThai = 1
+    ORDER BY TRINHDO ASC;
+END
+GO
+
+GRANT EXECUTE ON dbo.usp_LayDanhSachTrinhDo TO [PGV];
+GRANT EXECUTE ON dbo.usp_LayDanhSachTrinhDo TO [Giangvien];
+GO
+
+PRINT N'OK: usp_LayDanhSachTrinhDo đã sẵn sàng.';
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER FUNCTION [dbo].[udf_DemSoCauTrongBoDe]
 (
     @MAMH    NCHAR(8),
     @TRINHDO CHAR(1)
@@ -1625,10 +1800,18 @@ BEGIN
 END
 GO
 
-PRINT N'OK: Da tao udf_DemSoCauTrongBoDe.';
+PRINT N'OK: [dbo].[udf_DemSoCauTrongBoDe] đã sẵn sàng.';
 GO
 
-CREATE FUNCTION [dbo].[udf_KiemTraDieuKienDangKy]
+-- ============================================================
+-- Đăng Ký Thi / Đề Thi (GIAOVIEN_DANGKY)
+-- ============================================================
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER FUNCTION [dbo].[udf_KiemTraDieuKienDangKy]
 (
     @MAMH     CHAR(5),
     @TRINHDO  CHAR(1),
@@ -1679,10 +1862,15 @@ BEGIN
 END
 GO
 
-PRINT N'OK: Da tao udf_KiemTraDieuKienDangKy.';
+PRINT N'OK: [dbo].[udf_KiemTraDieuKienDangKy] đã sẵn sàng.';
 GO
 
-CREATE PROCEDURE usp_ThucHienDangKyThi
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE usp_ThucHienDangKyThi
     @MAGV     NCHAR(8),
     @MALOP    NCHAR(8),
     @MAMH     CHAR(5),
@@ -1734,7 +1922,12 @@ BEGIN
 END
 GO
 
-PRINT N'OK: Da tao usp_ThucHienDangKyThi.';
+PRINT N'OK: usp_ThucHienDangKyThi đã sẵn sàng.';
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
 GO
 
 CREATE OR ALTER PROCEDURE dbo.usp_LayDanhSachDeThi
@@ -1758,61 +1951,8 @@ END
 GO
 
 GRANT EXECUTE ON dbo.usp_LayDanhSachDeThi TO [Giangvien];
-GO
 GRANT EXECUTE ON dbo.usp_LayDanhSachDeThi TO [PGV];
 GO
 
-PRINT N'OK: Da tao usp_LayDanhSachDeThi.';
+PRINT N'OK: dbo.usp_LayDanhSachDeThi đã sẵn sàng.';
 GO
-
-CREATE OR ALTER PROCEDURE dbo.usp_LayDanhSachLop
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    SELECT
-        MALOP,
-        TENLOP
-    FROM dbo.LOP
-    WHERE TrangThai = 1
-    ORDER BY MALOP ASC;
-END
-GO
-
-GRANT EXECUTE ON dbo.usp_LayDanhSachLop TO [PGV];
-GO
-GRANT EXECUTE ON dbo.usp_LayDanhSachLop TO [Giangvien];
-GO
-
-PRINT N'OK: Da tao usp_LayDanhSachLop.';
-GO
-
-CREATE PROCEDURE usp_LayDanhSachTrinhDo
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    SELECT DISTINCT
-        TRINHDO AS MaTrinhDo,
-        CASE TRINHDO
-            WHEN 'A' THEN N'A - Dai hoc chuyen nganh'
-            WHEN 'B' THEN N'B - Dai hoc khong chuyen nganh'
-            WHEN 'C' THEN N'C - Cao dang'
-            ELSE TRINHDO
-        END AS TenTrinhDo
-    FROM dbo.BODE
-    WHERE TrangThai = 1
-    ORDER BY TRINHDO ASC;
-END
-GO
-
-GRANT EXECUTE ON dbo.usp_LayDanhSachTrinhDo TO [PGV];
-GO
-GRANT EXECUTE ON dbo.usp_LayDanhSachTrinhDo TO [Giangvien];
-GO
-
-PRINT N'OK: Da tao usp_LayDanhSachTrinhDo.';
-GO
-
-GO
-
