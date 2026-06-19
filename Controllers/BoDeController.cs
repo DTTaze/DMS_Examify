@@ -11,7 +11,6 @@ namespace DMS_Examify.Controllers
     {
         private const string InvalidQuestionMessage = "Thông tin câu hỏi không hợp lệ.";
         private const string ImportCheckErrorMessage = "Lỗi hệ thống khi kiểm tra danh sách import.";
-        private const string DuplicateQuestionMessage = "Câu hỏi này đã tồn tại trong ngân hàng đề của môn học.";
 
         private readonly IBoDeService _boDeService;
         private readonly IMonHocService _monHocService;
@@ -44,20 +43,19 @@ namespace DMS_Examify.Controllers
         [HttpPost]
         public IActionResult Insert([FromBody] BoDe? model)
         {
-            if (IsInvalidQuestionContent(model))
+            if (model == null || !ModelState.IsValid)
             {
                 return BadRequest(InvalidQuestionMessage);
             }
 
             try
             {
-                if (HasDuplicateQuestion(model!))
-                {
-                    return BadRequest(DuplicateQuestionMessage);
-                }
-
-                var cauHoi = _boDeService.Insert(model!, CurrentTeacherId);
+                var cauHoi = _boDeService.Insert(model, CurrentTeacherId);
                 return Json(new { cauHoi });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message);
             }
             catch (SqlException ex)
             {
@@ -72,20 +70,19 @@ namespace DMS_Examify.Controllers
         [HttpPost]
         public IActionResult Update([FromBody] BoDe? model)
         {
-            if (IsInvalidQuestion(model) || IsInvalidQuestionContent(model))
+            if (model == null || model.CauHoi <= 0 || !ModelState.IsValid)
             {
                 return BadRequest(InvalidQuestionMessage);
             }
 
             try
             {
-                if (HasDuplicateQuestion(model!))
-                {
-                    return BadRequest(DuplicateQuestionMessage);
-                }
-
-                _boDeService.Update(model!, CurrentRole, CurrentTeacherId);
+                _boDeService.Update(model, CurrentRole, CurrentTeacherId);
                 return Ok();
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message);
             }
             catch (SqlException ex)
             {
@@ -100,7 +97,7 @@ namespace DMS_Examify.Controllers
         [HttpPost]
         public IActionResult Delete(int cauHoi, string maMH)
         {
-            if (IsInvalidQuestionKey(cauHoi, maMH))
+            if (cauHoi <= 0 || string.IsNullOrWhiteSpace(maMH))
             {
                 return BadRequest(InvalidQuestionMessage);
             }
@@ -162,54 +159,7 @@ namespace DMS_Examify.Controllers
             }
         }
 
-        private string CurrentTeacherId => HttpContext.Session.GetString("UserLogin") ?? string.Empty;
 
-        private string CurrentRole => HttpContext.Session.GetString("UserRole") ?? string.Empty;
-
-        private bool HasDuplicateQuestion(BoDe question)
-        {
-            var result = _boDeService.CheckImportSubjects(new List<BoDe> { question }).FirstOrDefault();
-            return result?.HasDuplicate == true;
-        }
-
-        private static bool IsInvalidQuestion(BoDe? question)
-        {
-            return question == null || IsInvalidQuestionKey(question.CauHoi, question.MaMH);
-        }
-
-        private static bool IsInvalidQuestionContent(BoDe? question)
-        {
-            return question == null
-                || string.IsNullOrWhiteSpace(question.MaMH)
-                || string.IsNullOrWhiteSpace(question.NoiDung)
-                || string.IsNullOrWhiteSpace(question.DapAnA)
-                || string.IsNullOrWhiteSpace(question.DapAnB)
-                || string.IsNullOrWhiteSpace(question.DapAnC)
-                || string.IsNullOrWhiteSpace(question.DapAnD)
-                || string.IsNullOrWhiteSpace(question.DapAn)
-                || string.IsNullOrWhiteSpace(question.TrinhDo)
-                || !IsValidTrinhDo(question.TrinhDo)
-                || !IsValidDapAn(question.DapAn);
-        }
-
-        private static bool IsValidTrinhDo(string? trinhDo)
-        {
-            if (string.IsNullOrWhiteSpace(trinhDo)) return false;
-            var t = trinhDo.Trim().ToUpper();
-            return t == "A" || t == "B" || t == "C";
-        }
-
-        private static bool IsValidDapAn(string? dapAn)
-        {
-            if (string.IsNullOrWhiteSpace(dapAn)) return false;
-            var d = dapAn.Trim().ToUpper();
-            return d == "A" || d == "B" || d == "C" || d == "D";
-        }
-
-        private static bool IsInvalidQuestionKey(int cauHoi, string? maMH)
-        {
-            return cauHoi <= 0 || string.IsNullOrWhiteSpace(maMH);
-        }
     }
 }
 

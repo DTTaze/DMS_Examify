@@ -27,14 +27,14 @@ namespace DMS_Examify.Controllers
         [HttpPost]
         public IActionResult CreateClass([FromBody] Lop? model)
         {
-            if (IsInvalidClass(model))
+            if (model == null || !ModelState.IsValid)
             {
                 return BadRequest("Thông tin lớp học không hợp lệ.");
             }
 
             try
             {
-                _lopService.Insert(model!);
+                _lopService.Insert(model);
                 return Ok();
             }
             catch (Exception ex)
@@ -46,14 +46,14 @@ namespace DMS_Examify.Controllers
         [HttpPost]
         public IActionResult UpdateClass([FromBody] Lop? model)
         {
-            if (IsInvalidClass(model))
+            if (model == null || !ModelState.IsValid)
             {
                 return BadRequest("Thông tin lớp học không hợp lệ.");
             }
 
             try
             {
-                _lopService.Update(model!);
+                _lopService.Update(model);
                 return Ok();
             }
             catch (Exception ex)
@@ -112,14 +112,14 @@ namespace DMS_Examify.Controllers
         [HttpPost]
         public IActionResult CreateStudent([FromBody] SinhVien? model)
         {
-            if (IsInvalidStudent(model))
+            if (model == null || !ModelState.IsValid)
             {
                 return BadRequest("Thông tin sinh viên không hợp lệ.");
             }
 
             try
             {
-                _sinhVienService.Insert(model!);
+                _sinhVienService.Insert(model);
                 return Ok();
             }
             catch (Exception ex)
@@ -131,14 +131,14 @@ namespace DMS_Examify.Controllers
         [HttpPost]
         public IActionResult UpdateStudent([FromBody] SinhVien? model)
         {
-            if (IsInvalidStudent(model))
+            if (model == null || !ModelState.IsValid)
             {
                 return BadRequest("Thông tin sinh viên không hợp lệ.");
             }
 
             try
             {
-                _sinhVienService.Update(model!);
+                _sinhVienService.Update(model);
                 return Ok();
             }
             catch (Exception ex)
@@ -241,21 +241,7 @@ namespace DMS_Examify.Controllers
             }
         }
 
-        private static bool IsInvalidClass(Lop? model)
-        {
-            return model == null
-                || string.IsNullOrWhiteSpace(model.MaLop)
-                || string.IsNullOrWhiteSpace(model.TenLop);
-        }
 
-        private static bool IsInvalidStudent(SinhVien? model)
-        {
-            return model == null
-                || string.IsNullOrWhiteSpace(model.MaSV)
-                || string.IsNullOrWhiteSpace(model.Ho)
-                || string.IsNullOrWhiteSpace(model.Ten)
-                || string.IsNullOrWhiteSpace(model.MaLop);
-        }
     }
 }
 

@@ -36,14 +36,14 @@ namespace DMS_Examify.Controllers
         [HttpPost]
         public IActionResult Insert([FromBody] GiaoVien? model)
         {
-            if (IsInvalidTeacher(model))
+            if (model == null || !ModelState.IsValid)
             {
                 return BadRequest(InvalidTeacherMessage);
             }
 
             try
             {
-                _giaoVienService.Insert(model!);
+                _giaoVienService.Insert(model);
                 return Ok();
             }
             catch (Exception ex)
@@ -55,14 +55,14 @@ namespace DMS_Examify.Controllers
         [HttpPost]
         public IActionResult Update([FromBody] GiaoVien? model)
         {
-            if (IsInvalidTeacher(model))
+            if (model == null || !ModelState.IsValid)
             {
                 return BadRequest(InvalidTeacherMessage);
             }
 
             try
             {
-                _giaoVienService.Update(model!);
+                _giaoVienService.Update(model);
                 return Ok();
             }
             catch (Exception ex)
@@ -132,13 +132,7 @@ namespace DMS_Examify.Controllers
             }
         }
 
-        private static bool IsInvalidTeacher(GiaoVien? teacher)
-        {
-            return teacher == null
-                || string.IsNullOrWhiteSpace(teacher.MaGV)
-                || string.IsNullOrWhiteSpace(teacher.Ho)
-                || string.IsNullOrWhiteSpace(teacher.Ten);
-        }
+
     }
 }
 

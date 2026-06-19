@@ -31,14 +31,14 @@ namespace DMS_Examify.Controllers
         [HttpPost]
         public IActionResult Insert([FromBody] MonHoc? model)
         {
-            if (IsInvalidSubject(model))
+            if (model == null || !ModelState.IsValid)
             {
                 return BadRequest("Thông tin môn học không hợp lệ.");
             }
 
             try
             {
-                _monHocService.Insert(model!);
+                _monHocService.Insert(model);
                 return Ok();
             }
             catch (Exception ex)
@@ -50,14 +50,14 @@ namespace DMS_Examify.Controllers
         [HttpPost]
         public IActionResult Update([FromBody] MonHoc? model)
         {
-            if (IsInvalidSubject(model))
+            if (model == null || !ModelState.IsValid)
             {
                 return BadRequest("Thông tin môn học không hợp lệ.");
             }
 
             try
             {
-                _monHocService.Update(model!);
+                _monHocService.Update(model);
                 return Ok();
             }
             catch (Exception ex)
@@ -183,12 +183,7 @@ namespace DMS_Examify.Controllers
             });
         }
 
-        private static bool IsInvalidSubject(MonHoc? model)
-        {
-            return model == null
-                || string.IsNullOrWhiteSpace(model.MaMH)
-                || string.IsNullOrWhiteSpace(model.TenMH);
-        }
+
     }
 }
 

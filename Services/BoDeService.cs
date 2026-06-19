@@ -54,6 +54,12 @@ namespace DMS_Examify.Services
 
         public int Insert(BoDe model, string maGV)
         {
+            var duplicate = CheckQuestionDuplicate(model);
+            if (duplicate.HasDuplicate)
+            {
+                throw new InvalidOperationException("Câu hỏi này đã tồn tại trong ngân hàng đề của môn học.");
+            }
+
             using var connection = _connectionFactory.CreateConnection();
             using var command = CreateStoredProcedureCommand(StoredProcedures.Insert, connection);
 
@@ -65,6 +71,12 @@ namespace DMS_Examify.Services
 
         public void Update(BoDe model, string role, string maGV)
         {
+            var duplicate = CheckQuestionDuplicate(model);
+            if (duplicate.HasDuplicate)
+            {
+                throw new InvalidOperationException("Câu hỏi này đã tồn tại trong ngân hàng đề của môn học.");
+            }
+
             using var connection = _connectionFactory.CreateConnection();
             using var command = CreateStoredProcedureCommand(StoredProcedures.Update, connection);
 

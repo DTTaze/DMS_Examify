@@ -8,6 +8,9 @@ namespace DMS_Examify.Controllers
         protected string ConnectionString => HttpContext.Session.GetString("DbConnectionString")
             ?? throw new InvalidOperationException("Phiên kết nối cơ sở dữ liệu đã hết hạn. Vui lòng đăng nhập lại.");
 
+        protected string CurrentTeacherId => HttpContext.Session.GetString("UserLogin") ?? string.Empty;
+        protected string CurrentRole => HttpContext.Session.GetString("UserRole") ?? string.Empty;
+
         public override void OnActionExecuting(ActionExecutingContext context)
         {
             base.OnActionExecuting(context);
