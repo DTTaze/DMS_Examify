@@ -12,6 +12,12 @@ CREATE ROLE [Giangvien];
 CREATE ROLE [Sinhvien];
 GO
 
+GRANT CREATE USER TO PGV;
+GRANT ALTER ANY USER TO PGV;
+GRANT ALTER ANY ROLE TO PGV;
+EXEC sp_addrolemember 'db_accessadmin', 'PGV';
+GO
+
 -- PGV duoc Them, Xoa, Sua, Doc tren tat ca cac bang
 GRANT SELECT, INSERT, UPDATE, DELETE ON [Lop] TO [PGV];
 GRANT SELECT, INSERT, UPDATE, DELETE ON [Monhoc] TO [PGV];
