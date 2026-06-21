@@ -86,6 +86,25 @@ namespace DMS_Examify.Controllers
         }
 
         [HttpGet]
+        public IActionResult CheckDelete(string maMH)
+        {
+            if (string.IsNullOrWhiteSpace(maMH))
+            {
+                return BadRequest("Mã môn học không hợp lệ.");
+            }
+
+            try
+            {
+                bool isSoftDelete = _monHocService.CheckIsSoftDelete(maMH);
+                return Json(new { isSoftDelete });
+            }
+            catch (Exception ex)
+            {
+                return LogAndReturnServerError(_logger, ex, $"Lỗi khi kiểm tra xóa môn học {maMH}.");
+            }
+        }
+
+        [HttpGet]
         public IActionResult Search(string? keyword)
         {
             try

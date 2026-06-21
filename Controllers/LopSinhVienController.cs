@@ -241,7 +241,43 @@ namespace DMS_Examify.Controllers
             }
         }
 
+        [HttpGet]
+        public IActionResult CheckDeleteClass(string maLop)
+        {
+            if (string.IsNullOrWhiteSpace(maLop))
+            {
+                return BadRequest("Mã lớp không được để trống.");
+            }
 
+            try
+            {
+                bool isSoftDelete = _lopService.CheckIsSoftDelete(maLop);
+                return Json(new { isSoftDelete });
+            }
+            catch (Exception ex)
+            {
+                return LogAndReturnServerError(_logger, ex, $"Lỗi khi kiểm tra xóa lớp học {maLop}.");
+            }
+        }
+
+        [HttpGet]
+        public IActionResult CheckDeleteStudent(string maSV)
+        {
+            if (string.IsNullOrWhiteSpace(maSV))
+            {
+                return BadRequest("Mã sinh viên không được để trống.");
+            }
+
+            try
+            {
+                bool isSoftDelete = _sinhVienService.CheckIsSoftDelete(maSV);
+                return Json(new { isSoftDelete });
+            }
+            catch (Exception ex)
+            {
+                return LogAndReturnServerError(_logger, ex, $"Lỗi khi kiểm tra xóa sinh viên {maSV}.");
+            }
+        }
     }
 }
 

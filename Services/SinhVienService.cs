@@ -149,6 +149,22 @@ namespace DMS_Examify.Services
             return (int)cmd.ExecuteScalar() > 0;
         }
 
+        public bool CheckIsSoftDelete(string maSV)
+        {
+            if (string.IsNullOrWhiteSpace(maSV))
+            {
+                return false;
+            }
+
+            using var conn = _connectionFactory.CreateConnection();
+            string sql = "SELECT 1 WHERE EXISTS (SELECT 1 FROM dbo.BANGDIEM WHERE MASV = @MaSV)";
+            using var cmd = new SqlCommand(sql, conn);
+            cmd.Parameters.Add("@MaSV", SqlDbType.NChar, 8).Value = maSV.Trim();
+
+            var result = cmd.ExecuteScalar();
+            return result != null && result != DBNull.Value;
+        }
+
         private static SqlCommand CreateStoredProcedureCommand(string procedureName, SqlConnection connection)
         {
             return new SqlCommand(procedureName, connection)

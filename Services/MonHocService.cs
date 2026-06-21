@@ -147,6 +147,29 @@ namespace DMS_Examify.Services
             return new SubjectDuplicateCheckResult(exists, isActive);
         }
 
+        public bool CheckIsSoftDelete(string maMH)
+        {
+            if (string.IsNullOrWhiteSpace(maMH))
+            {
+                return false;
+            }
+
+            using var conn = _connectionFactory.CreateConnection();
+            string sql = @"
+                SELECT 1 WHERE EXISTS (
+                    SELECT 1 FROM dbo.BANGDIEM WHERE MAMH = @MaMH
+                    UNION ALL
+                    SELECT 1 FROM dbo.BODE WHERE MAMH = @MaMH
+                    UNION ALL
+                    SELECT 1 FROM dbo.GIAOVIEN_DANGKY WHERE MAMH = @MaMH
+                )";
+            using var cmd = new SqlCommand(sql, conn);
+            cmd.Parameters.Add("@MaMH", SqlDbType.NChar, 5).Value = NormalizeSubjectCode(maMH);
+
+            var result = cmd.ExecuteScalar();
+            return result != null && result != DBNull.Value;
+        }
+
         private static SqlCommand CreateStoredProcedureCommand(string procedureName, SqlConnection connection)
         {
             return new SqlCommand(procedureName, connection)

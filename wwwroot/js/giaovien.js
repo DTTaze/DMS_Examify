@@ -362,31 +362,51 @@
 
         const id = selectedRow.dataset.magv;
         const name = `${selectedRow.dataset.ho} ${selectedRow.dataset.ten}`;
+        const newIdx = newItems.findIndex(x => x.MaGV === id);
+        const isNew = newIdx >= 0;
 
-        window.hienXacNhan(`Bạn có chắc chắn muốn xóa giáo viên <strong>"${id} - ${name}"</strong> không?`, () => {
-            pushState();
+        const performDeleteAction = (message) => {
+            window.hienXacNhan(message, () => {
+                pushState();
 
-            const newIdx = newItems.findIndex(x => x.MaGV === id);
-            if (newIdx >= 0) {
-                newItems = newItems.filter(x => x.MaGV !== id);
-            } else {
-                updatedItems = updatedItems.filter(x => x.MaGV !== id);
-                if (!deletedItems.includes(id)) {
-                    deletedItems.push(id);
+                if (isNew) {
+                    newItems = newItems.filter(x => x.MaGV !== id);
+                } else {
+                    updatedItems = updatedItems.filter(x => x.MaGV !== id);
+                    if (!deletedItems.includes(id)) {
+                        deletedItems.push(id);
+                    }
                 }
-            }
 
-            if (newIdx >= 0) {
-                selectedRow.remove();
-            } else {
-                AppCommon.setChangeState(selectedRow, "deleted");
-            }
-            selectedRow = null;
+                if (isNew) {
+                    selectedRow.remove();
+                } else {
+                    AppCommon.setChangeState(selectedRow, "deleted");
+                }
+                selectedRow = null;
 
-            updateSTT();
-            resetGiaoVienForm();
-            updateSaveButtonState();
-        });
+                updateSTT();
+                resetGiaoVienForm();
+                updateSaveButtonState();
+            });
+        };
+
+        if (isNew) {
+            performDeleteAction(`Bạn có chắc chắn muốn xóa giáo viên tạm thời <strong>"${id} - ${name}"</strong> không?`);
+        } else {
+            fetch(`/GiaoVien/CheckDelete?maGV=${encodeURIComponent(id)}`)
+                .then(res => res.json())
+                .then(data => {
+                    const msg = data.isSoftDelete
+                        ? `Giáo viên <strong>"${id} - ${name}"</strong> đã được liên kết trong hệ thống. Hệ thống sẽ <strong>XÓA MỀM</strong> (ngừng hoạt động) để bảo toàn lịch sử. Bạn có chắc chắn muốn xóa không?`
+                        : `Giáo viên <strong>"${id} - ${name}"</strong> chưa có liên kết. Hệ thống sẽ <strong>XÓA CỨNG</strong> (xóa vĩnh viễn) khỏi cơ sở dữ liệu. Bạn có chắc chắn muốn xóa không?`;
+                    performDeleteAction(msg);
+                })
+                .catch(err => {
+                    console.error("Lỗi khi kiểm tra xóa giáo viên:", err);
+                    performDeleteAction(`Bạn có chắc chắn muốn xóa giáo viên <strong>"${id} - ${name}"</strong> không?`);
+                });
+        }
     }
 
     async function ghiGV() {

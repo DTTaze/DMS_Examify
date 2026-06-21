@@ -322,29 +322,6 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 
-CREATE OR ALTER PROCEDURE dbo.usp_MonHoc_Restore
-    @MaMH NCHAR(5)
-AS
-BEGIN
-    SET NOCOUNT ON;
-    UPDATE [dbo].[MONHOC]
-    SET [TrangThai] = 1
-    WHERE [MaMH] = @MaMH;
-    PRINT N'OK: Đã phục hồi môn học.';
-END
-GO
-
-GRANT EXECUTE ON [dbo].[usp_MonHoc_Restore] TO [PGV];
-GO
-
-PRINT N'OK: dbo.usp_MonHoc_Restore đã sẵn sàng.';
-GO
-
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-
 CREATE OR ALTER PROCEDURE dbo.usp_LayDanhSachMonHoc
 AS
 BEGIN
@@ -531,36 +508,28 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
+    -- 1. Kiểm tra xem lớp đang hoạt động có tồn tại hay không
     IF NOT EXISTS (SELECT 1 FROM LOP WHERE MALOP = @MALOP AND TrangThai = 1)
     BEGIN
         RAISERROR(N'Không tìm thấy lớp đang hoạt động', 16, 1);
         RETURN;
     END
 
-    -- Deactivate or delete students of this class
-    -- For students without exam results: delete them
-    DELETE FROM SINHVIEN
-    WHERE MALOP = @MALOP
-      AND TrangThai = 1
-      AND MASV NOT IN (SELECT MASV FROM BANGDIEM);
-
-    -- For students with exam results: deactivate them
-    UPDATE SINHVIEN
-    SET TrangThai = 0
-    WHERE MALOP = @MALOP
-      AND TrangThai = 1;
-
+    -- 2. Kiểm tra xem có liên kết dữ liệu với SINHVIEN hoặc GIAOVIEN_DANGKY hay không
     IF EXISTS (SELECT 1 FROM SINHVIEN WHERE MALOP = @MALOP)
        OR EXISTS (SELECT 1 FROM GIAOVIEN_DANGKY WHERE MALOP = @MALOP)
     BEGIN
+        -- Xóa mềm lớp học
         UPDATE LOP
         SET TrangThai = 0
         WHERE MALOP = @MALOP;
-        RETURN;
     END
-
-    DELETE FROM LOP
-    WHERE MALOP = @MALOP;
+    ELSE
+    BEGIN
+        -- Xóa cứng lớp học hoàn toàn
+        DELETE FROM LOP
+        WHERE MALOP = @MALOP;
+    END
 END
 GO
 
@@ -731,7 +700,18 @@ BEGIN
         RETURN;
     END;
 
-    SELECT MAGV AS MaGV, HO AS Ho, TEN AS Ten, SODTLL AS SoDTLL, DIACHI AS DiaChi
+    -- Sử dụng bảng tạm để chứa kết quả khớp Prefix (ưu tiên tối ưu Index Seek)
+    DECLARE @PrefixResults TABLE (
+        MAGV NCHAR(8) PRIMARY KEY,
+        HO NVARCHAR(40),
+        TEN NVARCHAR(10),
+        SODTLL NCHAR(15),
+        DIACHI NVARCHAR(50)
+    );
+
+    -- 1. Tìm kiếm theo tiền tố (Prefix Match) - Tận dụng tối đa Index Seek
+    INSERT INTO @PrefixResults (MAGV, HO, TEN, SODTLL, DIACHI)
+    SELECT MAGV, HO, TEN, SODTLL, DIACHI
     FROM dbo.GIAOVIEN
     WHERE TrangThai = 1
       AND (MAGV = CONVERT(NCHAR(8), @SearchKeyword)
@@ -739,6 +719,26 @@ BEGIN
            OR TEN LIKE @SearchKeyword + N'%'
            OR SODTLL LIKE @SearchKeyword + N'%'
            OR DIACHI LIKE @SearchKeyword + N'%')
+    OPTION (RECOMPILE);
+
+    -- Nếu tìm thấy kết quả khớp tiền tố thì trả về ngay lập tức
+    IF @@ROWCOUNT > 0
+    BEGIN
+        SELECT MAGV AS MaGV, HO AS Ho, TEN AS Ten, SODTLL AS SoDTLL, DIACHI AS DiaChi
+        FROM @PrefixResults
+        ORDER BY HO, TEN, MAGV;
+        RETURN;
+    END
+
+    -- 2. Tìm kiếm theo chuỗi con (Infix/Substring Match) nếu không có kết quả khớp tiền tố
+    SELECT MAGV AS MaGV, HO AS Ho, TEN AS Ten, SODTLL AS SoDTLL, DIACHI AS DiaChi
+    FROM dbo.GIAOVIEN
+    WHERE TrangThai = 1
+      AND (MAGV = CONVERT(NCHAR(8), @SearchKeyword)
+           OR HO LIKE N'%' + @SearchKeyword + N'%'
+           OR TEN LIKE N'%' + @SearchKeyword + N'%'
+           OR SODTLL LIKE N'%' + @SearchKeyword + N'%'
+           OR DIACHI LIKE N'%' + @SearchKeyword + N'%')
     ORDER BY HO, TEN, MAGV
     OPTION (RECOMPILE);
 END
@@ -823,9 +823,18 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
+    -- 1. Kiểm tra xem giáo viên đang hoạt động có tồn tại hay không
+    IF NOT EXISTS (SELECT 1 FROM dbo.GIAOVIEN WHERE MAGV = @MaGV AND TrangThai = 1)
+    BEGIN
+        RAISERROR(N'Không tìm thấy giáo viên đang hoạt động', 16, 1);
+        RETURN;
+    END;
+
+    -- 2. Kiểm tra xem có liên kết dữ liệu với BODE hoặc GIAOVIEN_DANGKY hay không
     IF EXISTS (SELECT 1 FROM dbo.BODE WHERE MAGV = @MaGV)
        OR EXISTS (SELECT 1 FROM dbo.GIAOVIEN_DANGKY WHERE MAGV = @MaGV)
     BEGIN
+        -- Xóa mềm giáo viên (chuyển trạng thái hoạt động thành 0)
         UPDATE dbo.GIAOVIEN
         SET TrangThai = 0
         WHERE MAGV = @MaGV;
@@ -833,6 +842,7 @@ BEGIN
         RETURN;
     END;
 
+    -- 3. Xóa cứng giáo viên khỏi CSDL nếu không có ràng buộc liên kết
     DELETE FROM dbo.GIAOVIEN
     WHERE MAGV = @MaGV;
 END
@@ -1264,26 +1274,9 @@ GO
 PRINT N'OK: dbo.usp_SinhVien_Login đã sẵn sàng.';
 GO
 
-REVOKE EXECUTE ON [dbo].[usp_SinhVien_GetAll] FROM [Giangvien];
-GO
-REVOKE EXECUTE ON [dbo].[usp_SinhVien_GetByLop] FROM [Giangvien];
-GO
-REVOKE EXECUTE ON [dbo].[usp_SinhVien_Insert] FROM [Giangvien];
-GO
-REVOKE EXECUTE ON [dbo].[usp_SinhVien_Update] FROM [Giangvien];
-GO
-REVOKE EXECUTE ON [dbo].[usp_SinhVien_Delete] FROM [Giangvien];
-GO
-
 -- ============================================================
 -- Bộ Đề (BODE)
 -- ============================================================
-IF OBJECT_ID(N'dbo.trg_BODE_KiemTraTruocKhiXoa', N'TR') IS NOT NULL
-BEGIN
-    DROP TRIGGER dbo.trg_BODE_KiemTraTruocKhiXoa;
-END
-GO
-
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1336,28 +1329,6 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 
-CREATE OR ALTER PROCEDURE dbo.usp_GetCauHoiByGiangVien
-    @MAGV NCHAR(8) = NULL
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    EXEC dbo.usp_BoDe_GetDanhSach @MAGV = @MAGV;
-END
-GO
-
-GRANT EXECUTE ON dbo.usp_GetCauHoiByGiangVien TO [PGV];
-GRANT EXECUTE ON dbo.usp_GetCauHoiByGiangVien TO [Giangvien];
-GO
-
-PRINT N'OK: dbo.usp_GetCauHoiByGiangVien đã sẵn sàng.';
-GO
-
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-
 CREATE OR ALTER PROCEDURE dbo.usp_BoDe_Search
     @Keyword NVARCHAR(250) = NULL,
     @MAGV NCHAR(8) = NULL
@@ -1367,18 +1338,64 @@ BEGIN
 
     DECLARE @SearchKeyword NVARCHAR(250) = NULLIF(LTRIM(RTRIM(@Keyword)), N'');
 
+    -- 1. Nếu không có từ khóa -> Trả về ngay lập tức (Tối ưu hóa nhánh rỗng)
+    IF @SearchKeyword IS NULL
+    BEGIN
+        SELECT CAUHOI, MAMH, TRINHDO, NOIDUNG,
+               A, B, C, D, DAP_AN, MAGV
+        FROM dbo.BODE
+        WHERE TrangThai = 1
+          AND (@MAGV IS NULL OR MAGV = @MAGV)
+        ORDER BY CAUHOI
+        OPTION (RECOMPILE);
+        RETURN;
+    END
+
+    -- Tạo bảng tạm chứa các kết quả ưu tiên khớp chính xác hoặc tiền tố
+    DECLARE @TempResults TABLE (
+        CAUHOI INT PRIMARY KEY,
+        MAMH NCHAR(5),
+        TRINHDO CHAR(1),
+        NOIDUNG NVARCHAR(200),
+        A NVARCHAR(50),
+        B NVARCHAR(50),
+        C NVARCHAR(50),
+        D NVARCHAR(50),
+        DAP_AN CHAR(1),
+        MAGV NCHAR(8)
+    );
+
+    -- 2. Tìm kiếm ưu tiên bằng Index Seek (MAMH, MAGV)
+    INSERT INTO @TempResults
     SELECT CAUHOI, MAMH, TRINHDO, NOIDUNG,
            A, B, C, D, DAP_AN, MAGV
     FROM dbo.BODE
     WHERE TrangThai = 1
       AND (@MAGV IS NULL OR MAGV = @MAGV)
       AND (
-          @SearchKeyword IS NULL
-          OR (LEN(@SearchKeyword) <= 5 AND MAMH = CONVERT(NCHAR(5), @SearchKeyword))
+          (LEN(@SearchKeyword) <= 5 AND MAMH = CONVERT(NCHAR(5), @SearchKeyword))
           OR (LEN(@SearchKeyword) <= 8 AND MAGV = CONVERT(NCHAR(8), @SearchKeyword))
           OR MAMH LIKE @SearchKeyword + N'%'
-          OR NOIDUNG LIKE N'%' + @SearchKeyword + N'%'
       )
+    OPTION (RECOMPILE);
+
+    -- Nếu tìm thấy các kết quả khớp ưu tiên thì trả về ngay lập tức (Bỏ qua việc quét NOIDUNG)
+    IF @@ROWCOUNT > 0
+    BEGIN
+        SELECT CAUHOI, MAMH, TRINHDO, NOIDUNG,
+               A, B, C, D, DAP_AN, MAGV
+        FROM @TempResults
+        ORDER BY CAUHOI;
+        RETURN;
+    END
+
+    -- 3. Fallback: Quét chứa chuỗi trên cột NOIDUNG (Non-SARGable)
+    SELECT CAUHOI, MAMH, TRINHDO, NOIDUNG,
+           A, B, C, D, DAP_AN, MAGV
+    FROM dbo.BODE
+    WHERE TrangThai = 1
+      AND (@MAGV IS NULL OR MAGV = @MAGV)
+      AND NOIDUNG LIKE N'%' + @SearchKeyword + N'%'
     ORDER BY CAUHOI
     OPTION (RECOMPILE);
 END
@@ -1409,31 +1426,6 @@ CREATE OR ALTER PROCEDURE dbo.usp_BoDe_Insert
 AS
 BEGIN
     SET NOCOUNT ON;
-
-    DECLARE @Duplicate TABLE (
-        DuplicateLevel NVARCHAR(30),
-        DuplicateMessage NVARCHAR(255),
-        HasDuplicate BIT
-    );
-
-    INSERT INTO @Duplicate
-    EXEC dbo.usp_BoDe_CheckDuplicate
-        @CauHoi = NULL,
-        @MaMH = @MaMH,
-        @TrinhDo = @TrinhDo,
-        @NoiDung = @NoiDung,
-        @DapAnA = @DapAnA,
-        @DapAnB = @DapAnB,
-        @DapAnC = @DapAnC,
-        @DapAnD = @DapAnD;
-
-    IF EXISTS (SELECT 1 FROM @Duplicate WHERE HasDuplicate = 1)
-    BEGIN
-        DECLARE @InsertDuplicateMessage NVARCHAR(255);
-        SELECT @InsertDuplicateMessage = DuplicateMessage FROM @Duplicate;
-        RAISERROR(@InsertDuplicateMessage, 16, 1);
-        RETURN;
-    END
 
     INSERT INTO BODE (MAMH, TRINHDO, NOIDUNG, A, B, C, D, DAP_AN, MAGV)
     VALUES (@MaMH, @TrinhDo, @NoiDung, @DapAnA, @DapAnB, @DapAnC, @DapAnD, @DapAn, @MaGV);
@@ -1468,31 +1460,6 @@ CREATE OR ALTER PROCEDURE dbo.usp_BoDe_Update
 AS
 BEGIN
     SET NOCOUNT ON;
-
-    DECLARE @Duplicate TABLE (
-        DuplicateLevel NVARCHAR(30),
-        DuplicateMessage NVARCHAR(255),
-        HasDuplicate BIT
-    );
-
-    INSERT INTO @Duplicate
-    EXEC dbo.usp_BoDe_CheckDuplicate
-        @CauHoi = @CauHoi,
-        @MaMH = @MaMH,
-        @TrinhDo = @TrinhDo,
-        @NoiDung = @NoiDung,
-        @DapAnA = @DapAnA,
-        @DapAnB = @DapAnB,
-        @DapAnC = @DapAnC,
-        @DapAnD = @DapAnD;
-
-    IF EXISTS (SELECT 1 FROM @Duplicate WHERE HasDuplicate = 1)
-    BEGIN
-        DECLARE @UpdateDuplicateMessage NVARCHAR(255);
-        SELECT @UpdateDuplicateMessage = DuplicateMessage FROM @Duplicate;
-        RAISERROR(@UpdateDuplicateMessage, 16, 1);
-        RETURN;
-    END
 
     UPDATE BODE
     SET TRINHDO = @TrinhDo,
@@ -1529,48 +1496,11 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    DECLARE @HasReference BIT = 0;
-    DECLARE @ReferenceCheckSql NVARCHAR(MAX) = N'';
-
-    SELECT @ReferenceCheckSql = @ReferenceCheckSql
-        + N'IF EXISTS (SELECT 1 FROM '
-        + QUOTENAME(OBJECT_SCHEMA_NAME(fkc.parent_object_id)) + N'.' + QUOTENAME(OBJECT_NAME(fkc.parent_object_id))
-        + N' WHERE ' + QUOTENAME(COL_NAME(fkc.parent_object_id, fkc.parent_column_id))
-        + N' = @CauHoi) SET @HasReference = 1;'
-    FROM sys.foreign_key_columns fkc
-    WHERE fkc.referenced_object_id = OBJECT_ID(N'dbo.BODE')
-      AND COL_NAME(fkc.referenced_object_id, fkc.referenced_column_id) = N'CAUHOI';
-
-    IF @ReferenceCheckSql <> N''
-    BEGIN
-        EXEC sp_executesql
-            @ReferenceCheckSql,
-            N'@CauHoi INT, @HasReference BIT OUTPUT',
-            @CauHoi = @CauHoi,
-            @HasReference = @HasReference OUTPUT;
-    END
-
-    BEGIN TRANSACTION;
-
-    IF @HasReference = 1
-    BEGIN
-        UPDATE dbo.BODE
-        SET TrangThai = 0
-        WHERE CAUHOI = @CauHoi
-          AND MAMH = @MaMH
-          AND TrangThai = 1
-          AND (@MAGV IS NULL OR MAGV = @MAGV);
-    END
-    ELSE
-    BEGIN
-        DELETE FROM dbo.BODE
-        WHERE CAUHOI = @CauHoi
-          AND MAMH = @MaMH
-          AND TrangThai = 1
-          AND (@MAGV IS NULL OR MAGV = @MAGV);
-    END
-
-    COMMIT TRANSACTION;
+    DELETE FROM dbo.BODE
+    WHERE CAUHOI = @CauHoi
+      AND MAMH = @MaMH
+      AND TrangThai = 1
+      AND (@MAGV IS NULL OR MAGV = @MAGV);
 END
 GO
 
@@ -1581,54 +1511,6 @@ GO
 PRINT N'OK: dbo.usp_BoDe_Delete đã sẵn sàng.';
 GO
 
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-
-CREATE OR ALTER PROCEDURE dbo.usp_BoDe_CheckDuplicate
-    @CauHoi  INT = NULL,
-    @MaMH    NCHAR(5),
-    @TrinhDo CHAR(1),
-    @NoiDung NVARCHAR(200),
-    @DapAnA  NVARCHAR(50) = NULL,
-    @DapAnB  NVARCHAR(50) = NULL,
-    @DapAnC  NVARCHAR(50) = NULL,
-    @DapAnD  NVARCHAR(50) = NULL
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    DECLARE @CleanNoiDung NVARCHAR(200) = LTRIM(RTRIM(ISNULL(@NoiDung, N'')));
-    DECLARE @DuplicateLevel NVARCHAR(30) = N'None';
-    DECLARE @DuplicateMessage NVARCHAR(255) = N'';
-
-    IF EXISTS (
-        SELECT 1
-        FROM dbo.BODE
-        WHERE TrangThai = 1
-          AND MAMH = @MaMH
-          AND LTRIM(RTRIM(NOIDUNG)) = @CleanNoiDung
-          AND (@CauHoi IS NULL OR CAUHOI <> @CauHoi)
-    )
-    BEGIN
-        SET @DuplicateLevel = N'Content';
-        SET @DuplicateMessage = N'Noi dung cau hoi da ton tai trong ngan hang de cua mon hoc nay.';
-    END
-
-    SELECT
-        @DuplicateLevel AS DuplicateLevel,
-        @DuplicateMessage AS DuplicateMessage,
-        CAST(CASE WHEN @DuplicateLevel = N'None' THEN 0 ELSE 1 END AS BIT) AS HasDuplicate;
-END
-GO
-
-GRANT EXECUTE ON dbo.usp_BoDe_CheckDuplicate TO [PGV];
-GRANT EXECUTE ON dbo.usp_BoDe_CheckDuplicate TO [Giangvien];
-GO
-
-PRINT N'OK: dbo.usp_BoDe_CheckDuplicate đã sẵn sàng.';
-GO
 
 SET ANSI_NULLS ON
 GO
@@ -1674,65 +1556,6 @@ GRANT EXECUTE ON dbo.usp_BoDe_GetLatestCauHoi TO [Giangvien];
 GO
 
 PRINT N'OK: dbo.usp_BoDe_GetLatestCauHoi đã sẵn sàng.';
-GO
-
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-
-CREATE OR ALTER PROCEDURE [dbo].[usp_BoDe_TimKiemNangCao]
-    @MAGV    NCHAR(8)      = NULL,
-    @MAMH    NCHAR(5)      = NULL,
-    @TRINHDO CHAR(1)       = NULL,
-    @Keyword NVARCHAR(200) = NULL
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    SELECT
-        b.CAUHOI,
-        b.MAMH,
-        mh.TENMH,
-        b.TRINHDO,
-        CASE b.TRINHDO
-            WHEN 'A' THEN N'Dai hoc - Chuyen nganh'
-            WHEN 'B' THEN N'Dai hoc - Khong chuyen'
-            WHEN 'C' THEN N'Cao dang'
-        END                                    AS TenTrinhDo,
-        b.NOIDUNG,
-        b.A,
-        b.B,
-        b.C,
-        b.D,
-        b.DAP_AN,
-        b.MAGV,
-        LTRIM(RTRIM(ISNULL(gv.HO, N'') + N' ' + ISNULL(gv.TEN, N''))) AS TenGV
-    FROM (
-        SELECT CAUHOI, MAMH, TRINHDO, NOIDUNG, A, B, C, D, DAP_AN, MAGV
-        FROM [dbo].[BODE]
-        WHERE TrangThai = 1
-          AND (MAGV = @MAGV OR @MAGV IS NULL)
-          AND (MAMH = @MAMH OR @MAMH IS NULL)
-          AND (TRINHDO = @TRINHDO OR @TRINHDO IS NULL)
-          AND (
-              @Keyword IS NULL
-              OR @Keyword = N''
-              OR NOIDUNG LIKE N'%' + @Keyword + N'%'
-          )
-    ) b
-    JOIN      [dbo].[MONHOC]   mh ON b.MAMH = mh.MAMH
-    LEFT JOIN [dbo].[GIAOVIEN] gv ON b.MAGV = gv.MAGV
-    ORDER BY b.MAMH ASC, b.TRINHDO ASC, b.CAUHOI ASC
-    OPTION (RECOMPILE);
-END
-GO
-
-GRANT EXECUTE ON [dbo].[usp_BoDe_TimKiemNangCao] TO [PGV];
-GRANT EXECUTE ON [dbo].[usp_BoDe_TimKiemNangCao] TO [Giangvien];
-GO
-
-PRINT N'OK: [dbo].[usp_BoDe_TimKiemNangCao] đã sẵn sàng.';
 GO
 
 SET ANSI_NULLS ON

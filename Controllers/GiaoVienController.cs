@@ -2,6 +2,7 @@ using DMS_Examify.Filters;
 using DMS_Examify.Models;
 using DMS_Examify.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
 
 namespace DMS_Examify.Controllers
 {
@@ -46,6 +47,10 @@ namespace DMS_Examify.Controllers
                 _giaoVienService.Insert(model);
                 return Ok();
             }
+            catch (SqlException ex)
+            {
+                return BadRequest(ex.Message);
+            }
             catch (Exception ex)
             {
                 return LogAndReturnServerError(_logger, ex, "Lỗi khi thêm giáo viên.");
@@ -64,6 +69,10 @@ namespace DMS_Examify.Controllers
             {
                 _giaoVienService.Update(model);
                 return Ok();
+            }
+            catch (SqlException ex)
+            {
+                return BadRequest(ex.Message);
             }
             catch (Exception ex)
             {
@@ -84,9 +93,32 @@ namespace DMS_Examify.Controllers
                 _giaoVienService.Delete(maGV);
                 return Ok();
             }
+            catch (SqlException ex)
+            {
+                return BadRequest(ex.Message);
+            }
             catch (Exception ex)
             {
                 return LogAndReturnServerError(_logger, ex, $"Không thể xóa giáo viên {maGV}.");
+            }
+        }
+
+        [HttpGet]
+        public IActionResult CheckDelete(string maGV)
+        {
+            if (string.IsNullOrWhiteSpace(maGV))
+            {
+                return BadRequest(InvalidTeacherIdMessage);
+            }
+
+            try
+            {
+                bool isSoftDelete = _giaoVienService.CheckIsSoftDelete(maGV);
+                return Json(new { isSoftDelete });
+            }
+            catch (Exception ex)
+            {
+                return LogAndReturnServerError(_logger, ex, $"Lỗi khi kiểm tra xóa giáo viên {maGV}.");
             }
         }
 

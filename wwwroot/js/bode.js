@@ -551,7 +551,7 @@
         const id = parseInt(selectedRow.dataset.id, 10);
         const maMH = selectedRow.dataset.mamh;
 
-        window.hienXacNhan(`Bạn có chắc chắn muốn xóa câu hỏi số <strong>"${id > 0 ? id : 'tạm thời'}"</strong> không?`, () => {
+        window.hienXacNhan(`Hệ thống sẽ XÓA CỨNG (xóa vĩnh viễn) câu hỏi số <strong>"${id > 0 ? id : 'tạm thời'}"</strong> khỏi cơ sở dữ liệu. Bạn có chắc chắn muốn xóa không?`, () => {
             pushState();
 
             if (id < 0) {

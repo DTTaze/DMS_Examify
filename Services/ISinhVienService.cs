@@ -13,5 +13,6 @@ namespace DMS_Examify.Services
         List<SinhVienImportCheckResult> CheckImportDuplicates(List<SinhVien> items);
         SinhVienDuplicateResult CheckDuplicateForCreate(string maSV);
         bool ExistsMaSV(string maSV);
+        bool CheckIsSoftDelete(string maSV);
     }
 }

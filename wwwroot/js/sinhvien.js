@@ -1685,40 +1685,60 @@
         
         const ma = li.dataset.malop;
         const ten = li.dataset.tenlop;
-        
-        window.hienXacNhan(`Bạn có chắc chắn muốn xóa lớp <strong>"${ma} - ${ten}"</strong> và tất cả dữ liệu tạm thời đi kèm không?`, () => {
-            pushStateLop();
+        const newIndex = newLops.findIndex(x => x.MaLop === ma);
+        const isNew = newIndex >= 0;
 
-            const newIndex = newLops.findIndex(x => x.MaLop === ma);
-            if (newIndex >= 0) {
-                newLops = newLops.filter(x => x.MaLop !== ma);
-            } else {
-                updatedLops = updatedLops.filter(x => x.MaLop !== ma);
-                if (!deletedLops.some(x => x.MaLop === ma)) {
-                    deletedLops.push({ MaLop: ma });
+        const performDeleteLop = (message) => {
+            window.hienXacNhan(message, () => {
+                pushStateLop();
+
+                if (isNew) {
+                    newLops = newLops.filter(x => x.MaLop !== ma);
+                } else {
+                    updatedLops = updatedLops.filter(x => x.MaLop !== ma);
+                    if (!deletedLops.some(x => x.MaLop === ma)) {
+                        deletedLops.push({ MaLop: ma });
+                    }
                 }
-            }
 
-            if (selectedLop === ma) {
-                selectedLopRow = null;
-                selectedLop = null;
-                dom.currentLop.innerText = "Chưa chọn";
-                dom.svTable.innerHTML = "";
-                dom.btnExport.setAttribute("disabled", "true");
-                dom.btnImport.setAttribute("disabled", "true");
+                if (selectedLop === ma) {
+                    selectedLopRow = null;
+                    selectedLop = null;
+                    dom.currentLop.innerText = "Chưa chọn";
+                    dom.svTable.innerHTML = "";
+                    dom.btnExport.setAttribute("disabled", "true");
+                    dom.btnImport.setAttribute("disabled", "true");
+                    
+                    resetLopForm();
+                }
                 
-                resetLopForm();
-            }
-            
-            if (newIndex >= 0) {
-                li.remove();
-            } else {
-                AppCommon.setChangeState(li, "deleted");
-            }
-            updateSTT();
-            locLop();
-            updateSaveLopButtonState();
-        });
+                if (isNew) {
+                    li.remove();
+                } else {
+                    AppCommon.setChangeState(li, "deleted");
+                }
+                updateSTT();
+                locLop();
+                updateSaveLopButtonState();
+            });
+        };
+
+        if (isNew) {
+            performDeleteLop(`Bạn có chắc chắn muốn xóa lớp học tạm thời <strong>"${ma} - ${ten}"</strong> không?`);
+        } else {
+            fetch(`/LopSinhVien/CheckDeleteClass?maLop=${encodeURIComponent(ma)}`)
+                .then(res => res.json())
+                .then(data => {
+                    const msg = data.isSoftDelete
+                        ? `Lớp học <strong>"${ma} - ${ten}"</strong> đã có dữ liệu liên kết (Sinh viên hoặc Đăng ký thi). Hệ thống sẽ <strong>XÓA MỀM</strong> (ngừng hoạt động) lớp học này. Bạn có chắc chắn muốn xóa không?`
+                        : `Lớp học <strong>"${ma} - ${ten}"</strong> chưa có liên kết. Hệ thống sẽ <strong>XÓA CỨNG</strong> (xóa vĩnh viễn) khỏi cơ sở dữ liệu. Bạn có chắc chắn muốn xóa không?`;
+                    performDeleteLop(msg);
+                })
+                .catch(err => {
+                    console.error("Lỗi khi kiểm tra xóa lớp:", err);
+                    performDeleteLop(`Bạn có chắc chắn muốn xóa lớp <strong>"${ma} - ${ten}"</strong> và tất cả dữ liệu tạm thời đi kèm không?`);
+                });
+        }
     }
 
     function editSVClick(event, tr) {
@@ -1745,33 +1765,53 @@
 
         const id = tr.dataset.masv;
         const name = `${tr.dataset.ho} ${tr.dataset.ten}`;
+        const newIdx = newItems.findIndex(x => x.MaSV === id);
+        const isNew = newIdx >= 0;
 
-        window.hienXacNhan(`Bạn có chắc chắn muốn xóa sinh viên <strong>"${id} - ${name}"</strong> không?`, () => {
-            pushState();
+        const performDeleteSV = (message) => {
+            window.hienXacNhan(message, () => {
+                pushState();
 
-            const newIdx = newItems.findIndex(x => x.MaSV === id);
-            if (newIdx >= 0) {
-                newItems = newItems.filter(x => x.MaSV !== id);
-            } else {
-                updatedItems = updatedItems.filter(x => x.MaSV !== id);
-                if (!deletedItems.some(x => x.MaSV === id)) {
-                    deletedItems.push({ MaSV: id });
+                if (isNew) {
+                    newItems = newItems.filter(x => x.MaSV !== id);
+                } else {
+                    updatedItems = updatedItems.filter(x => x.MaSV !== id);
+                    if (!deletedItems.some(x => x.MaSV === id)) {
+                        deletedItems.push({ MaSV: id });
+                    }
                 }
-            }
 
-            if (newIdx >= 0) {
-                tr.remove();
-            } else {
-                AppCommon.setChangeState(tr, "deleted");
-            }
-            if (selectedRow === tr) {
-                resetStudentForm();
-            }
-            updateSTT();
+                if (isNew) {
+                    tr.remove();
+                } else {
+                    AppCommon.setChangeState(tr, "deleted");
+                }
+                if (selectedRow === tr) {
+                    resetStudentForm();
+                }
+                updateSTT();
 
-            updateSaveButtonState();
-            updateUndoRedoButtonStates();
-        });
+                updateSaveButtonState();
+                updateUndoRedoButtonStates();
+            });
+        };
+
+        if (isNew) {
+            performDeleteSV(`Bạn có chắc chắn muốn xóa sinh viên tạm thời <strong>"${id} - ${name}"</strong> không?`);
+        } else {
+            fetch(`/LopSinhVien/CheckDeleteStudent?maSV=${encodeURIComponent(id)}`)
+                .then(res => res.json())
+                .then(data => {
+                    const msg = data.isSoftDelete
+                        ? `Sinh viên <strong>"${id} - ${name}"</strong> đã có lịch sử thi (Bảng điểm). Hệ thống sẽ <strong>XÓA MỀM</strong> (ngừng hoạt động) tài khoản sinh viên này. Bạn có chắc chắn muốn xóa không?`
+                        : `Sinh viên <strong>"${id} - ${name}"</strong> chưa có lịch sử. Hệ thống sẽ <strong>XÓA CỨNG</strong> (xóa vĩnh viễn) khỏi cơ sở dữ liệu. Bạn có chắc chắn muốn xóa không?`;
+                    performDeleteSV(msg);
+                })
+                .catch(err => {
+                    console.error("Lỗi khi kiểm tra xóa sinh viên:", err);
+                    performDeleteSV(`Bạn có chắc chắn muốn xóa sinh viên <strong>"${id} - ${name}"</strong> không?`);
+                });
+        }
     }
 
     // Expose public API

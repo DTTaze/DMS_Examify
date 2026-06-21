@@ -134,6 +134,27 @@ namespace DMS_Examify.Services
             return (int)cmd.ExecuteScalar() > 0;
         }
 
+        public bool CheckIsSoftDelete(string maLop)
+        {
+            if (string.IsNullOrWhiteSpace(maLop))
+            {
+                return false;
+            }
+
+            using var conn = _connectionFactory.CreateConnection();
+            string sql = @"
+                SELECT 1 WHERE EXISTS (
+                    SELECT 1 FROM dbo.SINHVIEN WHERE MALOP = @MaLop
+                    UNION ALL
+                    SELECT 1 FROM dbo.GIAOVIEN_DANGKY WHERE MALOP = @MaLop
+                )";
+            using var cmd = new SqlCommand(sql, conn);
+            cmd.Parameters.Add("@MaLop", SqlDbType.NChar, 8).Value = maLop.Trim();
+
+            var result = cmd.ExecuteScalar();
+            return result != null && result != DBNull.Value;
+        }
+
         private static SqlCommand CreateStoredProcedureCommand(string procedureName, SqlConnection connection)
         {
             return new SqlCommand(procedureName, connection)

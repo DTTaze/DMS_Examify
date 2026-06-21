@@ -424,16 +424,37 @@
                     
                     const subjectCode = row.dataset.mamh.trim();
                     const subjectName = row.dataset.tenmh.trim();
-                    
-                    window.hienXacNhan(`Bạn có chắc chắn muốn xóa môn học <strong>"${subjectCode} - ${subjectName}"</strong> không?`, () => {
-                        dom.tbl.querySelectorAll("tbody tr")
-                            .forEach(r => r.classList.remove("table-active"));
-                        row.classList.add("table-active");
-                        selectedTableRow = row;
-                        
-                        dom.txtMaMH.value = subjectCode;
-                        deleteSubject();
-                    }, "Xác nhận xóa");
+                    const subjectId = parseInt(row.dataset.id, 10);
+                    const isNew = !isNaN(subjectId) && subjectId < 0;
+
+                    const performDeleteAction = (message) => {
+                        window.hienXacNhan(message, () => {
+                            dom.tbl.querySelectorAll("tbody tr")
+                                .forEach(r => r.classList.remove("table-active"));
+                            row.classList.add("table-active");
+                            selectedTableRow = row;
+                            
+                            dom.txtMaMH.value = subjectCode;
+                            deleteSubject();
+                        }, "Xác nhận xóa");
+                    };
+
+                    if (isNew) {
+                        performDeleteAction(`Bạn có chắc chắn muốn xóa môn học tạm thời <strong>"${subjectCode} - ${subjectName}"</strong> không?`);
+                    } else {
+                        fetch(`/MonHoc/CheckDelete?maMH=${encodeURIComponent(subjectCode)}`)
+                            .then(res => res.json())
+                            .then(data => {
+                                const msg = data.isSoftDelete
+                                    ? `Môn học <strong>"${subjectCode} - ${subjectName}"</strong> đã được liên kết trong hệ thống. Hệ thống sẽ <strong>XÓA MỀM</strong> (ngừng hoạt động) để bảo toàn lịch sử. Bạn có chắc chắn muốn xóa không?`
+                                    : `Môn học <strong>"${subjectCode} - ${subjectName}"</strong> chưa có liên kết. Hệ thống sẽ <strong>XÓA CỨNG</strong> (xóa vĩnh viễn) khỏi cơ sở dữ liệu. Bạn có chắc chắn muốn xóa không?`;
+                                performDeleteAction(msg);
+                            })
+                            .catch(err => {
+                                console.error("Lỗi khi kiểm tra xóa:", err);
+                                performDeleteAction(`Bạn có chắc chắn muốn xóa môn học <strong>"${subjectCode} - ${subjectName}"</strong> không?`);
+                            });
+                    }
                 };
             }
         });
