@@ -22,9 +22,9 @@ namespace DMS_Examify.Controllers
             {
                 using (SqlConnection conn = new SqlConnection(connectionString))
                 {
-                    using (SqlCommand cmd = new SqlCommand("usp_Lop_GetAll", conn))
+                    using (SqlCommand cmd = new SqlCommand("SELECT MALOP, TENLOP FROM vw_DanhSachLop ORDER BY MALOP", conn))
                     {
-                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.CommandType = CommandType.Text;
                         conn.Open();
                         using (SqlDataReader reader = cmd.ExecuteReader())
                         {
@@ -55,16 +55,16 @@ namespace DMS_Examify.Controllers
             {
                 using (SqlConnection conn = new SqlConnection(connectionString))
                 {
-                    using (SqlCommand cmd = new SqlCommand("usp_MonHoc_GetAll", conn))
+                    using (SqlCommand cmd = new SqlCommand("SELECT MaMH, TenMH FROM vw_DanhSachMonHoc ORDER BY MaMH", conn))
                     {
-                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.CommandType = CommandType.Text;
                         conn.Open();
                         using (SqlDataReader reader = cmd.ExecuteReader())
                         {
                             while (reader.Read())
                             {
-                                string maMH = reader["MAMH"] != DBNull.Value ? reader["MAMH"].ToString() : "";
-                                string tenMH = reader["TENMH"] != DBNull.Value ? reader["TENMH"].ToString() : "";
+                                string maMH = reader["MaMH"] != DBNull.Value ? reader["MaMH"].ToString() : "";
+                                string tenMH = reader["TenMH"] != DBNull.Value ? reader["TenMH"].ToString() : "";
                                 if (!string.IsNullOrEmpty(maMH))
                                 {
                                     monHocs.Add(new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem
@@ -115,10 +115,50 @@ namespace DMS_Examify.Controllers
             {
                 ViewBag.ErrorMessage = (ViewBag.ErrorMessage != null ? ViewBag.ErrorMessage + " | " : "") + "Lỗi khi truy xuất danh sách trình độ từ Server: " + ex.Message;
             }
+            var currentRole = HttpContext.Session.GetString("UserRole") ?? "";
+            var isPGV = currentRole == "PGV";
+
+            List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> giaoViens = new List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>();
+            if (isPGV)
+            {
+                try
+                {
+                    using (SqlConnection conn = new SqlConnection(connectionString))
+                    {
+                        using (SqlCommand cmd = new SqlCommand("SELECT MAGV, HOTEN FROM vw_GiaoVien_DanhSach ORDER BY MAGV", conn))
+                        {
+                            cmd.CommandType = CommandType.Text;
+                            conn.Open();
+                            using (SqlDataReader reader = cmd.ExecuteReader())
+                            {
+                                while (reader.Read())
+                                {
+                                    string maGv = reader["MAGV"] != DBNull.Value ? reader["MAGV"].ToString() : "";
+                                    string hoTen = reader["HOTEN"] != DBNull.Value ? reader["HOTEN"].ToString() : "";
+                                    if (!string.IsNullOrEmpty(maGv))
+                                    {
+                                        giaoViens.Add(new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem
+                                        {
+                                            Value = maGv,
+                                            Text = $"{maGv.Trim()} - {hoTen.Trim()}"
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    ViewBag.ErrorMessage = (ViewBag.ErrorMessage != null ? ViewBag.ErrorMessage + " | " : "") + "Lỗi khi truy xuất danh sách giáo viên từ Server: " + ex.Message;
+                }
+            }
 
             ViewBag.Lops = lops;
             ViewBag.MonHocs = monHocs;
             ViewBag.TrinhDos = trinhDos;
+            ViewBag.GiaoViens = giaoViens;
+            ViewBag.IsPGV = isPGV;
 
             List<GiaoVienDangKy> danhSach = new List<GiaoVienDangKy>();
             var maGV = HttpContext.Session.GetString("UserLogin");
@@ -170,14 +210,21 @@ namespace DMS_Examify.Controllers
                 return Json(new { success = false, message = "Không có quyền thực hiện chức năng này." });
             }
 
-            var maGV = HttpContext.Session.GetString("UserLogin");
-            if (string.IsNullOrEmpty(maGV))
+            var sessionUser = HttpContext.Session.GetString("UserLogin");
+            if (string.IsNullOrEmpty(sessionUser))
             {
                 return Json(new { success = false, message = "Hết phiên đăng nhập." });
             }
 
-            // Gán mã GV đăng nhập vào model
-            model.MaGV = maGV;
+            var role = HttpContext.Session.GetString("UserRole") ?? "";
+            if (role == "Giangvien")
+            {
+                model.MaGV = sessionUser;
+            }
+            else if (string.IsNullOrEmpty(model.MaGV))
+            {
+                return Json(new { success = false, message = "Vui lòng chọn giáo viên." });
+            }
 
             if (model.NgayThi.Date < DateTime.Now.Date)
             {

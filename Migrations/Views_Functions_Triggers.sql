@@ -117,6 +117,9 @@ GO
 PRINT N'OK: Da tao View vw_GiaoVien_DanhSach.';
 GO
 
+GRANT SELECT ON dbo.vw_GiaoVien_DanhSach TO [PGV];
+GO
+
 -- ------------------------------------------------------------
 -- 5. Trigger trg_BODE_KiemTraTruocKhiXoa
 --    Da bo: logic xoa mem/xoa cung duoc xu ly trong usp_BoDe_Delete
@@ -128,4 +131,46 @@ END
 GO
 
 PRINT N'OK: Da bo Trigger trg_BODE_KiemTraTruocKhiXoa.';
+GO
+
+-- ------------------------------------------------------------
+-- 6. View vw_DanhSachLop
+--    Lay danh sach cac lop co trong he thong (5.2)
+-- ------------------------------------------------------------
+CREATE OR ALTER VIEW dbo.vw_DanhSachLop
+AS
+    SELECT
+        MALOP,
+        TENLOP
+    FROM LOP
+    WHERE TrangThai = 1;
+GO
+
+GRANT SELECT ON dbo.vw_DanhSachLop TO [PGV];
+GO
+GRANT SELECT ON dbo.vw_DanhSachLop TO [Giangvien];
+GO
+
+PRINT N'OK: Da tao view vw_DanhSachLop'
+GO
+
+-- ------------------------------------------------------------
+-- 7. View vw_DanhSachMonHoc
+--    Lay danh sach cac mon hoc co trong he thong
+-- ------------------------------------------------------------
+CREATE OR ALTER VIEW dbo.vw_DanhSachMonHoc
+AS
+    SELECT
+        MaMH,
+        TenMH
+    FROM MONHOC
+    WHERE TrangThai = 1;
+GO
+
+GRANT SELECT ON dbo.vw_DanhSachMonHoc TO [PGV];
+GO
+GRANT SELECT ON dbo.vw_DanhSachMonHoc TO [Giangvien];
+GO
+
+PRINT N'OK: Da tao view vw_DanhSachMonHoc'
 GO

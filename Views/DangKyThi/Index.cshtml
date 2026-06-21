@@ -24,6 +24,21 @@
                         }
                     </select>
                 </div>
+                @if (ViewBag.IsPGV == true)
+                {
+                <div class="mb-3">
+                    <label class="form-label">Giáo viên</label>
+                    <select class="form-select" id="selGiaoVien">
+                        @if (ViewBag.GiaoViens != null)
+                        {
+                            foreach (var gv in ViewBag.GiaoViens)
+                            {
+                                <option value="@gv.Value">@gv.Text</option>
+                            }
+                        }
+                    </select>
+                </div>
+                }
                 <div class="mb-3">
                     <label class="form-label">Môn học</label>
                     <select class="form-select" id="selMonHoc">
@@ -171,6 +186,7 @@
             $("#txtNgayThiDK").attr('min', today);
             $("#btnDangKy").click(function() {
                 var model = {
+                    MaGV: $("#selGiaoVien").length ? $("#selGiaoVien").val() : null,
                     MaLop: $("#selLop").val(),
                     MaMH: $("#selMonHoc").val(),
                     TrinhDo: $("#selTrinhDoDK").val(),
@@ -222,6 +238,7 @@
 
             $("#btnHuy").click(function() {
                 $("#selLop").prop("selectedIndex", 0);
+                $("#selGiaoVien").prop("selectedIndex", 0);
                 $("#selMonHoc").prop("selectedIndex", 0);
                 $("#selTrinhDoDK").prop("selectedIndex", 0);
                 $("#selLanThi").val("1");
