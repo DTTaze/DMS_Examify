@@ -3177,6 +3177,78 @@ PRINT N'OK: Da tao usp_LayDanhSachTrinhDo.';
 GO
 
 -- ============================================================
+-- SP ho tro trang Thi: LayTenLop, LayDanhSachMonThiChoSV
+-- ============================================================
+
+CREATE OR ALTER PROCEDURE dbo.usp_LayTenLopByMaLop
+    @MALOP NCHAR(8)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT TENLOP
+    FROM dbo.LOP
+    WHERE MALOP = @MALOP AND TrangThai = 1;
+END
+GO
+
+GRANT EXECUTE ON dbo.usp_LayTenLopByMaLop TO [Sinhvien];
+GRANT EXECUTE ON dbo.usp_LayTenLopByMaLop TO [Giangvien];
+GRANT EXECUTE ON dbo.usp_LayTenLopByMaLop TO [PGV];
+GO
+
+PRINT N'OK: Da tao usp_LayTenLopByMaLop.';
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_LayDanhSachMonThiChoSV
+    @MALOP NCHAR(8)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT DISTINCT
+        gvdk.MAMH,
+        mh.TENMH
+    FROM dbo.GIAOVIEN_DANGKY gvdk
+    INNER JOIN dbo.MONHOC mh ON gvdk.MAMH = mh.MAMH
+    WHERE gvdk.MALOP = @MALOP
+      AND mh.TrangThai = 1
+    ORDER BY mh.TENMH ASC;
+END
+GO
+
+GRANT EXECUTE ON dbo.usp_LayDanhSachMonThiChoSV TO [Sinhvien];
+GRANT EXECUTE ON dbo.usp_LayDanhSachMonThiChoSV TO [Giangvien];
+GRANT EXECUTE ON dbo.usp_LayDanhSachMonThiChoSV TO [PGV];
+GO
+
+PRINT N'OK: Da tao usp_LayDanhSachMonThiChoSV.';
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_LayThongTinDeThiChoSV
+    @MALOP NCHAR(8),
+    @MAMH  NCHAR(5),
+    @LAN   SMALLINT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT SOCAUTHI, THOIGIAN, TRINHDO
+    FROM dbo.GIAOVIEN_DANGKY
+    WHERE MALOP = @MALOP
+      AND MAMH  = @MAMH
+      AND LAN   = @LAN;
+END
+GO
+
+GRANT EXECUTE ON dbo.usp_LayThongTinDeThiChoSV TO [Sinhvien];
+GRANT EXECUTE ON dbo.usp_LayThongTinDeThiChoSV TO [Giangvien];
+GRANT EXECUTE ON dbo.usp_LayThongTinDeThiChoSV TO [PGV];
+GO
+
+PRINT N'OK: Da tao usp_LayThongTinDeThiChoSV.';
+GO
+
+-- ============================================================
 -- SP Thi trac nghiem: BatDauThi, TraLoiCauHoi, NopBaiThi, KiemTraPhienThi
 -- ============================================================
 
@@ -3435,4 +3507,62 @@ GO
 GRANT EXECUTE ON dbo.usp_KiemTraPhienThi TO [Sinhvien];
 GO
 PRINT N'OK: Da tao usp_KiemTraPhienThi.';
+GO
+
+-- ============================================================
+-- SP Lay noi dung bai thi dang lam (phuc vu trang LamBai)
+-- ============================================================
+
+CREATE OR ALTER PROCEDURE dbo.usp_LayBaiThiDangLam
+    @MASV NCHAR(8),
+    @MAMH NCHAR(5),
+    @LAN  SMALLINT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM dbo.BAITHI
+        WHERE MASV = @MASV AND MAMH = @MAMH AND LAN = @LAN AND TRANGTHAI = 0
+    )
+    BEGIN
+        RETURN;
+    END
+
+    SELECT
+        bt.MAMH,
+        mh.TENMH,
+        bt.LAN,
+        gvdk.THOIGIAN,
+        (gvdk.THOIGIAN * 60) - DATEDIFF(SECOND, bt.THOIDIEMBATDAU, GETDATE()) AS ThoiGianConLaiGiay,
+        gvdk.TRINHDO,
+        gvdk.NGAYTHI,
+        ct.STT,
+        ct.CAUHOI,
+        b.NOIDUNG,
+        b.A,
+        b.B,
+        b.C,
+        b.D,
+        ct.CAUTRALOI
+    FROM dbo.BAITHI bt
+    INNER JOIN dbo.CT_BAITHI ct
+        ON bt.MASV = ct.MASV AND bt.MAMH = ct.MAMH AND bt.LAN = ct.LAN
+    INNER JOIN dbo.BODE b
+        ON ct.CAUHOI = b.CAUHOI
+    INNER JOIN dbo.GIAOVIEN_DANGKY gvdk
+        ON bt.MAMH = gvdk.MAMH AND bt.MALOP = gvdk.MALOP AND bt.LAN = gvdk.LAN
+    INNER JOIN dbo.MONHOC mh
+        ON bt.MAMH = mh.MAMH
+    WHERE bt.MASV = @MASV
+      AND bt.MAMH = @MAMH
+      AND bt.LAN  = @LAN
+      AND bt.TRANGTHAI = 0
+    ORDER BY ct.STT ASC;
+END
+GO
+
+GRANT EXECUTE ON dbo.usp_LayBaiThiDangLam TO [Sinhvien];
+GO
+PRINT N'OK: Da tao usp_LayBaiThiDangLam.';
 GO

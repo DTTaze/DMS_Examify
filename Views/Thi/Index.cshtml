@@ -11,6 +11,12 @@
                 <span><i class="bi bi-pencil-square me-2"></i>Thông tin thi</span>
             </div>
             <div class="card-body">
+                @if (TempData["ErrorMessage"] != null)
+                {
+                    <div class="alert alert-danger mb-4">
+                        <i class="bi bi-exclamation-triangle me-2"></i>@TempData["ErrorMessage"]
+                    </div>
+                }
                 <!-- Thông tin SV (tự động) -->
                 <div class="alert alert-info mb-4">
                     <div class="row">
@@ -29,57 +35,162 @@
                     </div>
                 </div>
 
-                <!-- Chọn môn thi -->
-                <div class="row g-3 mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label">Môn học</label>
-                        <select class="form-select" id="selMonThi">
-                            @foreach (var mh in Model.DanhSachMH)
-                            {
-                                <option value="@mh.MaMH">@mh.TenMH</option>
-                            }
-                        </select>
+                @if (!Model.DanhSachMH.Any())
+                {
+                    <div class="alert alert-warning text-center">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        Hiện chưa có đề thi nào được đăng ký cho lớp của bạn.
                     </div>
-                    <div class="col-md-3">
-                        <label class="form-label">Ngày thi</label>
-                        <input type="date" class="form-control" id="txtNgayThi" value="@DateTime.Now.ToString("yyyy-MM-dd")" />
+                }
+                else
+                {
+                    <!-- Chọn môn thi -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Môn học</label>
+                            <select class="form-select" id="selMonThi">
+                                <option value="">-- Chọn môn --</option>
+                                @foreach (var mh in Model.DanhSachMH)
+                                {
+                                    <option value="@mh.MaMH">@mh.TenMH</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Ngày thi</label>
+                            <input type="date" class="form-control" id="txtNgayThi" value="@DateTime.Now.ToString("yyyy-MM-dd")" />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Lần thi</label>
+                            <select class="form-select" id="selLanThiSV">
+                                <option value="1">Lần 1</option>
+                                <option value="2">Lần 2</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="col-md-3">
-                        <label class="form-label">Lần thi</label>
-                        <select class="form-select" id="selLanThiSV">
-                            <option value="1">Lần 1</option>
-                            <option value="2">Lần 2</option>
-                        </select>
-                    </div>
-                </div>
 
-                <!-- Thông tin tự động lọc -->
-                <div class="card mb-4" style="background:#f8fafc; border:1px dashed var(--border-color);">
-                    <div class="card-body">
-                        <div class="row text-center">
-                            <div class="col-md-4">
-                                <div style="font-size:28px; font-weight:700; color:var(--primary);">20</div>
-                                <div style="font-size:12px; color:var(--text-secondary);">Số câu thi</div>
-                            </div>
-                            <div class="col-md-4">
-                                <div style="font-size:28px; font-weight:700; color:var(--warning);">45</div>
-                                <div style="font-size:12px; color:var(--text-secondary);">Phút</div>
-                            </div>
-                            <div class="col-md-4">
-                                <div><span class="badge badge-level-b" style="font-size:20px; padding:8px 20px;">B</span></div>
-                                <div style="font-size:12px; color:var(--text-secondary); margin-top:4px;">Trình độ</div>
+                    <!-- Thông tin tự động lọc -->
+                    <div class="card mb-4" id="examInfoCard" style="background:#f8fafc; border:1px dashed var(--border-color); display:none;">
+                        <div class="card-body">
+                            <div class="row text-center">
+                                <div class="col-md-4">
+                                    <div id="lblSoCauThi" style="font-size:28px; font-weight:700; color:var(--primary);">--</div>
+                                    <div style="font-size:12px; color:var(--text-secondary);">Số câu thi</div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div id="lblThoiGian" style="font-size:28px; font-weight:700; color:var(--warning);">--</div>
+                                    <div style="font-size:12px; color:var(--text-secondary);">Phút</div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div><span id="lblTrinhDo" class="badge" style="font-size:20px; padding:8px 20px;">--</span></div>
+                                    <div style="font-size:12px; color:var(--text-secondary); margin-top:4px;">Trình độ</div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Nút bắt đầu -->
-                <div class="text-center">
-                    <a asp-action="LamBai" class="btn btn-primary" style="padding:14px 48px; font-size:16px; font-weight:600; border-radius:12px;">
-                        <i class="bi bi-play-fill me-2"></i>Bắt đầu thi
-                    </a>
-                </div>
+                    <div class="alert alert-secondary text-center mb-4" id="noExamInfo">
+                        <i class="bi bi-info-circle me-1"></i>Chọn môn học và lần thi để xem thông tin đề thi.
+                    </div>
+
+                    <!-- Nút bắt đầu -->
+                    <div class="text-center">
+                        <button type="button" class="btn btn-primary" id="btnBatDauThi" disabled
+                                style="padding:14px 48px; font-size:16px; font-weight:600; border-radius:12px;">
+                            <i class="bi bi-play-fill me-2"></i>Bắt đầu thi
+                        </button>
+                    </div>
+                }
             </div>
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        (function () {
+            const selMon = document.getElementById('selMonThi');
+            const selLan = document.getElementById('selLanThiSV');
+            const examInfoCard = document.getElementById('examInfoCard');
+            const noExamInfo = document.getElementById('noExamInfo');
+            const btnBatDau = document.getElementById('btnBatDauThi');
+
+            if (!selMon) return;
+
+            function loadExamInfo() {
+                const mamh = selMon.value;
+                const lan = selLan.value;
+
+                if (!mamh) {
+                    examInfoCard.style.display = 'none';
+                    noExamInfo.style.display = '';
+                    btnBatDau.disabled = true;
+                    return;
+                }
+
+                fetch(`/Thi/LayThongTinDeThi?mamh=${encodeURIComponent(mamh)}&lan=${lan}`)
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.found) {
+                            document.getElementById('lblSoCauThi').textContent = data.soCauThi;
+                            document.getElementById('lblThoiGian').textContent = data.thoiGian;
+
+                            const badge = document.getElementById('lblTrinhDo');
+                            badge.textContent = data.trinhDo;
+                            badge.className = 'badge badge-level-' + data.trinhDo.toLowerCase();
+
+                            examInfoCard.style.display = '';
+                            noExamInfo.style.display = 'none';
+                            btnBatDau.disabled = false;
+                        } else {
+                            examInfoCard.style.display = 'none';
+                            noExamInfo.innerHTML = '<i class="bi bi-exclamation-circle me-1"></i>' + (data.message || 'Không tìm thấy đề thi cho lần thi này.');
+                            noExamInfo.style.display = '';
+                            btnBatDau.disabled = true;
+                        }
+                    })
+                    .catch(() => {
+                        examInfoCard.style.display = 'none';
+                        noExamInfo.style.display = '';
+                        btnBatDau.disabled = true;
+                    });
+            }
+
+            selMon.addEventListener('change', loadExamInfo);
+            selLan.addEventListener('change', loadExamInfo);
+
+            btnBatDau.addEventListener('click', function () {
+                const mamh = selMon.value;
+                const lan = Number(selLan.value);
+                if (!mamh) return;
+
+                btnBatDau.disabled = true;
+                btnBatDau.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Đang khởi tạo...';
+
+                fetch('/Thi/BatDauThi', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ maMH: mamh, lan })
+                })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success && data.redirectUrl) {
+                            window.location.href = data.redirectUrl;
+                            return;
+                        }
+
+                        noExamInfo.innerHTML = '<i class="bi bi-exclamation-circle me-1"></i>' + (data.message || 'Không thể bắt đầu thi.');
+                        noExamInfo.style.display = '';
+                        btnBatDau.disabled = false;
+                        btnBatDau.innerHTML = '<i class="bi bi-play-fill me-2"></i>Bắt đầu thi';
+                    })
+                    .catch(() => {
+                        noExamInfo.innerHTML = '<i class="bi bi-exclamation-circle me-1"></i>Không thể kết nối server.';
+                        noExamInfo.style.display = '';
+                        btnBatDau.disabled = false;
+                        btnBatDau.innerHTML = '<i class="bi bi-play-fill me-2"></i>Bắt đầu thi';
+                    });
+            });
+        })();
+    </script>
+}

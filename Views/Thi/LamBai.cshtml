@@ -3,7 +3,7 @@
     ViewData["Title"] = "Làm bài thi";
 }
 
-<div class="exam-container">
+<div class="exam-container" data-mamh="@Model.MaMH" data-lan="@Model.Lan">
     <!-- Header thi -->
     <div class="row g-3 mb-4 align-items-center animate-in">
         <div class="col-md-4">
@@ -16,7 +16,7 @@
         </div>
         <div class="col-md-4 text-center">
             <div class="exam-timer" id="examTimer">
-                @Model.ThoiGian:00
+                --:--
             </div>
         </div>
         <div class="col-md-4 text-end">
@@ -30,7 +30,9 @@
     <div class="exam-progress mb-4 animate-in animate-in-delay-1">
         @foreach (var ch in Model.DanhSachCauHoi)
         {
-            <div class="q-dot @(ch.STT == 1 ? "current" : "")" onclick="goToQuestion(@ch.STT)" id="dot-@ch.STT">
+            var isAnswered = !string.IsNullOrWhiteSpace(ch.TraLoiSV);
+            <div class="q-dot @(ch.STT == 1 ? "current" : "") @(isAnswered ? "answered" : "")"
+                 onclick="goToQuestion(@ch.STT)" id="dot-@ch.STT">
                 @ch.STT
             </div>
         }
@@ -39,26 +41,21 @@
     <!-- Câu hỏi -->
     @foreach (var ch in Model.DanhSachCauHoi)
     {
-        <div class="question-card animate-in animate-in-delay-2" id="q-@ch.STT" style="@(ch.STT != 1 ? "display:none;" : "")">
+        <div class="question-card animate-in animate-in-delay-2" id="q-@ch.STT"
+             style="@(ch.STT != 1 ? "display:none;" : "")" data-cauhoi="@ch.CauHoi">
             <div class="q-number">Câu @ch.STT / @Model.DanhSachCauHoi.Count — Câu số @ch.CauHoi trong bộ đề</div>
             <div class="q-text">@ch.NoiDung</div>
 
-            <div class="q-option" onclick="chonDapAn(@ch.STT, 'A', this)" data-answer="A">
-                <div class="option-letter">A</div>
-                <div>@ch.DapAnA</div>
-            </div>
-            <div class="q-option" onclick="chonDapAn(@ch.STT, 'B', this)" data-answer="B">
-                <div class="option-letter">B</div>
-                <div>@ch.DapAnB</div>
-            </div>
-            <div class="q-option" onclick="chonDapAn(@ch.STT, 'C', this)" data-answer="C">
-                <div class="option-letter">C</div>
-                <div>@ch.DapAnC</div>
-            </div>
-            <div class="q-option" onclick="chonDapAn(@ch.STT, 'D', this)" data-answer="D">
-                <div class="option-letter">D</div>
-                <div>@ch.DapAnD</div>
-            </div>
+            @foreach (var letter in new[] { "A", "B", "C", "D" })
+            {
+                var optionText = letter switch { "A" => ch.DapAnA, "B" => ch.DapAnB, "C" => ch.DapAnC, _ => ch.DapAnD };
+                var isSelected = string.Equals(ch.TraLoiSV?.Trim(), letter, StringComparison.OrdinalIgnoreCase);
+                <div class="q-option @(isSelected ? "selected" : "")"
+                     onclick="chonDapAn(@ch.STT, '@letter', this)" data-answer="@letter">
+                    <div class="option-letter">@letter</div>
+                    <div>@optionText</div>
+                </div>
+            }
 
             <!-- Navigation -->
             <div class="d-flex justify-content-between mt-4">
@@ -100,7 +97,7 @@
                     <div class="score-value" id="scoreValue">0</div>
                     <div class="score-label">điểm</div>
                     <div style="margin-top:12px; color:var(--text-secondary);">
-                        Số câu đúng: <strong id="correctCount">0</strong> / @Model.DanhSachCauHoi.Count
+                        Số câu đúng: <strong id="correctCount">0</strong> / <span id="totalCount">@Model.DanhSachCauHoi.Count</span>
                     </div>
                     <div style="margin-top:24px;">
                         <a asp-controller="KetQua" asp-action="Index" class="btn btn-primary" style="padding:10px 32px;">
@@ -118,76 +115,108 @@
 
 @section Scripts {
     <script>
-        // Store answers
-        const answers = {};
-        const correctAnswers = {
-            @foreach (var ch in Model.DanhSachCauHoi)
-            {
-                @:@ch.STT: '@ch.DapAnDung',
-            }
-        };
-        const totalQuestions = @Model.DanhSachCauHoi.Count;
-        let currentQuestion = 1;
+        (function () {
+            const container = document.querySelector('.exam-container');
+            const maMH = container.dataset.mamh;
+            const lan = Number(container.dataset.lan);
+            const totalQuestions = @Model.DanhSachCauHoi.Count;
 
-        // Timer
-        let timeLeft = @Model.ThoiGian * 60;
-        const timerEl = document.getElementById('examTimer');
+            let currentQuestion = 1;
+            let isSubmitting = false;
 
-        const timerInterval = setInterval(() => {
-            timeLeft--;
-            const mins = Math.floor(timeLeft / 60);
-            const secs = timeLeft % 60;
-            timerEl.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            // --- Timer (dùng ThoiGianConLaiGiay để hỗ trợ resume) ---
+            let timeLeft = @Model.ThoiGianConLaiGiay;
+            const timerEl = document.getElementById('examTimer');
 
-            if (timeLeft <= 60) {
-                timerEl.classList.add('warning');
+            function updateTimerDisplay() {
+                const mins = Math.floor(timeLeft / 60);
+                const secs = timeLeft % 60;
+                timerEl.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+
+                if (timeLeft <= 60) {
+                    timerEl.classList.add('warning');
+                }
             }
 
-            if (timeLeft <= 0) {
+            updateTimerDisplay();
+
+            const timerInterval = setInterval(() => {
+                timeLeft--;
+                updateTimerDisplay();
+
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    nopBai();
+                }
+            }, 1000);
+
+            // --- Chọn đáp án: cập nhật UI + gọi API lưu vào DB ---
+            window.chonDapAn = function (stt, answer, el) {
+                const parent = el.parentElement;
+                parent.querySelectorAll('.q-option').forEach(o => o.classList.remove('selected'));
+                el.classList.add('selected');
+
+                document.getElementById('dot-' + stt).classList.add('answered');
+
+                const cauHoi = document.getElementById('q-' + stt).dataset.cauhoi;
+
+                fetch('/Thi/TraLoiCauHoi', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        maMH: maMH,
+                        lan: lan,
+                        cauHoi: Number(cauHoi),
+                        cauTraLoi: answer
+                    })
+                }).catch(() => { /* silent - SV vẫn tiếp tục làm bài */ });
+            };
+
+            // --- Chuyển câu hỏi ---
+            window.goToQuestion = function (stt) {
+                document.querySelectorAll('.question-card').forEach(q => q.style.display = 'none');
+                document.getElementById('q-' + stt).style.display = 'block';
+
+                document.querySelectorAll('.q-dot').forEach(d => d.classList.remove('current'));
+                document.getElementById('dot-' + stt).classList.add('current');
+
+                currentQuestion = stt;
+            };
+
+            // --- Nộp bài: gọi API server chấm điểm ---
+            window.nopBai = function () {
+                if (isSubmitting) return;
+                isSubmitting = true;
                 clearInterval(timerInterval);
-                nopBai();
-            }
-        }, 1000);
 
-        function chonDapAn(stt, answer, el) {
-            // Remove selected from siblings
-            const parent = el.parentElement;
-            parent.querySelectorAll('.q-option').forEach(o => o.classList.remove('selected'));
-            el.classList.add('selected');
-            answers[stt] = answer;
+                fetch('/Thi/NopBaiThi', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ maMH: maMH, lan: lan })
+                })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success) {
+                            document.getElementById('scoreValue').textContent =
+                                parseFloat(data.diem).toFixed(1);
+                            document.getElementById('correctCount').textContent = data.soCauDung;
+                            document.getElementById('totalCount').textContent = data.tongSoCau;
+                        } else {
+                            document.getElementById('scoreValue').textContent = '--';
+                            document.getElementById('correctCount').textContent = data.message || 'Lỗi nộp bài';
+                        }
 
-            // Update dot
-            document.getElementById('dot-' + stt).classList.add('answered');
-        }
+                        const modal = new bootstrap.Modal(document.getElementById('resultModal'));
+                        modal.show();
+                    })
+                    .catch(() => {
+                        document.getElementById('scoreValue').textContent = '--';
+                        document.getElementById('correctCount').textContent = 'Không thể kết nối server';
 
-        function goToQuestion(stt) {
-            // Hide all
-            document.querySelectorAll('.question-card').forEach(q => q.style.display = 'none');
-            document.getElementById('q-' + stt).style.display = 'block';
-
-            // Update dots
-            document.querySelectorAll('.q-dot').forEach(d => d.classList.remove('current'));
-            document.getElementById('dot-' + stt).classList.add('current');
-
-            currentQuestion = stt;
-        }
-
-        function nopBai() {
-            clearInterval(timerInterval);
-
-            // Calculate score
-            let correct = 0;
-            for (let i = 1; i <= totalQuestions; i++) {
-                if (answers[i] === correctAnswers[i]) correct++;
-            }
-
-            const score = (correct / totalQuestions * 10).toFixed(1);
-
-            document.getElementById('scoreValue').textContent = score;
-            document.getElementById('correctCount').textContent = correct;
-
-            const modal = new bootstrap.Modal(document.getElementById('resultModal'));
-            modal.show();
-        }
+                        const modal = new bootstrap.Modal(document.getElementById('resultModal'));
+                        modal.show();
+                    });
+            };
+        })();
     </script>
 }
