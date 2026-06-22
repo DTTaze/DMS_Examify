@@ -174,3 +174,44 @@ GO
 
 PRINT N'OK: Da tao view vw_DanhSachMonHoc'
 GO
+
+-- ------------------------------------------------------------
+-- 8. View vw_GiaoVienDangKy
+--    Lay danh sach dang ky thi kem ten mon, ten lop, ten GV
+--    Loc theo MAGV o tang ung dung (PGV xem tat ca, GV xem cua minh)
+-- ------------------------------------------------------------
+CREATE OR ALTER VIEW dbo.vw_GiaoVienDangKy
+AS
+    SELECT
+        gvdk.MAGV,
+        dbo.udf_LayHoTen(gv.HO, gv.TEN) AS TenGV,
+        gvdk.MAMH,
+        mh.TENMH,
+        gvdk.MALOP,
+        l.TENLOP,
+        gvdk.TRINHDO,
+        gvdk.NGAYTHI,
+        gvdk.LAN,
+        gvdk.SOCAUTHI,
+        gvdk.THOIGIAN,
+        CASE
+            WHEN EXISTS (
+                SELECT 1 FROM dbo.BAITHI bt
+                WHERE bt.MAMH = gvdk.MAMH
+                  AND bt.MALOP = gvdk.MALOP
+                  AND bt.LAN = gvdk.LAN
+            ) THEN CAST(1 AS BIT)
+            ELSE CAST(0 AS BIT)
+        END AS DaThi
+    FROM dbo.GIAOVIEN_DANGKY gvdk
+    JOIN dbo.GIAOVIEN gv ON gvdk.MAGV = gv.MAGV
+    JOIN dbo.MONHOC   mh ON gvdk.MAMH = mh.MAMH
+    JOIN dbo.LOP       l ON gvdk.MALOP = l.MALOP;
+GO
+
+GRANT SELECT ON dbo.vw_GiaoVienDangKy TO [PGV];
+GO
+GRANT SELECT ON dbo.vw_GiaoVienDangKy TO [Giangvien];
+GO
+PRINT N'OK: Da tao view vw_GiaoVienDangKy.';
+GO

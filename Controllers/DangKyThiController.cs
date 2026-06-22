@@ -30,8 +30,8 @@ namespace DMS_Examify.Controllers
                         {
                             while (reader.Read())
                             {
-                                string maLop = reader["MALOP"] != DBNull.Value ? reader["MALOP"].ToString() : "";
-                                string tenLop = reader["TENLOP"] != DBNull.Value ? reader["TENLOP"].ToString() : "";
+                                string maLop = reader["MALOP"] != DBNull.Value ? reader["MALOP"].ToString().Trim() : "";
+                                string tenLop = reader["TENLOP"] != DBNull.Value ? reader["TENLOP"].ToString().Trim() : "";
                                 if (!string.IsNullOrEmpty(maLop))
                                 {
                                     lops.Add(new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem
@@ -63,8 +63,8 @@ namespace DMS_Examify.Controllers
                         {
                             while (reader.Read())
                             {
-                                string maMH = reader["MaMH"] != DBNull.Value ? reader["MaMH"].ToString() : "";
-                                string tenMH = reader["TenMH"] != DBNull.Value ? reader["TenMH"].ToString() : "";
+                                string maMH = reader["MaMH"] != DBNull.Value ? reader["MaMH"].ToString().Trim() : "";
+                                string tenMH = reader["TenMH"] != DBNull.Value ? reader["TenMH"].ToString().Trim() : "";
                                 if (!string.IsNullOrEmpty(maMH))
                                 {
                                     monHocs.Add(new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem
@@ -169,10 +169,17 @@ namespace DMS_Examify.Controllers
                 {
                     using (SqlConnection conn = new SqlConnection(connectionString))
                     {
-                        using (SqlCommand cmd = new SqlCommand("usp_LayDanhSachDeThi", conn))
+                        string query = isPGV
+                            ? "SELECT * FROM vw_GiaoVienDangKy ORDER BY NGAYTHI DESC"
+                            : "SELECT * FROM vw_GiaoVienDangKy WHERE MAGV = @MaGV ORDER BY NGAYTHI DESC";
+
+                        using (SqlCommand cmd = new SqlCommand(query, conn))
                         {
-                            cmd.CommandType = CommandType.StoredProcedure;
-                            cmd.Parameters.AddWithValue("@MaGV", maGV);
+                            cmd.CommandType = CommandType.Text;
+                            if (!isPGV)
+                            {
+                                cmd.Parameters.AddWithValue("@MaGV", maGV);
+                            }
                             conn.Open();
                             using (SqlDataReader reader = cmd.ExecuteReader())
                             {
@@ -180,13 +187,18 @@ namespace DMS_Examify.Controllers
                                 {
                                     danhSach.Add(new GiaoVienDangKy
                                     {
-                                        MaMH = reader["MAMH"]?.ToString() ?? "",
-                                        MaLop = reader["MALOP"]?.ToString() ?? "",
-                                        TrinhDo = reader["TRINHDO"]?.ToString() ?? "",
+                                        MaGV = reader["MAGV"]?.ToString()?.Trim() ?? "",
+                                        TenGV = reader["TenGV"]?.ToString()?.Trim() ?? "",
+                                        MaMH = reader["MAMH"]?.ToString()?.Trim() ?? "",
+                                        TenMH = reader["TENMH"]?.ToString()?.Trim() ?? "",
+                                        MaLop = reader["MALOP"]?.ToString()?.Trim() ?? "",
+                                        TenLop = reader["TENLOP"]?.ToString()?.Trim() ?? "",
+                                        TrinhDo = reader["TRINHDO"]?.ToString()?.Trim() ?? "",
                                         NgayThi = reader["NGAYTHI"] != DBNull.Value ? Convert.ToDateTime(reader["NGAYTHI"]) : DateTime.MinValue,
                                         Lan = reader["LAN"] != DBNull.Value ? Convert.ToInt32(reader["LAN"]) : 1,
                                         SoCauThi = reader["SOCAUTHI"] != DBNull.Value ? Convert.ToInt32(reader["SOCAUTHI"]) : 0,
-                                        ThoiGian = reader["THOIGIAN"] != DBNull.Value ? Convert.ToInt32(reader["THOIGIAN"]) : 0
+                                        ThoiGian = reader["THOIGIAN"] != DBNull.Value ? Convert.ToInt32(reader["THOIGIAN"]) : 0,
+                                        DaThi = reader["DaThi"] != DBNull.Value && Convert.ToBoolean(reader["DaThi"])
                                     });
                                 }
                             }
@@ -304,6 +316,112 @@ namespace DMS_Examify.Controllers
             catch (Exception ex)
             {
                 return Json(new { success = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public IActionResult CapNhat([FromBody] GiaoVienDangKy model)
+        {
+            if (!CheckRole("PGV", "Giangvien"))
+            {
+                return Json(new { success = false, message = "Không có quyền thực hiện chức năng này." });
+            }
+
+            var sessionUser = HttpContext.Session.GetString("UserLogin");
+            if (string.IsNullOrEmpty(sessionUser))
+            {
+                return Json(new { success = false, message = "Hết phiên đăng nhập." });
+            }
+
+            var role = HttpContext.Session.GetString("UserRole") ?? "";
+            if (role == "Giangvien")
+            {
+                model.MaGV = sessionUser;
+            }
+            else if (string.IsNullOrEmpty(model.MaGV))
+            {
+                return Json(new { success = false, message = "Vui lòng chọn giáo viên." });
+            }
+
+            string connectionString = ConnectionString;
+            try
+            {
+                using (SqlConnection conn = new SqlConnection(connectionString))
+                {
+                    using (SqlCommand cmd = new SqlCommand("usp_GiaoVienDangKy_Update", conn))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.AddWithValue("@MAMH", model.MaMH);
+                        cmd.Parameters.AddWithValue("@MALOP", model.MaLop);
+                        cmd.Parameters.AddWithValue("@LAN", model.Lan);
+                        cmd.Parameters.AddWithValue("@MAGV", model.MaGV);
+                        cmd.Parameters.AddWithValue("@TRINHDO", model.TrinhDo);
+                        cmd.Parameters.AddWithValue("@SOCAUTHI", model.SoCauThi);
+                        cmd.Parameters.AddWithValue("@THOIGIAN", model.ThoiGian);
+                        cmd.Parameters.AddWithValue("@NGAYTHI", model.NgayThi);
+
+                        conn.Open();
+                        using (SqlDataReader reader = cmd.ExecuteReader())
+                        {
+                            if (reader.Read())
+                            {
+                                bool isSuccess = reader["IsSuccess"] != DBNull.Value && Convert.ToBoolean(reader["IsSuccess"]);
+                                string message = reader["ThongBao"] != DBNull.Value ? reader["ThongBao"].ToString() : "";
+                                return Json(new { success = isSuccess, message = message });
+                            }
+                            return Json(new { success = false, message = "Không nhận được phản hồi từ server." });
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = "Lỗi hệ thống: " + ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public IActionResult Xoa([FromBody] GiaoVienDangKy model)
+        {
+            if (!CheckRole("PGV", "Giangvien"))
+            {
+                return Json(new { success = false, message = "Không có quyền thực hiện chức năng này." });
+            }
+
+            if (string.IsNullOrEmpty(HttpContext.Session.GetString("UserLogin")))
+            {
+                return Json(new { success = false, message = "Hết phiên đăng nhập." });
+            }
+
+            string connectionString = ConnectionString;
+            try
+            {
+                using (SqlConnection conn = new SqlConnection(connectionString))
+                {
+                    using (SqlCommand cmd = new SqlCommand("usp_GiaoVienDangKy_Delete", conn))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.AddWithValue("@MAMH", model.MaMH);
+                        cmd.Parameters.AddWithValue("@MALOP", model.MaLop);
+                        cmd.Parameters.AddWithValue("@LAN", model.Lan);
+
+                        conn.Open();
+                        using (SqlDataReader reader = cmd.ExecuteReader())
+                        {
+                            if (reader.Read())
+                            {
+                                bool isSuccess = reader["IsSuccess"] != DBNull.Value && Convert.ToBoolean(reader["IsSuccess"]);
+                                string message = reader["ThongBao"] != DBNull.Value ? reader["ThongBao"].ToString() : "";
+                                return Json(new { success = isSuccess, message = message });
+                            }
+                            return Json(new { success = false, message = "Không nhận được phản hồi từ server." });
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = "Lỗi hệ thống: " + ex.Message });
             }
         }
     }

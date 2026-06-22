@@ -94,12 +94,18 @@
                     Vui lòng kiểm tra đủ số câu trước khi đăng ký.
                 </div>
 
-                <div class="action-toolbar">
-                    <button type="button" class="btn btn-success" id="btnDangKy" style="min-width:160px;">
-                        <i class="bi bi-check-lg"></i> Đăng ký
+                <div class="d-flex gap-2 flex-wrap">
+                    <button type="button" class="btn btn-primary btn-sm px-3" id="btnDangKy">
+                        <i class="bi bi-plus-lg me-1"></i> Thêm
                     </button>
-                    <button type="button" class="btn btn-outline-secondary" id="btnHuy">
-                        <i class="bi bi-arrow-counterclockwise"></i> Hủy
+                    <button type="button" class="btn btn-warning btn-sm px-3 text-white" id="btnSuaDK" disabled>
+                        <i class="bi bi-pencil-square me-1"></i> Sửa
+                    </button>
+                    <button type="button" class="btn btn-danger btn-sm px-3" id="btnXoaDK" disabled>
+                        <i class="bi bi-trash me-1"></i> Xóa
+                    </button>
+                    <button type="button" class="btn btn-secondary btn-sm px-3" id="btnHuy">
+                        <i class="bi bi-arrow-clockwise me-1"></i> Reset
                     </button>
                 </div>
             </div>
@@ -115,30 +121,60 @@
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-hover">
+                    <table class="table table-hover mb-0" id="tblDangKy">
                         <thead>
                             <tr>
+                                @if (ViewBag.IsPGV == true)
+                                {
+                                    <th>Giáo viên</th>
+                                }
                                 <th>Lớp</th>
-                                <th>Môn</th>
+                                <th>Môn học</th>
                                 <th>Trình độ</th>
                                 <th>Lần</th>
                                 <th>Số câu</th>
                                 <th>Ngày thi</th>
                                 <th>TG (phút)</th>
+                                <th>Trạng thái</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach (var dk in Model)
                             {
                                 var badgeClass = dk.TrinhDo == "A" ? "badge-level-a" : dk.TrinhDo == "B" ? "badge-level-b" : "badge-level-c";
-                                <tr>
-                                    <td><strong>@dk.MaLop</strong></td>
-                                    <td>@dk.MaMH</td>
+                                var rowClass = dk.DaThi ? "table-secondary text-muted" : "";
+                                <tr class="@rowClass"
+                                    style="cursor: @(dk.DaThi ? "default" : "pointer")"
+                                    data-magv="@dk.MaGV"
+                                    data-mamh="@dk.MaMH"
+                                    data-malop="@dk.MaLop"
+                                    data-trinhdo="@dk.TrinhDo"
+                                    data-lan="@dk.Lan"
+                                    data-socau="@dk.SoCauThi"
+                                    data-ngaythi="@dk.NgayThi.ToString("yyyy-MM-dd")"
+                                    data-thoigian="@dk.ThoiGian"
+                                    data-dathi="@dk.DaThi.ToString().ToLower()">
+                                    @if (ViewBag.IsPGV == true)
+                                    {
+                                        <td>@dk.MaGV.Trim() - @dk.TenGV</td>
+                                    }
+                                    <td><strong>@dk.MaLop.Trim()</strong> <small class="text-muted">@dk.TenLop</small></td>
+                                    <td>@dk.TenMH</td>
                                     <td><span class="badge @badgeClass">@dk.TrinhDo</span></td>
                                     <td>@dk.Lan</td>
                                     <td>@dk.SoCauThi</td>
                                     <td>@dk.NgayThi.ToString("dd/MM/yyyy")</td>
                                     <td>@dk.ThoiGian</td>
+                                    <td>
+                                        @if (dk.DaThi)
+                                        {
+                                            <span class="badge bg-secondary">Đã thi</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-success">Chưa thi</span>
+                                        }
+                                    </td>
                                 </tr>
                             }
                         </tbody>
@@ -149,24 +185,39 @@
     </div>
 </div>
 
+<!-- Confirm Modal -->
+<div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-3">
+            <div class="modal-header border-0 bg-light py-3">
+                <h5 class="modal-title fw-semibold" id="confirmModalTitle">Xác nhận</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body py-4 fs-6" id="confirmModalMessage"></div>
+            <div class="modal-footer border-0 bg-light py-2">
+                <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-danger btn-sm px-3" id="btnConfirmOk">Xác nhận</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <script>
         $(document).ready(function() {
+            var selectedRow = null;
+
             function loadSoCauHoi() {
                 var maMH = $("#selMonHoc").val();
                 var trinhDo = $("#selTrinhDoDK").val();
-                
+
                 if (maMH && trinhDo) {
                     $.ajax({
                         url: '@Url.Action("GetSoCauHoi", "DangKyThi")',
                         type: 'GET',
                         data: { maMH: maMH, trinhDo: trinhDo },
                         success: function(res) {
-                            if (res.success) {
-                                $("#lblSoCau").text(res.soCau);
-                            } else {
-                                $("#lblSoCau").text("0");
-                            }
+                            $("#lblSoCau").text(res.success ? res.soCau : "0");
                         },
                         error: function() {
                             $("#lblSoCau").text("0");
@@ -179,13 +230,13 @@
                 loadSoCauHoi();
             });
 
-            // Tải số câu lần đầu
             loadSoCauHoi();
 
             var today = new Date().toISOString().split('T')[0];
             $("#txtNgayThiDK").attr('min', today);
-            $("#btnDangKy").click(function() {
-                var model = {
+
+            function getFormModel() {
+                return {
                     MaGV: $("#selGiaoVien").length ? $("#selGiaoVien").val() : null,
                     MaLop: $("#selLop").val(),
                     MaMH: $("#selMonHoc").val(),
@@ -195,26 +246,35 @@
                     NgayThi: $("#txtNgayThiDK").val(),
                     ThoiGian: parseInt($("#txtThoiGian").val())
                 };
+            }
 
-                if (!model.NgayThi) {
-                    alert("Vui lòng chọn ngày thi.");
-                    return;
-                }
+            function validateForm(model) {
+                if (!model.NgayThi) { alert("Vui lòng chọn ngày thi."); return false; }
+                if (model.NgayThi < today) { alert("Ngày thi không được ở trong quá khứ."); return false; }
+                if (isNaN(model.SoCauThi) || model.SoCauThi <= 0) { alert("Số câu thi không hợp lệ."); return false; }
+                if (isNaN(model.ThoiGian) || model.ThoiGian <= 0) { alert("Thời gian thi không hợp lệ."); return false; }
+                return true;
+            }
 
-                if (model.NgayThi < today) {
-                    alert("Ngày thi không được ở trong quá khứ.");
-                    return;
-                }
+            function resetForm() {
+                selectedRow = null;
+                $("#selLop").prop("selectedIndex", 0);
+                if ($("#selGiaoVien").length) $("#selGiaoVien").prop("selectedIndex", 0);
+                $("#selMonHoc").prop("selectedIndex", 0);
+                $("#selTrinhDoDK").prop("selectedIndex", 0);
+                $("#selLanThi").val("1");
+                $("#txtSoCau").val("20");
+                $("#txtNgayThiDK").val("");
+                $("#txtThoiGian").val("45");
+                $("#tblDangKy tbody tr").removeClass("table-primary");
+                $("#btnSuaDK, #btnXoaDK").prop("disabled", true);
+                loadSoCauHoi();
+            }
 
-                if (isNaN(model.SoCauThi) || model.SoCauThi <= 0) {
-                    alert("Số câu thi không hợp lệ.");
-                    return;
-                }
-
-                if (isNaN(model.ThoiGian) || model.ThoiGian <= 0) {
-                    alert("Thời gian thi không hợp lệ.");
-                    return;
-                }
+            // --- THÊM ---
+            $("#btnDangKy").click(function() {
+                var model = getFormModel();
+                if (!validateForm(model)) return;
 
                 $.ajax({
                     url: '@Url.Action("DangKy", "DangKyThi")',
@@ -224,28 +284,98 @@
                     success: function(res) {
                         if (res.success) {
                             alert(res.message);
-                            location.reload(); // Tải lại trang để cập nhật danh sách
+                            location.reload();
                         } else {
                             alert("Lỗi: " + res.message);
                         }
                     },
-                    error: function(err) {
-                        alert("Có lỗi xảy ra trong quá trình kết nối.");
-                        console.error(err);
-                    }
+                    error: function() { alert("Có lỗi xảy ra trong quá trình kết nối."); }
                 });
             });
 
+            // --- SỬA ---
+            $("#btnSuaDK").click(function() {
+                if (!selectedRow) return;
+                var model = getFormModel();
+                if (!validateForm(model)) return;
+
+                $.ajax({
+                    url: '@Url.Action("CapNhat", "DangKyThi")',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(model),
+                    success: function(res) {
+                        if (res.success) {
+                            alert(res.message);
+                            location.reload();
+                        } else {
+                            alert("Lỗi: " + res.message);
+                        }
+                    },
+                    error: function() { alert("Có lỗi xảy ra trong quá trình kết nối."); }
+                });
+            });
+
+            // --- XÓA ---
+            $("#btnXoaDK").click(function() {
+                if (!selectedRow) return;
+                $("#confirmModalTitle").text("Xác nhận xóa");
+                $("#confirmModalMessage").text("Bạn có chắc muốn xóa đăng ký thi này không?");
+                var modal = new bootstrap.Modal(document.getElementById('confirmModal'));
+                modal.show();
+
+                $("#btnConfirmOk").off("click").on("click", function() {
+                    modal.hide();
+                    var data = {
+                        MaMH: selectedRow.data("mamh").toString().trim(),
+                        MaLop: selectedRow.data("malop").toString().trim(),
+                        Lan: parseInt(selectedRow.data("lan"))
+                    };
+
+                    $.ajax({
+                        url: '@Url.Action("Xoa", "DangKyThi")',
+                        type: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify(data),
+                        success: function(res) {
+                            if (res.success) {
+                                alert(res.message);
+                                location.reload();
+                            } else {
+                                alert("Lỗi: " + res.message);
+                            }
+                        },
+                        error: function() { alert("Có lỗi xảy ra trong quá trình kết nối."); }
+                    });
+                });
+            });
+
+            // --- RESET ---
             $("#btnHuy").click(function() {
-                $("#selLop").prop("selectedIndex", 0);
-                $("#selGiaoVien").prop("selectedIndex", 0);
-                $("#selMonHoc").prop("selectedIndex", 0);
-                $("#selTrinhDoDK").prop("selectedIndex", 0);
-                $("#selLanThi").val("1");
-                $("#txtSoCau").val("20");
-                $("#txtNgayThiDK").val("");
-                $("#txtThoiGian").val("45");
-                
+                resetForm();
+            });
+
+            // --- CLICK ROW ---
+            $("#tblDangKy tbody").on("click", "tr", function() {
+                var daThi = $(this).data("dathi");
+                if (daThi === true || daThi === "true") return;
+
+                selectedRow = $(this);
+                $("#tblDangKy tbody tr").removeClass("table-primary");
+                $(this).addClass("table-primary");
+
+                if ($("#selGiaoVien").length) {
+                    $("#selGiaoVien").val(selectedRow.data("magv").toString().trim());
+                }
+                $("#selLop").val(selectedRow.data("malop").toString().trim());
+                $("#selMonHoc").val(selectedRow.data("mamh").toString().trim());
+                $("#selTrinhDoDK").val(selectedRow.data("trinhdo").toString().trim());
+                $("#selLanThi").val(selectedRow.data("lan"));
+                $("#txtSoCau").val(selectedRow.data("socau"));
+                $("#txtNgayThiDK").val(selectedRow.data("ngaythi"));
+                $("#txtThoiGian").val(selectedRow.data("thoigian"));
+
+                $("#btnSuaDK, #btnXoaDK").prop("disabled", false);
                 loadSoCauHoi();
             });
         });
