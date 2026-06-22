@@ -1871,6 +1871,185 @@ GO
 PRINT N'OK: Da tao usp_ThucHienDangKyThi.';
 GO
 
+CREATE OR ALTER PROCEDURE dbo.usp_GiaoVienDangKy_Delete
+    @MAMH  NCHAR(5),
+    @MALOP NCHAR(8),
+    @LAN   SMALLINT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM dbo.GIAOVIEN_DANGKY
+        WHERE MAMH = @MAMH AND MALOP = @MALOP AND LAN = @LAN
+    )
+    BEGIN
+        SELECT CAST(0 AS BIT) AS IsSuccess, N'Khong tim thay de thi' AS ThongBao;
+        RETURN;
+    END
+
+    IF EXISTS (
+        SELECT 1 FROM dbo.BAITHI
+        WHERE MAMH = @MAMH AND MALOP = @MALOP AND LAN = @LAN
+    )
+    BEGIN
+        SELECT CAST(0 AS BIT) AS IsSuccess, N'Khong the xoa: de thi nay da co sinh vien thi' AS ThongBao;
+        RETURN;
+    END
+
+    BEGIN TRY
+        BEGIN TRAN;
+
+            DELETE FROM dbo.GIAOVIEN_DANGKY
+            WHERE MAMH = @MAMH AND MALOP = @MALOP AND LAN = @LAN;
+
+        COMMIT TRAN;
+
+        SELECT CAST(1 AS BIT) AS IsSuccess, N'Xoa de thi thanh cong' AS ThongBao;
+        RETURN;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0
+            ROLLBACK TRAN;
+
+        SELECT CAST(0 AS BIT) AS IsSuccess,
+               N'Xoa de thi that bai: ' + ERROR_MESSAGE() AS ThongBao;
+        RETURN;
+    END CATCH
+END
+GO
+
+GRANT EXECUTE ON dbo.usp_GiaoVienDangKy_Delete TO [PGV];
+GO
+GRANT EXECUTE ON dbo.usp_GiaoVienDangKy_Delete TO [Giangvien];
+GO
+PRINT N'OK: Da tao usp_GiaoVienDangKy_Delete.';
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_GiaoVienDangKy_Update
+    @MAMH     NCHAR(5),
+    @MALOP    NCHAR(8),
+    @LAN      SMALLINT,
+    @MAGV     NCHAR(8),
+    @TRINHDO  CHAR(1),
+    @SOCAUTHI SMALLINT,
+    @THOIGIAN SMALLINT,
+    @NGAYTHI  DATETIME
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @Message NVARCHAR(255);
+
+    DECLARE @TrinhDoCu  CHAR(1);
+    DECLARE @SoCauThiCu SMALLINT;
+
+    SELECT @TrinhDoCu  = TRINHDO,
+           @SoCauThiCu = SOCAUTHI
+    FROM dbo.GIAOVIEN_DANGKY
+    WHERE MAMH = @MAMH AND MALOP = @MALOP AND LAN = @LAN;
+
+    IF @TrinhDoCu IS NULL
+    BEGIN
+        SELECT CAST(0 AS BIT) AS IsSuccess, N'Khong tim thay de thi' AS ThongBao;
+        RETURN;
+    END
+
+    IF EXISTS (
+        SELECT 1 FROM dbo.BAITHI
+        WHERE MAMH = @MAMH AND MALOP = @MALOP AND LAN = @LAN
+    )
+    BEGIN
+        SELECT CAST(0 AS BIT) AS IsSuccess, N'Khong the sua: de thi nay da co sinh vien thi' AS ThongBao;
+        RETURN;
+    END
+
+    DECLARE @CanTaoLaiDeThi BIT = 0;
+
+    IF @TRINHDO <> @TrinhDoCu OR @SOCAUTHI <> @SoCauThiCu
+    BEGIN
+        SET @Message = dbo.udf_KiemTraDieuKienDangKy(@MAMH, @TRINHDO, @SOCAUTHI);
+        IF @Message <> ''
+        BEGIN
+            SELECT CAST(0 AS BIT) AS IsSuccess, @Message AS ThongBao;
+            RETURN;
+        END
+        SET @CanTaoLaiDeThi = 1;
+    END
+
+    DECLARE @SoCauTDCao  INT;
+    DECLARE @SoCauTDThap INT;
+    DECLARE @TrinhDoThap CHAR(1);
+
+    IF @CanTaoLaiDeThi = 1
+    BEGIN
+        SELECT @SoCauTDCao  = SoCauTDCao,
+               @SoCauTDThap = SoCauTDThap,
+               @TrinhDoThap = TrinhDoThap
+        FROM dbo.udf_PhanBoCauHoi(@MAMH, @TRINHDO, @SOCAUTHI);
+    END
+
+    BEGIN TRY
+        BEGIN TRAN;
+
+            UPDATE dbo.GIAOVIEN_DANGKY
+            SET MAGV     = @MAGV,
+                TRINHDO  = @TRINHDO,
+                SOCAUTHI = @SOCAUTHI,
+                THOIGIAN = @THOIGIAN,
+                NGAYTHI  = @NGAYTHI
+            WHERE MAMH = @MAMH AND MALOP = @MALOP AND LAN = @LAN;
+
+            IF @CanTaoLaiDeThi = 1
+            BEGIN
+                DELETE FROM dbo.CT_DETHI
+                WHERE MAMH = @MAMH AND MALOP = @MALOP AND LAN = @LAN;
+
+                INSERT INTO CT_DETHI (MAMH, MALOP, LAN, CAUHOI)
+                SELECT @MAMH, @MALOP, @LAN, CAUHOI
+                FROM (
+                    SELECT TOP (@SoCauTDCao) CAUHOI
+                    FROM dbo.BODE
+                    WHERE MAMH = @MAMH
+                      AND TRINHDO = @TRINHDO
+                      AND TrangThai = 1
+                    ORDER BY NEWID()
+
+                    UNION ALL
+
+                    SELECT TOP (CASE WHEN @SoCauTDThap > 0 THEN @SoCauTDThap ELSE 0 END) CAUHOI
+                    FROM dbo.BODE
+                    WHERE MAMH = @MAMH
+                      AND TRINHDO = @TrinhDoThap
+                      AND TrangThai = 1
+                      AND @SoCauTDThap > 0
+                    ORDER BY NEWID()
+                ) AS SelectedQuestions;
+            END
+
+        COMMIT TRAN;
+
+        SELECT CAST(1 AS BIT) AS IsSuccess, N'Cap nhat de thi thanh cong' AS ThongBao;
+        RETURN;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0
+            ROLLBACK TRAN;
+
+        SELECT CAST(0 AS BIT) AS IsSuccess,
+               N'Cap nhat de thi that bai: ' + ERROR_MESSAGE() AS ThongBao;
+        RETURN;
+    END CATCH
+END
+GO
+
+GRANT EXECUTE ON dbo.usp_GiaoVienDangKy_Update TO [PGV];
+GO
+GRANT EXECUTE ON dbo.usp_GiaoVienDangKy_Update TO [Giangvien];
+GO
+PRINT N'OK: Da tao usp_GiaoVienDangKy_Update.';
+GO
+
 CREATE OR ALTER PROCEDURE dbo.usp_LayDanhSachDeThi
     @MaGV NCHAR(8)
 AS
