@@ -104,6 +104,51 @@
         byId("btnConfirmImport").disabled = true;
     }
 
+    const changeStateConfig = {
+        new: { className: "row-change-new", label: "Thêm mới", badgeClass: "text-bg-success" },
+        updated: { className: "row-change-updated", label: "Đã sửa", badgeClass: "text-bg-warning" },
+        deleted: { className: "row-change-deleted", label: "Chờ xóa", badgeClass: "text-bg-danger" }
+    };
+
+    function setChangeState(element, state) {
+        if (!element) {
+            return;
+        }
+
+        Object.values(changeStateConfig).forEach(config => element.classList.remove(config.className));
+        element.querySelectorAll(":scope .change-state-badge").forEach(badge => badge.remove());
+
+        if (!state || !changeStateConfig[state]) {
+            delete element.dataset.changeState;
+            return;
+        }
+
+        const config = changeStateConfig[state];
+        element.dataset.changeState = state;
+        element.classList.add(config.className);
+
+        const badge = document.createElement("span");
+        badge.className = `change-state-badge badge ${config.badgeClass}`;
+        badge.textContent = config.label;
+
+        const target = getChangeBadgeTarget(element);
+        target.appendChild(badge);
+    }
+
+    function getChangeBadgeTarget(element) {
+        if (element.matches("tr")) {
+            return element.cells[0] || element;
+        }
+
+        return element.querySelector(".change-state-slot")
+            || element.querySelector(".fw-semibold")?.parentElement
+            || element;
+    }
+
+    function isPendingDelete(element) {
+        return element?.dataset?.changeState === "deleted";
+    }
+
     function createPageItem(content, options = {}) {
         const item = document.createElement("li");
         item.className = `page-item ${options.active ? "active" : ""} ${options.disabled ? "disabled" : ""}`.trim();
@@ -114,7 +159,8 @@
         }
 
         const title = options.title ? ` title="${escapeHtml(options.title)}"` : "";
-        item.innerHTML = `<button type="button" class="page-link shadow-none"${title} onclick="changePage(${options.page})">${content}</button>`;
+        const handler = options.handler || "changePage";
+        item.innerHTML = `<button type="button" class="page-link shadow-none"${title} onclick="${handler}(${options.page})">${content}</button>`;
         return item;
     }
 
@@ -155,7 +201,7 @@
         });
 
         updatePaginationSummary(config.summaryId, totalRows, startIndex, endIndex);
-        renderPaginationButtons(config.paginationId, currentPage, totalPages, config.compact);
+        renderPaginationButtons(config.paginationId, currentPage, totalPages, config.compact, config.handler);
 
         return currentPage;
     }
@@ -171,7 +217,7 @@
         summary.textContent = `Hiển thị từ ${from} đến ${to} trong tổng số ${totalRows} dòng`;
     }
 
-    function renderPaginationButtons(paginationId, currentPage, totalPages, compact = false) {
+    function renderPaginationButtons(paginationId, currentPage, totalPages, compact = false, handler = "changePage") {
         const pagination = byId(paginationId);
         if (!pagination) {
             return;
@@ -181,31 +227,35 @@
         pagination.appendChild(createPageItem('<i class="bi bi-chevron-double-left"></i>', {
             page: 1,
             disabled: currentPage === 1,
-            title: "Trang đầu"
+            title: "Trang đầu",
+            handler
         }));
 
         pagination.appendChild(createPageItem('<i class="bi bi-chevron-left"></i>', {
             page: currentPage - 1,
             disabled: currentPage === 1,
-            title: "Trang trước"
+            title: "Trang trước",
+            handler
         }));
 
         getPaginationPages(currentPage, totalPages, compact).forEach(page => {
             pagination.appendChild(page === "..."
                 ? createPageItem("", { ellipsis: true, disabled: true })
-                : createPageItem(page, { page, active: currentPage === page }));
+                : createPageItem(page, { page, active: currentPage === page, handler }));
         });
 
         pagination.appendChild(createPageItem('<i class="bi bi-chevron-right"></i>', {
             page: currentPage + 1,
             disabled: currentPage === totalPages,
-            title: "Trang sau"
+            title: "Trang sau",
+            handler
         }));
 
         pagination.appendChild(createPageItem('<i class="bi bi-chevron-double-right"></i>', {
             page: totalPages,
             disabled: currentPage === totalPages,
-            title: "Trang cuối"
+            title: "Trang cuối",
+            handler
         }));
     }
 
@@ -308,6 +358,8 @@
         readFirstExcelSheet,
         showImportModal,
         showImportFileError,
+        setChangeState,
+        isPendingDelete,
         renderPagination,
         modal
     };

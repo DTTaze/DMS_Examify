@@ -150,3 +150,64 @@ input[readonly] {
     color: #495057 !important;
 }
 
+/* Trạng thái thay đổi cho Danh sách Lớp (list-group-item) */
+.list-group-item.row-change-new {
+    border-left: 4px solid #10b981 !important;
+    background-color: #ecfdf5 !important;
+}
+.list-group-item.row-change-updated {
+    border-left: 4px solid #f59e0b !important;
+    background-color: #fffbeb !important;
+}
+.list-group-item.row-change-deleted {
+    border-left: 4px solid #ef4444 !important;
+    background-color: #fef2f2 !important;
+}
+.list-group-item.row-change-deleted span {
+    text-decoration: line-through;
+    opacity: 0.7;
+}
+
+/* Trạng thái thay đổi cho Bảng Sinh viên */
+#svTable tr.row-change-new > td {
+    background-color: #ecfdf5 !important;
+}
+#svTable tr.row-change-new td:first-child {
+    border-left: 4px solid #10b981 !important;
+}
+#svTable tr.row-change-updated > td {
+    background-color: #fffbeb !important;
+}
+#svTable tr.row-change-updated td:first-child {
+    border-left: 4px solid #f59e0b !important;
+}
+#svTable tr.row-change-deleted > td {
+    background-color: #fef2f2 !important;
+    color: #991b1b !important;
+}
+#svTable tr.row-change-deleted td:first-child {
+    border-left: 4px solid #ef4444 !important;
+}
+#svTable tr.row-change-deleted td:not(:last-child) {
+    text-decoration: line-through;
+    opacity: 0.7;
+}
+
+/* Ô hiệu chỉnh cụ thể (cell-edited) */
+#svTable tr td.cell-edited {
+    position: relative;
+    background-color: #fef3c7 !important;
+}
+#svTable tr td.cell-edited::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 0 8px 8px 0;
+    border-color: transparent #f59e0b transparent transparent;
+}
+
+

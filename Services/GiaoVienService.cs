@@ -107,6 +107,27 @@ namespace DMS_Examify.Services
             };
         }
 
+        public bool CheckIsSoftDelete(string maGV)
+        {
+            if (string.IsNullOrWhiteSpace(maGV))
+            {
+                return false;
+            }
+
+            using var connection = _connectionFactory.CreateConnection();
+            string sql = @"
+                SELECT 1 WHERE EXISTS (
+                    SELECT 1 FROM dbo.BODE WHERE MAGV = @MaGV
+                    UNION ALL
+                    SELECT 1 FROM dbo.GIAOVIEN_DANGKY WHERE MAGV = @MaGV
+                )";
+            using var command = new SqlCommand(sql, connection);
+            command.Parameters.Add("@MaGV", SqlDbType.NChar, 8).Value = Trim(maGV);
+
+            var result = command.ExecuteScalar();
+            return result != null && result != DBNull.Value;
+        }
+
         private bool ExistsMaGV(string? maGV)
         {
             if (string.IsNullOrWhiteSpace(maGV)) return false;

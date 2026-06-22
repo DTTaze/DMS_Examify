@@ -2,6 +2,7 @@ using DMS_Examify.Filters;
 using DMS_Examify.Models;
 using DMS_Examify.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
 
 namespace DMS_Examify.Controllers
 {
@@ -36,35 +37,103 @@ namespace DMS_Examify.Controllers
         [HttpPost]
         public IActionResult Insert([FromBody] GiaoVien? model)
         {
-            if (model == null) return BadRequest(EmptyTeacherRequestMessage);
+            if (model == null || !ModelState.IsValid)
+            {
+                return BadRequest(InvalidTeacherMessage);
+            }
 
-            _giaoVienService.Insert(model);
-            return Ok();
+            try
+            {
+                _giaoVienService.Insert(model);
+                return Ok();
+            }
+            catch (SqlException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return LogAndReturnServerError(_logger, ex, "Lỗi khi thêm giáo viên.");
+            }
         }
 
         [HttpPost]
         public IActionResult Update([FromBody] GiaoVien? model)
         {
-            if (IsInvalidTeacher(model))
+            if (model == null || !ModelState.IsValid)
+            {
                 return BadRequest(InvalidTeacherMessage);
+            }
 
-            _giaoVienService.Update(model!);
-            return Ok();
+            try
+            {
+                _giaoVienService.Update(model);
+                return Ok();
+            }
+            catch (SqlException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return LogAndReturnServerError(_logger, ex, "Lỗi khi cập nhật giáo viên.");
+            }
         }
 
         [HttpPost]
         public IActionResult Delete(string maGV)
         {
-            if (string.IsNullOrWhiteSpace(maGV)) return BadRequest(InvalidTeacherIdMessage);
+            if (string.IsNullOrWhiteSpace(maGV))
+            {
+                return BadRequest(InvalidTeacherIdMessage);
+            }
 
-            _giaoVienService.Delete(maGV);
-            return Ok();
+            try
+            {
+                _giaoVienService.Delete(maGV);
+                return Ok();
+            }
+            catch (SqlException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return LogAndReturnServerError(_logger, ex, $"Không thể xóa giáo viên {maGV}.");
+            }
+        }
+
+        [HttpGet]
+        public IActionResult CheckDelete(string maGV)
+        {
+            if (string.IsNullOrWhiteSpace(maGV))
+            {
+                return BadRequest(InvalidTeacherIdMessage);
+            }
+
+            try
+            {
+                bool isSoftDelete = _giaoVienService.CheckIsSoftDelete(maGV);
+                return Json(new { isSoftDelete });
+            }
+            catch (Exception ex)
+            {
+                return LogAndReturnServerError(_logger, ex, $"Lỗi khi kiểm tra xóa giáo viên {maGV}.");
+            }
         }
 
         [HttpGet]
         public IActionResult Search(string? keyword)
         {
-            return Json(_giaoVienService.Search(keyword));
+            try
+            {
+                var teachers = _giaoVienService.Search(keyword);
+                return Json(teachers);
+            }
+            catch (Exception ex)
+            {
+                return LogAndReturnServerError(_logger, ex, "Lỗi khi tìm kiếm giáo viên.");
+            }
         }
 
         [HttpPost]
@@ -72,11 +141,12 @@ namespace DMS_Examify.Controllers
         {
             try
             {
-                return Json(_giaoVienService.CheckImportDuplicates(items ?? new List<GiaoVien>()));
+                var results = _giaoVienService.CheckImportDuplicates(items ?? new List<GiaoVien>());
+                return Json(results);
             }
             catch (Exception ex)
             {
-                return LogAndReturnServerError(ex, ImportCheckErrorMessage);
+                return LogAndReturnServerError(_logger, ex, ImportCheckErrorMessage);
             }
         }
 
@@ -85,23 +155,16 @@ namespace DMS_Examify.Controllers
         {
             try
             {
-                return Json(_giaoVienService.CheckDuplicateForCreate(maGV));
+                var result = _giaoVienService.CheckDuplicateForCreate(maGV);
+                return Json(result);
             }
             catch (Exception ex)
             {
-                return LogAndReturnServerError(ex, DuplicateCheckErrorMessage);
+                return LogAndReturnServerError(_logger, ex, DuplicateCheckErrorMessage);
             }
         }
 
-        private IActionResult LogAndReturnServerError(Exception exception, string message)
-        {
-            _logger.LogError(exception, message);
-            return StatusCode(500, message);
-        }
 
-        private static bool IsInvalidTeacher(GiaoVien? teacher)
-        {
-            return teacher == null || string.IsNullOrWhiteSpace(teacher.MaGV);
-        }
     }
 }
+

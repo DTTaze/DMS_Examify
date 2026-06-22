@@ -14,5 +14,6 @@ namespace DMS_Examify.Services
         SubjectDuplicateCheckResult CheckMaMHDuplicate(string maMH);
         SubjectDuplicateCheckResult CheckTenMHDuplicate(string tenMH);
         SubjectDuplicateCheckResult CheckTenMHDuplicateExcludingMaMH(string tenMH, string maMH);
+        bool CheckIsSoftDelete(string maMH);
     }
 }

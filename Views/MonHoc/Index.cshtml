@@ -13,7 +13,7 @@
 
                 <div class="mb-3">
                     <label>Mã môn học</label>
-                    <input id="txtMaMH" class="form-control" />
+                    <input id="txtMaMH" class="form-control text-uppercase" maxlength="5" />
                     <span id="errMaMH" class="text-danger small mt-1 d-block"></span>
                 </div>
 
@@ -30,9 +30,6 @@
                     <span id="wrapSua" class="d-inline-block">
                         <button type="button" class="btn btn-warning" onclick="editSubject()" id="btnSua" disabled>Sửa</button>
                     </span>
-                    <span id="wrapGhi" class="d-inline-block">
-                        <button type="button" class="btn btn-success" onclick="saveChangesToDb()" id="btnGhi" disabled>Ghi</button>
-                    </span>
                     <button type="button" class="btn btn-secondary" onclick="resetForm()">Reset</button>
                     <button type="button" class="btn btn-info text-white animate-btn" onclick="undoLastAction()" id="btnUndo" disabled>
                         <i class="bi bi-arrow-counterclockwise"></i> Undo
@@ -40,6 +37,11 @@
                     <button type="button" class="btn btn-info text-white animate-btn" onclick="redoLastAction()" id="btnRedo" disabled>
                         <i class="bi bi-arrow-clockwise"></i> Redo
                     </button>
+                    <span id="wrapGhi" class="d-inline-block">
+                        <button type="button" class="btn btn-success animate-btn" onclick="saveChangesToDb()" id="btnGhi" disabled>
+                            <i class="bi bi-check-circle me-1"></i> Ghi (Lưu CSDL)
+                        </button>
+                    </span>
                 </div>
 
             </div>
@@ -77,7 +79,7 @@
                     <tbody>
                         @for (int i = 0; i < Model.Count; i++)
                         {
-                            <tr data-mamh="@Model[i].MaMH" data-tenmh="@Model[i].TenMH">
+                            <tr data-mamh="@Model[i].MaMH" data-tenmh="@Model[i].TenMH" data-original-tenmh="@Model[i].TenMH" data-id="@Model[i].MaMH">
                                 <td>@(i + 1)</td>
                                 <td>@Model[i].MaMH</td>
                                 <td>@Model[i].TenMH</td>

@@ -1,23 +1,26 @@
+using DMS_Examify.Filters;
 using DMS_Examify.Models;
 using DMS_Examify.Services;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Data.SqlClient;
 
 namespace DMS_Examify.Controllers
 {
+    [RequireRole("PGV")]
     public class MonHocController : BaseController
     {
         private readonly IMonHocService _monHocService;
+        private readonly ILogger<MonHocController> _logger;
 
-        public MonHocController(IMonHocService monHocService)
+        public MonHocController(
+            IMonHocService monHocService,
+            ILogger<MonHocController> logger)
         {
             _monHocService = monHocService;
+            _logger = logger;
         }
 
         public IActionResult Index()
         {
-            if (!CheckRole("PGV")) return Denied();
-
             ViewData["Title"] = "Quản lý Môn học";
             ViewData["Subtitle"] = "Thêm, sửa, xóa môn học";
 
@@ -26,145 +29,145 @@ namespace DMS_Examify.Controllers
         }
 
         [HttpPost]
-        public IActionResult Insert([FromBody] MonHoc model)
+        public IActionResult Insert([FromBody] MonHoc? model)
         {
-            if (!CheckRole("PGV")) return Denied();
-            if (model == null)
-                return BadRequest("Dữ liệu môn học gửi lên không hợp lệ.");
-            if (string.IsNullOrWhiteSpace(model.MaMH))
-                return BadRequest("Mã môn học không được để trống.");
-            if (string.IsNullOrWhiteSpace(model.TenMH))
-                return BadRequest("Tên môn học không được để trống.");
+            if (model == null || !ModelState.IsValid)
+            {
+                return BadRequest("Thông tin môn học không hợp lệ.");
+            }
 
             try
             {
                 _monHocService.Insert(model);
                 return Ok();
             }
-            catch (SqlException ex)
-            {
-                return StatusCode(500, $"Lỗi cơ sở dữ liệu: {ex.Message}");
-            }
             catch (Exception ex)
             {
-                return StatusCode(500, $"Lỗi hệ thống: {ex.Message}");
+                return LogAndReturnServerError(_logger, ex, "Lỗi khi thêm môn học.");
             }
         }
 
         [HttpPost]
-        public IActionResult Update([FromBody] MonHoc model)
+        public IActionResult Update([FromBody] MonHoc? model)
         {
-            if (!CheckRole("PGV")) return Denied();
-            if (model == null)
-                return BadRequest("Dữ liệu môn học gửi lên không hợp lệ.");
-            if (string.IsNullOrWhiteSpace(model.MaMH))
-                return BadRequest("Mã môn học không được để trống.");
-            if (string.IsNullOrWhiteSpace(model.TenMH))
-                return BadRequest("Tên môn học không được để trống.");
+            if (model == null || !ModelState.IsValid)
+            {
+                return BadRequest("Thông tin môn học không hợp lệ.");
+            }
 
             try
             {
                 _monHocService.Update(model);
                 return Ok();
             }
-            catch (SqlException ex)
-            {
-                return StatusCode(500, $"Lỗi cơ sở dữ liệu: {ex.Message}");
-            }
             catch (Exception ex)
             {
-                return StatusCode(500, $"Lỗi hệ thống: {ex.Message}");
+                return LogAndReturnServerError(_logger, ex, "Lỗi khi cập nhật môn học.");
             }
         }
 
         [HttpPost]
         public IActionResult Delete(string maMH)
         {
-            if (!CheckRole("PGV")) return Denied();
-            if (string.IsNullOrEmpty(maMH)) return BadRequest("Mã môn học không hợp lệ.");
+            if (string.IsNullOrWhiteSpace(maMH))
+            {
+                return BadRequest("Mã môn học không hợp lệ.");
+            }
 
             try
             {
                 _monHocService.Delete(maMH);
                 return Ok();
             }
-            catch (SqlException ex)
-            {
-                return StatusCode(500, $"Lỗi cơ sở dữ liệu: {ex.Message}");
-            }
             catch (Exception ex)
             {
-                return StatusCode(500, $"Lỗi hệ thống: {ex.Message}");
+                return LogAndReturnServerError(_logger, ex, $"Không thể xóa môn học {maMH}.");
             }
         }
 
         [HttpGet]
-        public IActionResult Search(string keyword)
+        public IActionResult CheckDelete(string maMH)
         {
-            if (!CheckRole("PGV")) return Denied();
+            if (string.IsNullOrWhiteSpace(maMH))
+            {
+                return BadRequest("Mã môn học không hợp lệ.");
+            }
 
             try
             {
-                var subjects = _monHocService.Search(keyword);
+                bool isSoftDelete = _monHocService.CheckIsSoftDelete(maMH);
+                return Json(new { isSoftDelete });
+            }
+            catch (Exception ex)
+            {
+                return LogAndReturnServerError(_logger, ex, $"Lỗi khi kiểm tra xóa môn học {maMH}.");
+            }
+        }
+
+        [HttpGet]
+        public IActionResult Search(string? keyword)
+        {
+            try
+            {
+                var subjects = _monHocService.Search(keyword ?? string.Empty);
                 return Json(subjects);
             }
             catch (Exception ex)
             {
-                return StatusCode(500, $"Lỗi hệ thống khi tìm kiếm: {ex.Message}");
+                return LogAndReturnServerError(_logger, ex, "Lỗi khi tìm kiếm môn học.");
             }
         }
 
         [HttpGet]
-        public IActionResult CheckDuplicate(string maMH, string tenMH, bool isEditing)
+        public IActionResult CheckDuplicateForCreate(string maMH, string tenMH)
         {
-            if (!CheckRole("PGV")) return Denied();
-
             try
             {
-                bool maMHDuplicate = false;
-                bool maMHActive = false;
-                if (!isEditing)
-                {
-                    var maCheck = _monHocService.CheckMaMHDuplicate(maMH);
-                    maMHDuplicate = maCheck.Exists;
-                    maMHActive = maCheck.IsActive;
-                }
-
-                bool tenMHDuplicate = false;
-                bool tenMHActive = false;
-                if (isEditing)
-                {
-                    var tenCheck = _monHocService.CheckTenMHDuplicateExcludingMaMH(tenMH, maMH);
-                    tenMHDuplicate = tenCheck.Exists;
-                    tenMHActive = tenCheck.IsActive;
-                }
-                else
-                {
-                    var tenCheck = _monHocService.CheckTenMHDuplicate(tenMH);
-                    tenMHDuplicate = tenCheck.Exists;
-                    tenMHActive = tenCheck.IsActive;
-                }
+                var maCheck = _monHocService.CheckMaMHDuplicate(maMH);
+                var tenCheck = _monHocService.CheckTenMHDuplicate(tenMH);
 
                 return Json(new
                 {
-                    maMHDuplicate,
-                    maMHActive,
-                    tenMHDuplicate,
-                    tenMHActive
+                    maMHDuplicate = maCheck.Exists,
+                    maMHActive = maCheck.IsActive,
+                    tenMHDuplicate = tenCheck.Exists,
+                    tenMHActive = tenCheck.IsActive
                 });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, $"Lỗi hệ thống khi kiểm tra trùng: {ex.Message}");
+                return LogAndReturnServerError(_logger, ex, "Lỗi hệ thống khi kiểm tra trùng môn học.");
+            }
+        }
+
+        [HttpGet]
+        public IActionResult CheckDuplicateForUpdate(string maMH, string tenMH)
+        {
+            try
+            {
+                var tenCheck = _monHocService.CheckTenMHDuplicateExcludingMaMH(tenMH, maMH);
+
+                return Json(new
+                {
+                    maMHDuplicate = false,
+                    maMHActive = false,
+                    tenMHDuplicate = tenCheck.Exists,
+                    tenMHActive = tenCheck.IsActive
+                });
+            }
+            catch (Exception ex)
+            {
+                return LogAndReturnServerError(_logger, ex, "Lỗi hệ thống khi kiểm tra trùng môn học.");
             }
         }
 
         [HttpPost]
-        public IActionResult CheckImport([FromBody] List<MonHoc> items)
+        public IActionResult CheckImport([FromBody] List<MonHoc>? items)
         {
-            if (!CheckRole("PGV")) return Denied();
             if (items == null || items.Count == 0)
+            {
                 return Json(new List<object>());
+            }
 
             try
             {
@@ -173,7 +176,7 @@ namespace DMS_Examify.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, $"Lỗi hệ thống khi kiểm tra danh sách import: {ex.Message}");
+                return LogAndReturnServerError(_logger, ex, "Lỗi hệ thống khi kiểm tra danh sách import môn học.");
             }
         }
 
@@ -198,5 +201,8 @@ namespace DMS_Examify.Controllers
                 };
             });
         }
+
+
     }
 }
+

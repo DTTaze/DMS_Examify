@@ -11,5 +11,6 @@ namespace DMS_Examify.Services
         List<GiaoVien> Search(string? keyword);
         List<GiaoVienImportCheckResult> CheckImportDuplicates(List<GiaoVien> items);
         GiaoVienDuplicateResult CheckDuplicateForCreate(string? maGV);
+        bool CheckIsSoftDelete(string maGV);
     }
 }

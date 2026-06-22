@@ -11,7 +11,6 @@ namespace DMS_Examify.Controllers
     {
         private const string InvalidQuestionMessage = "Thông tin câu hỏi không hợp lệ.";
         private const string ImportCheckErrorMessage = "Lỗi hệ thống khi kiểm tra danh sách import.";
-        private const string QuestionNotFoundOrDeniedMessage = "Không tìm thấy câu hỏi hoặc bạn không có quyền thao tác.";
 
         private readonly IBoDeService _boDeService;
         private readonly IMonHocService _monHocService;
@@ -44,56 +43,106 @@ namespace DMS_Examify.Controllers
         [HttpPost]
         public IActionResult Insert([FromBody] BoDe? model)
         {
-            if (model == null) return BadRequest(InvalidQuestionMessage);
+            if (model == null || !ModelState.IsValid)
+            {
+                return BadRequest(InvalidQuestionMessage);
+            }
 
             try
             {
                 var cauHoi = _boDeService.Insert(model, CurrentTeacherId);
                 return Json(new { cauHoi });
             }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message);
+            }
             catch (SqlException ex)
             {
                 return BadRequest(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return LogAndReturnServerError(_logger, ex, "Lỗi khi thêm câu hỏi.");
             }
         }
 
         [HttpPost]
         public IActionResult Update([FromBody] BoDe? model)
         {
-            if (IsInvalidQuestion(model)) return BadRequest(InvalidQuestionMessage);
+            if (model == null || model.CauHoi <= 0 || !ModelState.IsValid)
+            {
+                return BadRequest(InvalidQuestionMessage);
+            }
 
             try
             {
-                return _boDeService.Update(model!, CurrentRole, CurrentTeacherId)
-                    ? Ok()
-                    : NotFound(QuestionNotFoundOrDeniedMessage);
+                _boDeService.Update(model, CurrentRole, CurrentTeacherId);
+                return Ok();
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message);
             }
             catch (SqlException ex)
             {
                 return BadRequest(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return LogAndReturnServerError(_logger, ex, "Lỗi khi cập nhật câu hỏi.");
             }
         }
 
         [HttpPost]
         public IActionResult Delete(int cauHoi, string maMH)
         {
-            if (IsInvalidQuestionKey(cauHoi, maMH)) return BadRequest(InvalidQuestionMessage);
+            if (cauHoi <= 0 || string.IsNullOrWhiteSpace(maMH))
+            {
+                return BadRequest(InvalidQuestionMessage);
+            }
 
-            return _boDeService.Delete(cauHoi, maMH, CurrentRole, CurrentTeacherId)
-                ? Ok()
-                : NotFound(QuestionNotFoundOrDeniedMessage);
+            try
+            {
+                _boDeService.Delete(cauHoi, maMH, CurrentRole, CurrentTeacherId);
+                return Ok();
+            }
+            catch (SqlException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return LogAndReturnServerError(_logger, ex, $"Không thể xóa câu hỏi {cauHoi} của môn {maMH}.");
+            }
         }
 
         [HttpGet]
         public IActionResult Search(string? keyword)
         {
-            return Json(_boDeService.Search(keyword, CurrentRole, CurrentTeacherId));
+            try
+            {
+                var questions = _boDeService.Search(keyword, CurrentRole, CurrentTeacherId);
+                return Json(questions);
+            }
+            catch (Exception ex)
+            {
+                return LogAndReturnServerError(_logger, ex, "Lỗi khi tìm kiếm câu hỏi.");
+            }
         }
 
         [HttpGet]
         public IActionResult GetLatestCauHoi()
         {
-            return Json(_boDeService.GetLatestCauHoi());
+            try
+            {
+                var latest = _boDeService.GetLatestCauHoi();
+                return Json(latest);
+            }
+            catch (Exception ex)
+            {
+                return LogAndReturnServerError(_logger, ex, "Lỗi khi lấy mã câu hỏi mới nhất.");
+            }
         }
 
         [HttpPost]
@@ -101,33 +150,16 @@ namespace DMS_Examify.Controllers
         {
             try
             {
-                return Json(_boDeService.CheckImportSubjects(items ?? new List<BoDe>()));
+                var results = _boDeService.CheckImportSubjects(items ?? new List<BoDe>());
+                return Json(results);
             }
             catch (Exception ex)
             {
-                return LogAndReturnServerError(ex, ImportCheckErrorMessage);
+                return LogAndReturnServerError(_logger, ex, ImportCheckErrorMessage);
             }
         }
 
-        private string CurrentTeacherId => HttpContext.Session.GetString("UserLogin") ?? string.Empty;
 
-        private string CurrentRole => HttpContext.Session.GetString("UserRole") ?? string.Empty;
-
-        private IActionResult LogAndReturnServerError(Exception exception, string message)
-        {
-            _logger.LogError(exception, message);
-            return StatusCode(500, message);
-        }
-
-        private static bool IsInvalidQuestion(BoDe? question)
-        {
-            return question == null
-                || IsInvalidQuestionKey(question.CauHoi, question.MaMH);
-        }
-
-        private static bool IsInvalidQuestionKey(int cauHoi, string? maMH)
-        {
-            return cauHoi <= 0 || string.IsNullOrWhiteSpace(maMH);
-        }
     }
 }
+

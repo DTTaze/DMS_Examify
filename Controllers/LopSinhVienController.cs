@@ -22,29 +22,54 @@ namespace DMS_Examify.Controllers
             _logger = logger;
         }
 
-        public IActionResult Index()
+        public IActionResult Index() => View(_lopService.GetAll());
+
+        [HttpPost]
+        public IActionResult CreateClass([FromBody] Lop? model)
         {
-            var classes = _lopService.GetAll();
-            return View(classes);
+            if (model == null || !ModelState.IsValid)
+            {
+                return BadRequest("Thông tin lớp học không hợp lệ.");
+            }
+
+            try
+            {
+                _lopService.Insert(model);
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                return LogAndReturnServerError(_logger, ex, "Lỗi khi thêm lớp học.");
+            }
         }
 
         [HttpPost]
-        public IActionResult CreateClass([FromBody] Lop model)
+        public IActionResult UpdateClass([FromBody] Lop? model)
         {
-            _lopService.Insert(model);
-            return Ok();
-        }
+            if (model == null || !ModelState.IsValid)
+            {
+                return BadRequest("Thông tin lớp học không hợp lệ.");
+            }
 
-        [HttpPost]
-        public IActionResult UpdateClass([FromBody] Lop model)
-        {
-            _lopService.Update(model);
-            return Ok();
+            try
+            {
+                _lopService.Update(model);
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                return LogAndReturnServerError(_logger, ex, "Lỗi khi cập nhật lớp học.");
+            }
         }
 
         [HttpPost]
         public IActionResult DeleteClass(string maLop)
         {
+            if (string.IsNullOrWhiteSpace(maLop))
+            {
+                return BadRequest("Mã lớp không được để trống.");
+            }
+
             try
             {
                 _lopService.Delete(maLop);
@@ -52,51 +77,112 @@ namespace DMS_Examify.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Could not delete class {MaLop}.", maLop);
-                return BadRequest(ex.Message);
+                return LogAndReturnServerError(_logger, ex, $"Không thể xóa lớp học {maLop}.");
             }
         }
 
         [HttpGet]
-        public IActionResult SearchClasses(string keyword)
+        public IActionResult SearchClasses(string? keyword)
         {
-            var classes = _lopService.Search(keyword);
-            return Json(classes);
+            try
+            {
+                var classes = _lopService.Search(keyword ?? string.Empty);
+                return Json(classes);
+            }
+            catch (Exception ex)
+            {
+                return LogAndReturnServerError(_logger, ex, "Lỗi khi tìm kiếm lớp học.");
+            }
         }
 
         [HttpGet]
-        public IActionResult SearchStudents(string keyword)
+        public IActionResult SearchStudents(string? keyword)
         {
-            var students = _sinhVienService.Search(keyword);
-            return Json(students);
+            try
+            {
+                var students = _sinhVienService.Search(keyword ?? string.Empty);
+                return Json(students);
+            }
+            catch (Exception ex)
+            {
+                return LogAndReturnServerError(_logger, ex, "Lỗi khi tìm kiếm sinh viên.");
+            }
         }
 
         [HttpPost]
-        public IActionResult CreateStudent([FromBody] SinhVien model)
+        public IActionResult CreateStudent([FromBody] SinhVien? model)
         {
-            _sinhVienService.Insert(model);
-            return Ok();
+            if (model == null || !ModelState.IsValid)
+            {
+                return BadRequest("Thông tin sinh viên không hợp lệ.");
+            }
+
+            try
+            {
+                _sinhVienService.Insert(model);
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                return LogAndReturnServerError(_logger, ex, "Lỗi khi thêm sinh viên.");
+            }
         }
 
         [HttpPost]
-        public IActionResult UpdateStudent([FromBody] SinhVien model)
+        public IActionResult UpdateStudent([FromBody] SinhVien? model)
         {
-            _sinhVienService.Update(model);
-            return Ok();
+            if (model == null || !ModelState.IsValid)
+            {
+                return BadRequest("Thông tin sinh viên không hợp lệ.");
+            }
+
+            try
+            {
+                _sinhVienService.Update(model);
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                return LogAndReturnServerError(_logger, ex, "Lỗi khi cập nhật sinh viên.");
+            }
         }
 
         [HttpPost]
         public IActionResult DeleteStudent(string maSV)
         {
-            _sinhVienService.Delete(maSV);
-            return Ok();
+            if (string.IsNullOrWhiteSpace(maSV))
+            {
+                return BadRequest("Mã sinh viên không được để trống.");
+            }
+
+            try
+            {
+                _sinhVienService.Delete(maSV);
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                return LogAndReturnServerError(_logger, ex, $"Không thể xóa sinh viên {maSV}.");
+            }
         }
 
         [HttpGet]
         public IActionResult GetStudentsByClass(string maLop)
         {
-            var students = _sinhVienService.GetByLop(maLop);
-            return Json(students);
+            if (string.IsNullOrWhiteSpace(maLop))
+            {
+                return BadRequest("Mã lớp không được để trống.");
+            }
+
+            try
+            {
+                var students = _sinhVienService.GetByLop(maLop);
+                return Json(students);
+            }
+            catch (Exception ex)
+            {
+                return LogAndReturnServerError(_logger, ex, "Lỗi khi lấy danh sách sinh viên.");
+            }
         }
 
         [HttpPost]
@@ -109,7 +195,7 @@ namespace DMS_Examify.Controllers
             }
             catch (Exception ex)
             {
-                return LogAndReturnServerError(ex, "System error while checking student import.");
+                return LogAndReturnServerError(_logger, ex, "Lỗi hệ thống khi kiểm tra danh sách import sinh viên.");
             }
         }
 
@@ -123,7 +209,7 @@ namespace DMS_Examify.Controllers
             }
             catch (Exception ex)
             {
-                return LogAndReturnServerError(ex, "System error while checking class duplicates.");
+                return LogAndReturnServerError(_logger, ex, "Lỗi hệ thống khi kiểm tra trùng lớp học.");
             }
         }
 
@@ -137,7 +223,7 @@ namespace DMS_Examify.Controllers
             }
             catch (Exception ex)
             {
-                return LogAndReturnServerError(ex, "System error while checking class duplicates.");
+                return LogAndReturnServerError(_logger, ex, "Lỗi hệ thống khi kiểm tra trùng lớp học.");
             }
         }
 
@@ -151,14 +237,47 @@ namespace DMS_Examify.Controllers
             }
             catch (Exception ex)
             {
-                return LogAndReturnServerError(ex, "System error while checking student duplicates.");
+                return LogAndReturnServerError(_logger, ex, "Lỗi hệ thống khi kiểm tra trùng sinh viên.");
             }
         }
 
-        private IActionResult LogAndReturnServerError(Exception exception, string message)
+        [HttpGet]
+        public IActionResult CheckDeleteClass(string maLop)
         {
-            _logger.LogError(exception, message);
-            return StatusCode(500, message);
+            if (string.IsNullOrWhiteSpace(maLop))
+            {
+                return BadRequest("Mã lớp không được để trống.");
+            }
+
+            try
+            {
+                bool isSoftDelete = _lopService.CheckIsSoftDelete(maLop);
+                return Json(new { isSoftDelete });
+            }
+            catch (Exception ex)
+            {
+                return LogAndReturnServerError(_logger, ex, $"Lỗi khi kiểm tra xóa lớp học {maLop}.");
+            }
+        }
+
+        [HttpGet]
+        public IActionResult CheckDeleteStudent(string maSV)
+        {
+            if (string.IsNullOrWhiteSpace(maSV))
+            {
+                return BadRequest("Mã sinh viên không được để trống.");
+            }
+
+            try
+            {
+                bool isSoftDelete = _sinhVienService.CheckIsSoftDelete(maSV);
+                return Json(new { isSoftDelete });
+            }
+            catch (Exception ex)
+            {
+                return LogAndReturnServerError(_logger, ex, $"Lỗi khi kiểm tra xóa sinh viên {maSV}.");
+            }
         }
     }
 }
+
