@@ -3566,3 +3566,151 @@ GRANT EXECUTE ON dbo.usp_LayBaiThiDangLam TO [Sinhvien];
 GO
 PRINT N'OK: Da tao usp_LayBaiThiDangLam.';
 GO
+
+-- ============================================================
+-- SP ho tro trang KetQua: Xem ket qua thi
+-- ============================================================
+
+-- 1. Danh sach bai thi da lam cua 1 SV
+CREATE OR ALTER PROCEDURE dbo.usp_LayDanhSachBaiThiCuaSV
+    @MASV NCHAR(8)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT
+        bd.MAMH,
+        mh.TENMH,
+        bd.LAN,
+        bd.NGAYTHI,
+        bd.DIEM,
+        sv.MALOP,
+        l.TENLOP,
+        gvdk.TRINHDO,
+        gvdk.SOCAUTHI
+    FROM dbo.BANGDIEM bd
+    INNER JOIN dbo.MONHOC mh ON bd.MAMH = mh.MAMH
+    INNER JOIN dbo.SINHVIEN sv ON bd.MASV = sv.MASV
+    INNER JOIN dbo.LOP l ON sv.MALOP = l.MALOP
+    INNER JOIN dbo.GIAOVIEN_DANGKY gvdk
+        ON bd.MAMH = gvdk.MAMH AND sv.MALOP = gvdk.MALOP AND bd.LAN = gvdk.LAN
+    WHERE bd.MASV = @MASV
+    ORDER BY bd.NGAYTHI DESC, mh.TENMH ASC;
+END
+GO
+
+GRANT EXECUTE ON dbo.usp_LayDanhSachBaiThiCuaSV TO [Sinhvien];
+GO
+PRINT N'OK: Da tao usp_LayDanhSachBaiThiCuaSV.';
+GO
+
+-- 2. Chi tiet 1 bai thi (cau hoi + dap an SV + dap an dung)
+CREATE OR ALTER PROCEDURE dbo.usp_LayChiTietBaiThi
+    @MASV NCHAR(8),
+    @MAMH NCHAR(5),
+    @LAN  SMALLINT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM dbo.BAITHI
+        WHERE MASV = @MASV AND MAMH = @MAMH AND LAN = @LAN AND TRANGTHAI = 1
+    )
+    BEGIN
+        RETURN;
+    END
+
+    SELECT
+        ct.STT,
+        ct.CAUHOI,
+        b.NOIDUNG,
+        b.A,
+        b.B,
+        b.C,
+        b.D,
+        ct.CAUTRALOI,
+        b.DAP_AN
+    FROM dbo.CT_BAITHI ct
+    INNER JOIN dbo.BODE b ON ct.CAUHOI = b.CAUHOI
+    WHERE ct.MASV = @MASV
+      AND ct.MAMH = @MAMH
+      AND ct.LAN  = @LAN
+    ORDER BY ct.STT ASC;
+END
+GO
+
+GRANT EXECUTE ON dbo.usp_LayChiTietBaiThi TO [Sinhvien];
+GRANT EXECUTE ON dbo.usp_LayChiTietBaiThi TO [Giangvien];
+GRANT EXECUTE ON dbo.usp_LayChiTietBaiThi TO [PGV];
+GO
+PRINT N'OK: Da tao usp_LayChiTietBaiThi.';
+GO
+
+-- 3. Danh sach de thi cho GV/PGV (NULL = tat ca de thi)
+CREATE OR ALTER PROCEDURE dbo.usp_LayDanhSachDeThiChoGV
+    @MAGV NCHAR(8) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT
+        gvdk.MAMH,
+        mh.TENMH,
+        gvdk.MALOP,
+        l.TENLOP,
+        gvdk.LAN,
+        gvdk.TRINHDO,
+        gvdk.SOCAUTHI,
+        gvdk.THOIGIAN,
+        gvdk.NGAYTHI,
+        gvdk.MAGV,
+        (SELECT COUNT(*) FROM dbo.BANGDIEM bd
+         WHERE bd.MAMH = gvdk.MAMH
+           AND bd.LAN = gvdk.LAN
+           AND bd.MASV IN (SELECT MASV FROM dbo.SINHVIEN WHERE MALOP = gvdk.MALOP)
+        ) AS SoSVDaThi
+    FROM dbo.GIAOVIEN_DANGKY gvdk
+    INNER JOIN dbo.MONHOC mh ON gvdk.MAMH = mh.MAMH
+    INNER JOIN dbo.LOP l ON gvdk.MALOP = l.MALOP
+    WHERE (@MAGV IS NULL OR gvdk.MAGV = @MAGV)
+    ORDER BY gvdk.NGAYTHI DESC, mh.TENMH ASC;
+END
+GO
+
+GRANT EXECUTE ON dbo.usp_LayDanhSachDeThiChoGV TO [Giangvien];
+GRANT EXECUTE ON dbo.usp_LayDanhSachDeThiChoGV TO [PGV];
+GO
+PRINT N'OK: Da tao usp_LayDanhSachDeThiChoGV.';
+GO
+
+-- 4. Ket qua SV theo 1 de thi cu the
+CREATE OR ALTER PROCEDURE dbo.usp_LayKetQuaSVTheoDeThi
+    @MAMH  NCHAR(5),
+    @MALOP NCHAR(8),
+    @LAN   SMALLINT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT
+        bd.MASV,
+        sv.HO,
+        sv.TEN,
+        bd.NGAYTHI,
+        bd.DIEM
+    FROM dbo.BANGDIEM bd
+    INNER JOIN dbo.SINHVIEN sv ON bd.MASV = sv.MASV
+    WHERE bd.MAMH = @MAMH
+      AND bd.LAN  = @LAN
+      AND sv.MALOP = @MALOP
+    ORDER BY sv.TEN ASC, sv.HO ASC;
+END
+GO
+
+GRANT EXECUTE ON dbo.usp_LayKetQuaSVTheoDeThi TO [Giangvien];
+GRANT EXECUTE ON dbo.usp_LayKetQuaSVTheoDeThi TO [PGV];
+GO
+PRINT N'OK: Da tao usp_LayKetQuaSVTheoDeThi.';
+GO
+

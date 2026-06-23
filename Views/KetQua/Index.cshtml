@@ -1,99 +1,29 @@
-@model DMS_Examify.Models.KetQuaThiViewModel
 @{
     ViewData["Title"] = "Xem kết quả thi";
     ViewData["Subtitle"] = "Xem lại bài thi đã làm";
+    var userRole = ViewData["UserRole"]?.ToString() ?? "";
+    var userName = ViewData["UserName"]?.ToString() ?? "";
+    var userLogin = ViewData["UserLogin"]?.ToString() ?? "";
 }
 
-<div class="row justify-content-center">
-    <div class="col-md-10 animate-in">
-        <!-- Thông tin chung -->
-        <div class="card mb-4">
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="row mb-2">
-                            <div class="col-4" style="color:var(--text-secondary); font-weight:600;">Lớp:</div>
-                            <div class="col-8">@Model.TenLop</div>
-                        </div>
-                        <div class="row mb-2">
-                            <div class="col-4" style="color:var(--text-secondary); font-weight:600;">Họ tên:</div>
-                            <div class="col-8">@Model.HoTen</div>
-                        </div>
-                        <div class="row mb-2">
-                            <div class="col-4" style="color:var(--text-secondary); font-weight:600;">Môn thi:</div>
-                            <div class="col-8">@Model.TenMH</div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="row mb-2">
-                            <div class="col-5" style="color:var(--text-secondary); font-weight:600;">Mã SV:</div>
-                            <div class="col-7">@Model.MaSV</div>
-                        </div>
-                        <div class="row mb-2">
-                            <div class="col-5" style="color:var(--text-secondary); font-weight:600;">Ngày thi:</div>
-                            <div class="col-7">@Model.NgayThi.ToString("dd/MM/yyyy")</div>
-                        </div>
-                        <div class="row mb-2">
-                            <div class="col-5" style="color:var(--text-secondary); font-weight:600;">Lần thi:</div>
-                            <div class="col-7">@Model.Lan</div>
-                        </div>
-                    </div>
-                    <div class="col-md-3 text-center">
-                        <div class="score-display" style="padding:10px;">
-                            <div class="score-value" style="font-size:48px;">@Model.Diem.ToString("F1")</div>
-                            <div class="score-label">@Model.SoCauDung / @Model.TongSoCau câu đúng</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+<div class="row justify-content-center" id="ketQuaApp" data-role="@userRole"
+     data-username="@userName" data-userlogin="@userLogin">
+    <div class="col-md-11 animate-in">
 
-        <!-- Bảng chi tiết -->
-        <div class="card animate-in animate-in-delay-1">
-            <div class="card-header">
-                <span><i class="bi bi-list-check me-2"></i>Chi tiết bài thi</span>
-            </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th style="width:45px">STT</th>
-                                <th style="width:65px">Câu số</th>
-                                <th>Nội dung câu hỏi</th>
-                                <th>A</th>
-                                <th>B</th>
-                                <th>C</th>
-                                <th>D</th>
-                                <th style="width:60px">Trả lời</th>
-                                <th style="width:60px">Đáp án</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var ch in Model.DanhSachCauHoi)
-                            {
-                                var isCorrect = ch.TraLoiSV == ch.DapAnDung;
-                                var rowClass = isCorrect ? "" : "table-danger";
-                                <tr class="@rowClass">
-                                    <td>@ch.STT</td>
-                                    <td><strong>@ch.CauHoi</strong></td>
-                                    <td>@ch.NoiDung</td>
-                                    <td style="font-size:12px;">@ch.DapAnA</td>
-                                    <td style="font-size:12px;">@ch.DapAnB</td>
-                                    <td style="font-size:12px;">@ch.DapAnC</td>
-                                    <td style="font-size:12px;">@ch.DapAnD</td>
-                                    <td class="text-center">
-                                        <span class="badge @(isCorrect ? "bg-success" : "bg-danger")">@ch.TraLoiSV</span>
-                                    </td>
-                                    <td class="text-center">
-                                        <span class="badge bg-dark">@ch.DapAnDung</span>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
+        @if (userRole == "Sinhvien")
+        {
+            <partial name="_PanelSinhVien" />
+        }
+
+        @if (userRole == "Giangvien" || userRole == "PGV")
+        {
+            <partial name="_PanelGiangVien" />
+        }
+
+        <partial name="_PanelChiTiet" />
     </div>
 </div>
+
+@section Scripts {
+    <script src="~/js/ketqua.js"></script>
+}
