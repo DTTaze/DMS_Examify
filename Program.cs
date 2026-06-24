@@ -13,6 +13,7 @@ builder.Services.AddScoped<DMS_Examify.Services.IBoDeService, DMS_Examify.Servic
 builder.Services.AddScoped<DMS_Examify.Services.IDangKyThiService, DMS_Examify.Services.DangKyThiService>();
 builder.Services.AddScoped<DMS_Examify.Services.IGiaoVienService, DMS_Examify.Services.GiaoVienService>();
 builder.Services.AddScoped<DMS_Examify.Services.IAuthService, DMS_Examify.Services.AuthService>();
+builder.Services.AddScoped<DMS_Examify.Services.IBangDiemService, DMS_Examify.Services.BangDiemService>();
 
 
 // Thêm Session

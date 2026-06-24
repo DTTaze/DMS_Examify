@@ -215,3 +215,63 @@ GRANT SELECT ON dbo.vw_GiaoVienDangKy TO [Giangvien];
 GO
 PRINT N'OK: Da tao view vw_GiaoVienDangKy.';
 GO
+
+-- ------------------------------------------------------------
+-- 9. View vw_BangDiem_DanhSachLop
+--    Lay danh sach lop co sinh vien da thi (dropdown 4.9)
+-- ------------------------------------------------------------
+CREATE OR ALTER VIEW dbo.vw_BangDiem_DanhSachLop AS
+SELECT DISTINCT L.MALOP, L.TENLOP
+FROM LOP L
+INNER JOIN SINHVIEN SV ON L.MALOP = SV.MALOP
+INNER JOIN BANGDIEM BD ON SV.MASV = BD.MASV
+WHERE L.TrangThai = 1 AND SV.TrangThai = 1;
+GO
+
+GRANT SELECT ON dbo.vw_BangDiem_DanhSachLop TO [PGV];
+GO
+GRANT SELECT ON dbo.vw_BangDiem_DanhSachLop TO [Giangvien];
+GO
+
+PRINT N'OK: Da tao view vw_BangDiem_DanhSachLop.';
+GO
+
+-- ------------------------------------------------------------
+-- 10. View vw_BangDiem_MonHocTheoLop
+--     Lay danh sach mon hoc theo lop (chi mon co diem, dropdown 4.9)
+-- ------------------------------------------------------------
+CREATE OR ALTER VIEW dbo.vw_BangDiem_MonHocTheoLop AS
+SELECT DISTINCT SV.MALOP, MH.MAMH, MH.TENMH
+FROM BANGDIEM BD
+INNER JOIN SINHVIEN SV ON BD.MASV = SV.MASV
+INNER JOIN MONHOC MH ON BD.MAMH = MH.MAMH
+WHERE SV.TrangThai = 1 AND MH.TrangThai = 1;
+GO
+
+GRANT SELECT ON dbo.vw_BangDiem_MonHocTheoLop TO [PGV];
+GO
+GRANT SELECT ON dbo.vw_BangDiem_MonHocTheoLop TO [Giangvien];
+GO
+
+PRINT N'OK: Da tao view vw_BangDiem_MonHocTheoLop.';
+GO
+
+-- ------------------------------------------------------------
+-- 11. View vw_BangDiem_LanThiTheoLopMon
+--     Lay danh sach lan thi theo lop va mon hoc (dropdown 4.9)
+-- ------------------------------------------------------------
+CREATE OR ALTER VIEW dbo.vw_BangDiem_LanThiTheoLopMon AS
+SELECT DISTINCT SV.MALOP, BD.MAMH, BD.LAN
+FROM BANGDIEM BD
+INNER JOIN SINHVIEN SV ON BD.MASV = SV.MASV
+WHERE SV.TrangThai = 1;
+GO
+
+GRANT SELECT ON dbo.vw_BangDiem_LanThiTheoLopMon TO [PGV];
+GO
+GRANT SELECT ON dbo.vw_BangDiem_LanThiTheoLopMon TO [Giangvien];
+GO
+
+PRINT N'OK: Da tao view vw_BangDiem_LanThiTheoLopMon.';
+GO
+

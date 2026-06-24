@@ -13,8 +13,10 @@ namespace DMS_Examify.Models
     {
         public string MaLop { get; set; } = "";
         public string TenLop { get; set; } = "";
+        public string MaMH { get; set; } = "";
         public string TenMH { get; set; } = "";
         public int Lan { get; set; }
+        public List<Lop> LopList { get; set; } = new();
         public List<BangDiemSinhVien> DanhSach { get; set; } = new();
     }
 
@@ -25,6 +27,6 @@ namespace DMS_Examify.Models
         public string Ho { get; set; } = "";
         public string Ten { get; set; } = "";
         public double Diem { get; set; }
-        public string DiemChu { get; set; } = ""; // A, B, C, D, F
+        public string DiemChu { get; set; } = "";
     }
 }
