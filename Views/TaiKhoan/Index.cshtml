@@ -85,8 +85,11 @@
             </div>
         </div>
 
-        <!-- Bảng phân quyền -->
-        <div class="card mt-3">
+    </div>
+
+    <!-- Bảng phân quyền -->
+    <div class="col-md-7 animate-in animate-in-delay-2">
+        <div class="card">
             <div class="card-header">
                 <span><i class="bi bi-shield-lock me-2"></i>Bảng phân quyền</span>
             </div>
@@ -157,52 +160,6 @@
                                 <td class="text-center"><i class="bi bi-x-circle text-danger"></i></td>
                                 <td class="text-center"><i class="bi bi-x-circle text-danger"></i></td>
                             </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Danh sách tài khoản -->
-    <div class="col-md-7 animate-in animate-in-delay-2">
-        <div class="card">
-            <div class="card-header">
-                <span><i class="bi bi-people me-2"></i>Danh sách tài khoản</span>
-                <span class="badge bg-primary">@Model.Count tài khoản</span>
-            </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th style="width:45px">STT</th>
-                                <th>Login</th>
-                                <th>Họ tên</th>
-                                <th>Nhóm quyền</th>
-                                <th style="width:80px">Thao tác</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @for (int i = 0; i < Model.Count; i++)
-                            {
-                                var tk = Model[i];
-                                var badgeClass = tk.NhomQuyen == "PGV" ? "badge-role-pgv" : tk.NhomQuyen == "Giangvien" ?
-                                "badge-role-gv" : "badge-role-sv";
-                                var nhomLabel = tk.NhomQuyen == "PGV" ? "PGV" : tk.NhomQuyen == "Giangvien" ? "Giảng viên" :
-                                "Sinh viên";
-                                <tr>
-                                    <td>@(i + 1)</td>
-                                    <td><strong>@tk.LoginName</strong></td>
-                                    <td>@tk.HoTen</td>
-                                    <td><span class="badge @badgeClass">@nhomLabel</span></td>
-                                    <td>
-                                        <button class="btn btn-outline-secondary btn-sm" title="Xóa">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                            }
                         </tbody>
                     </table>
                 </div>
