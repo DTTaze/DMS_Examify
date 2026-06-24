@@ -10,22 +10,18 @@
 }
 
 <div class="row g-4">
-    <!-- FORM (Left) -->
-    <div class="col-md-5">
+    <!-- FORM -->
+    <div class="col-12 mb-4">
         <div class="card shadow-sm border-0 rounded-3">
-            <div class="card-header bg-white py-3 border-bottom border-light">
-                <h5 class="card-title mb-0 fw-bold text-dark">
-                    <i class="bi bi-question-circle text-primary me-2"></i> Nhập Câu hỏi thi
-                </h5>
-            </div>
+            <div class="card-header bg-white border-bottom fw-bold py-3">Thông tin Câu hỏi thi</div>
             <div class="card-body">
-                <div class="row g-3 mb-3">
-                    <div class="col-md-4">
-                        <label class="form-label small fw-medium text-secondary">Câu hỏi số</label>
+                <div class="row mb-3">
+                    <div class="col-md-2">
+                        <label class="form-label fw-medium">Câu hỏi số</label>
                         <input type="number" class="form-control shadow-none" id="txtCauHoi" disabled placeholder="Tự sinh" />
                     </div>
-                    <div class="col-md-4">
-                        <label class="form-label small fw-medium text-secondary">Môn học</label>
+                    <div class="col-md-5">
+                        <label class="form-label fw-medium">Môn học <span class="text-danger">*</span></label>
                         <select class="form-select shadow-none" id="selMaMH">
                             @foreach (var mh in Model.MonHocList)
                             {
@@ -33,8 +29,8 @@
                             }
                         </select>
                     </div>
-                    <div class="col-md-4">
-                        <label class="form-label small fw-medium text-secondary">Trình độ</label>
+                    <div class="col-md-5">
+                        <label class="form-label fw-medium">Trình độ <span class="text-danger">*</span></label>
                         <select class="form-select shadow-none" id="selTrinhDo">
                             <option value="A">A - Đại học, chuyên ngành</option>
                             <option value="B">B - Đại học, không chuyên ngành</option>
@@ -44,84 +40,76 @@
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label small fw-medium text-secondary">Nội dung câu hỏi</label>
+                    <label class="form-label fw-medium">Nội dung câu hỏi <span class="text-danger">*</span></label>
                     <textarea id="txtNoiDung" class="form-control shadow-none" rows="3" placeholder="Nhập câu hỏi..."></textarea>
-                    
-                    <!-- Panel cảnh báo câu trùng -->
-                    <div id="duplicateWarningPanel" class="mt-2 p-3 border rounded-3 bg-light" style="display: none; border-left: 4px solid #ffc107 !important;">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="small fw-semibold text-warning-emphasis d-flex align-items-center gap-2">
-                                <i class="bi bi-exclamation-triangle-fill text-warning fs-5"></i> 
-                                <span class="fw-bold">Phát hiện câu hỏi trùng lặp hoặc tương tự!</span>
-                            </span>
-                            <span id="duplicateWarningCount" class="badge bg-warning text-dark rounded-pill px-2 py-1" style="font-size: 0.75rem;">0 trùng</span>
-                        </div>
-                        <div id="duplicateWarningList" class="d-flex flex-column gap-2" style="max-height: 150px; overflow-y: auto;">
-                            <!-- Danh sách câu hỏi trùng được chèn động ở đây -->
-                        </div>
-                    </div>
+
                 </div>
 
-                <div class="row g-3 mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label small fw-medium text-secondary">Phương án A</label>
+                <div class="row mb-3">
+                    <div class="col-md-6 mb-3 mb-md-0">
+                        <label class="form-label fw-medium">Phương án A <span class="text-danger">*</span></label>
                         <input id="txtA" class="form-control shadow-none" placeholder="Phương án A" />
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label small fw-medium text-secondary">Phương án B</label>
+                        <label class="form-label fw-medium">Phương án B <span class="text-danger">*</span></label>
                         <input id="txtB" class="form-control shadow-none" placeholder="Phương án B" />
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label small fw-medium text-secondary">Phương án C</label>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6 mb-3 mb-md-0">
+                        <label class="form-label fw-medium">Phương án C <span class="text-danger">*</span></label>
                         <input id="txtC" class="form-control shadow-none" placeholder="Phương án C" />
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label small fw-medium text-secondary">Phương án D</label>
+                        <label class="form-label fw-medium">Phương án D <span class="text-danger">*</span></label>
                         <input id="txtD" class="form-control shadow-none" placeholder="Phương án D" />
                     </div>
-                    <div class="col-12">
+                    <div class="col-12 mt-2">
                         <div id="answerDuplicateFeedback" class="text-danger small fw-medium" style="display: none;"></div>
                     </div>
                 </div>
 
-                <div class="mb-4">
-                    <label class="form-label small fw-medium text-secondary">Đáp án đúng</label>
-                    <select id="selDapAn" class="form-select shadow-none" style="width: 120px;">
-                        <option value="A">A</option>
-                        <option value="B">B</option>
-                        <option value="C">C</option>
-                        <option value="D">D</option>
-                    </select>
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <label class="form-label fw-medium">Đáp án đúng <span class="text-danger">*</span></label>
+                        <select id="selDapAn" class="form-select shadow-none" style="width: 120px;">
+                            <option value="A">A</option>
+                            <option value="B">B</option>
+                            <option value="C">C</option>
+                            <option value="D">D</option>
+                        </select>
+                    </div>
                 </div>
 
-                <div class="d-flex gap-2 flex-wrap">
+                <div class="d-flex gap-2 flex-wrap mt-2">
                     <span id="wrapThem" class="d-inline-block">
-                        <button type="button" class="btn btn-primary btn-sm px-3 animate-btn" id="btnThem" onclick="addQuestion()" disabled>
+                        <button type="button" class="btn btn-primary px-4 animate-btn" id="btnThem" onclick="addQuestion()" disabled>
                             <i class="bi bi-plus-lg me-1"></i> Thêm
                         </button>
                     </span>
                     <span id="wrapSua" class="d-inline-block">
-                        <button type="button" class="btn btn-warning btn-sm px-3 text-white animate-btn" id="btnSua" onclick="editQuestion()" disabled>
+                        <button type="button" class="btn btn-warning px-4 text-white animate-btn" id="btnSua" onclick="editQuestion()" disabled>
                             <i class="bi bi-pencil-square me-1"></i> Sửa
                         </button>
                     </span>
 
-                    <button type="button" class="btn btn-secondary btn-sm px-3 animate-btn" onclick="resetQuestionForm()">
-                        <i class="bi bi-arrow-clockwise me-1"></i> Reset
+                    <button type="button" class="btn btn-secondary px-4 animate-btn" onclick="resetQuestionForm()">
+                        <i class="bi bi-arrow-repeat me-1"></i> Đặt lại
                     </button>
+                    <div class="vr mx-2 d-none d-md-block"></div>
                     <span id="wrapUndo" class="d-inline-block" title="Chưa có thao tác nào để hoàn tác.">
-                        <button type="button" class="btn btn-info btn-sm px-3 text-white animate-btn" id="btnUndo" onclick="undoBD()" disabled title="Chưa có thao tác nào để hoàn tác.">
-                            <i class="bi bi-arrow-counterclockwise me-1"></i> Undo
+                        <button type="button" class="btn btn-outline-info animate-btn" id="btnUndo" onclick="undoBD()" disabled title="Chưa có thao tác nào để hoàn tác.">
+                            <i class="bi bi-arrow-counterclockwise"></i> Undo
                         </button>
                     </span>
                     <span id="wrapRedo" class="d-inline-block" title="Chưa có thao tác nào để làm lại.">
-                        <button type="button" class="btn btn-info btn-sm px-3 text-white animate-btn" id="btnRedo" onclick="redoBD()" disabled title="Chưa có thao tác nào để làm lại.">
-                            <i class="bi bi-arrow-clockwise me-1"></i> Redo
+                        <button type="button" class="btn btn-outline-info animate-btn" id="btnRedo" onclick="redoBD()" disabled title="Chưa có thao tác nào để làm lại.">
+                            <i class="bi bi-arrow-clockwise"></i> Redo
                         </button>
                     </span>
-                    <span id="wrapGhi" class="d-inline-block">
-                        <button type="button" class="btn btn-success btn-sm px-3 animate-btn" id="btnGhi" onclick="saveAll()" disabled>
-                            <i class="bi bi-check-circle me-1"></i> Ghi (Lưu CSDL)
+                    <span id="wrapGhi" class="d-inline-block ms-auto mt-2 mt-md-0">
+                        <button type="button" class="btn btn-success animate-btn px-4" id="btnGhi" onclick="saveAll()" disabled>
+                            <i class="bi bi-cloud-arrow-up me-1"></i> Ghi (Lưu CSDL)
                         </button>
                     </span>
                 </div>
@@ -129,71 +117,64 @@
         </div>
     </div>
 
-    <!-- TABLE (Right) -->
-    <div class="col-md-7">
+    <!-- TABLE -->
+    <div class="col-12">
         <div class="card shadow-sm border-0 rounded-3 text-dark">
-            <div class="card-header bg-white py-3 border-bottom border-light d-flex justify-content-between align-items-center flex-wrap gap-3">
-                <h5 class="card-title mb-0 fw-bold text-dark">
-                    <i class="bi bi-list-task text-primary me-2"></i> Danh sách Câu hỏi (<span id="lblCount">0</span>)
-                </h5>
+            <div class="card-header d-flex justify-content-between align-items-center py-2">
+                <span>Danh sách Câu hỏi (<span id="lblCount">@Model.BoDes.Count</span>)</span>
                 <div class="d-flex align-items-center gap-2">
-                    <button type="button" class="btn btn-outline-success btn-sm animate-btn" onclick="exportExcel()" title="Xuất Excel">
+                    <button type="button" class="btn btn-outline-success btn-sm animate-btn text-nowrap" onclick="exportExcel()" title="Xuất Excel">
                         <i class="bi bi-file-earmark-excel"></i> Xuất Excel
                     </button>
-                    <button type="button" class="btn btn-outline-primary btn-sm animate-btn" onclick="openImportModal()" title="Nhập Excel">
+                    <button type="button" class="btn btn-outline-primary btn-sm animate-btn text-nowrap" onclick="openImportModal()" title="Nhập dữ liệu từ file Excel">
                         <i class="bi bi-file-earmark-arrow-up"></i> Nhập Excel
                     </button>
-                    <div style="width: 180px;">
-                        <input id="txtSearch" class="form-control form-control-sm shadow-none" placeholder="Tìm kiếm câu hỏi..." />
+                    <div class="input-group input-group-sm mb-0" style="width: 250px;">
+                        <span class="input-group-text bg-white border-end-0 text-secondary"><i class="bi bi-search"></i></span>
+                        <input id="txtSearch" class="form-control border-start-0 shadow-none ps-0" placeholder="Tìm kiếm câu hỏi..." />
                     </div>
                 </div>
             </div>
 
-            <div class="card-body p-0">
-                <div class="table-responsive border-0 mb-0" style="max-height: 520px; overflow-y: auto;">
-                    <table class="table table-hover align-middle mb-0" id="tbl">
-                        <thead class="table-light sticky-top">
-                            <tr>
-                                <th style="width: 70px;">Câu</th>
-                                <th>Nội dung câu hỏi</th>
-                                <th style="width: 90px;">Môn học</th>
-                                <th style="width: 80px;">Trình độ</th>
-                                <th style="width: 80px;">Đáp án</th>
-                                <th class="text-center" style="width: 100px;">Thao tác</th>
+            <div class="card-body p-0 table-responsive border rounded-3 mb-0" style="max-height: 520px; overflow-y: auto;">
+                <table class="table table-hover align-middle mb-0" id="tbl">
+                    <thead class="table-light sticky-top">
+                        <tr>
+                            <th style="width: 70px;">Câu</th>
+                            <th>Nội dung câu hỏi</th>
+                            <th style="width: 90px;">Môn học</th>
+                            <th style="width: 80px;">Trình độ</th>
+                            <th style="width: 80px;">Đáp án</th>
+                            <th class="text-center" style="width: 100px;">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var ch in Model.BoDes)
+                        {
+                            <tr data-id="@ch.CauHoi" data-mamh="@ch.MaMH" data-trinhdo="@ch.TrinhDo" data-noidung="@ch.NoiDung"
+                                data-a="@ch.DapAnA" data-b="@ch.DapAnB" data-c="@ch.DapAnC" data-d="@ch.DapAnD" data-dapan="@ch.DapAn"
+                                data-original-mamh="@ch.MaMH" data-original-trinhdo="@ch.TrinhDo" data-original-noidung="@ch.NoiDung"
+                                data-original-a="@ch.DapAnA" data-original-b="@ch.DapAnB" data-original-c="@ch.DapAnC"
+                                data-original-d="@ch.DapAnD" data-original-dapan="@ch.DapAn">
+                                <td><span class="badge bg-light text-secondary border border-light">@ch.CauHoi</span></td>
+                                <td class="text-truncate fw-semibold" style="max-width: 250px;">@ch.NoiDung</td>
+                                <td>@ch.MaMH</td>
+                                <td>@ch.TrinhDo</td>
+                                <td class="text-center"><span class="badge bg-secondary">@ch.DapAn</span></td>
+                                <td class="text-center">
+                                    <div class="d-flex gap-2 justify-content-center">
+                                        <button type="button" class="btn btn-link text-warning p-0 btn-edit" title="Hiệu chỉnh"><i class="bi bi-pencil-square fs-5"></i></button>
+                                        <button type="button" class="btn btn-link text-danger p-0 btn-delete" title="Xóa"><i class="bi bi-trash fs-5"></i></button>
+                                    </div>
+                                </td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var ch in Model.BoDes)
-                            {
-                                <tr data-id="@ch.CauHoi" data-mamh="@ch.MaMH" data-trinhdo="@ch.TrinhDo" data-noidung="@ch.NoiDung"
-                                    data-a="@ch.DapAnA" data-b="@ch.DapAnB" data-c="@ch.DapAnC" data-d="@ch.DapAnD" data-dapan="@ch.DapAn"
-                                    data-original-mamh="@ch.MaMH" data-original-trinhdo="@ch.TrinhDo" data-original-noidung="@ch.NoiDung"
-                                    data-original-a="@ch.DapAnA" data-original-b="@ch.DapAnB" data-original-c="@ch.DapAnC"
-                                    data-original-d="@ch.DapAnD" data-original-dapan="@ch.DapAn">
-                                    <td>@ch.CauHoi</td>
-                                    <td class="text-truncate" style="max-width: 250px;">@ch.NoiDung</td>
-                                    <td>@ch.MaMH</td>
-                                    <td>@ch.TrinhDo</td>
-                                    <td class="text-center"><span class="badge bg-secondary">@ch.DapAn</span></td>
-                                    <td class="text-center">
-                                        <div class="d-flex gap-2 justify-content-center">
-                                            <button type="button" class="btn btn-link p-0 text-warning btn-edit" title="Sửa">
-                                                <i class="bi bi-pencil-fill"></i>
-                                            </button>
-                                            <button type="button" class="btn btn-link p-0 text-danger btn-delete" title="Xóa">
-                                                <i class="bi bi-trash-fill"></i>
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
+                        }
+                    </tbody>
+                </table>
             </div>
 
             <!-- Card Footer Pagination -->
-            <div class="card-footer d-flex justify-content-between align-items-center flex-wrap gap-2 py-2 bg-light border-top-0 rounded-bottom-3">
+            <div class="card-footer d-flex justify-content-between align-items-center py-2 bg-light border-top-0">
                 <div class="d-flex align-items-center gap-2">
                     <span class="small text-secondary fw-medium" id="lblPaginationSummary">Hiển thị từ 0 đến 0 trong tổng số 0 dòng</span>
                     <select class="form-select form-select-sm shadow-none" id="selectPageSize" style="width: 80px;" onchange="changePageSize(this.value)">

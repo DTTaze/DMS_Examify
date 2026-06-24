@@ -25,6 +25,10 @@ namespace DMS_Examify.Controllers
             ViewData["Subtitle"] = "Thêm, sửa, xóa môn học";
 
             var subjects = _monHocService.GetAll();
+            foreach (var subject in subjects)
+            {
+                subject.HasDependencies = _monHocService.CheckHasDependencies(subject.MaMH);
+            }
             return View(subjects);
         }
 
@@ -76,6 +80,10 @@ namespace DMS_Examify.Controllers
 
             try
             {
+                if (_monHocService.CheckHasDependencies(maMH))
+                {
+                    return BadRequest("Không thể xóa môn học vì đã có dữ liệu liên quan.");
+                }
                 _monHocService.Delete(maMH);
                 return Ok();
             }
@@ -85,24 +93,7 @@ namespace DMS_Examify.Controllers
             }
         }
 
-        [HttpGet]
-        public IActionResult CheckDelete(string maMH)
-        {
-            if (string.IsNullOrWhiteSpace(maMH))
-            {
-                return BadRequest("Mã môn học không hợp lệ.");
-            }
 
-            try
-            {
-                bool isSoftDelete = _monHocService.CheckIsSoftDelete(maMH);
-                return Json(new { isSoftDelete });
-            }
-            catch (Exception ex)
-            {
-                return LogAndReturnServerError(_logger, ex, $"Lỗi khi kiểm tra xóa môn học {maMH}.");
-            }
-        }
 
         [HttpGet]
         public IActionResult Search(string? keyword)
@@ -110,6 +101,10 @@ namespace DMS_Examify.Controllers
             try
             {
                 var subjects = _monHocService.Search(keyword ?? string.Empty);
+                foreach (var subject in subjects)
+                {
+                    subject.HasDependencies = _monHocService.CheckHasDependencies(subject.MaMH);
+                }
                 return Json(subjects);
             }
             catch (Exception ex)
@@ -117,6 +112,8 @@ namespace DMS_Examify.Controllers
                 return LogAndReturnServerError(_logger, ex, "Lỗi khi tìm kiếm môn học.");
             }
         }
+
+
 
         [HttpGet]
         public IActionResult CheckDuplicateForCreate(string maMH, string tenMH)
@@ -171,35 +168,13 @@ namespace DMS_Examify.Controllers
 
             try
             {
-                var validationResults = ValidateImportDuplicates(items);
+                var validationResults = _monHocService.ValidateImportDuplicates(items);
                 return Json(validationResults);
             }
             catch (Exception ex)
             {
                 return LogAndReturnServerError(_logger, ex, "Lỗi hệ thống khi kiểm tra danh sách import môn học.");
             }
-        }
-
-        private IEnumerable<object> ValidateImportDuplicates(List<MonHoc> items)
-        {
-            var activeSubjects = _monHocService.GetAll();
-            var activeCodes = activeSubjects.Select(s => s.MaMH.Trim().ToUpper()).ToHashSet();
-            var activeNames = activeSubjects.Select(s => s.TenMH.Trim().ToLower()).ToHashSet();
-
-            return items.Select((item, index) =>
-            {
-                var code = item.MaMH?.Trim().ToUpper() ?? string.Empty;
-                var name = item.TenMH?.Trim().ToLower() ?? string.Empty;
-
-                return new
-                {
-                    index,
-                    maMH = item.MaMH?.Trim() ?? string.Empty,
-                    tenMH = item.TenMH?.Trim() ?? string.Empty,
-                    codeDuplicate = activeCodes.Contains(code),
-                    nameDuplicate = activeNames.Contains(name)
-                };
-            });
         }
 
 

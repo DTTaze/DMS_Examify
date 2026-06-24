@@ -10,104 +10,109 @@
 }
 
 <div class="row g-4">
-    <!-- CLASS SUBFORM (Top) -->
-    <div class="col-12">
+    <!-- ============================================ -->
+    <!-- SECTION: LỚP HỌC                             -->
+    <!-- ============================================ -->
+    
+    <!-- LỚP HỌC: FORM -->
+    <div class="col-12 mb-1">
         <div class="card shadow-sm border-0 rounded-3">
-            <div class="card-header bg-white py-3 border-bottom border-light">
-                <h5 class="card-title mb-0 fw-bold text-dark">
-                    <i class="bi bi-folder text-primary me-2"></i> Danh mục Lớp
-                </h5>
-            </div>
+            <div class="card-header bg-white border-bottom fw-bold py-3">Thông tin Lớp học</div>
             <div class="card-body">
-                <div class="row g-3 mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label small fw-medium text-secondary">Mã lớp</label>
-                        <input id="txtMaLop" class="form-control shadow-none" placeholder="Mã lớp (ví dụ: D15CQCN01)" />
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-medium">Mã lớp <span class="text-danger">*</span></label>
+                        <input id="txtMaLop" class="form-control text-uppercase shadow-none" placeholder="Nhập mã lớp..." maxlength="8" />
                         <span id="errMaLop" class="text-danger small mt-1 d-block"></span>
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label small fw-medium text-secondary">Tên lớp</label>
-                        <input id="txtTenLop" class="form-control shadow-none" placeholder="Tên lớp (ví dụ: Công nghệ thông tin 1)" />
+                    <div class="col-md-8">
+                        <label class="form-label fw-medium">Tên lớp <span class="text-danger">*</span></label>
+                        <input id="txtTenLop" class="form-control shadow-none" placeholder="Nhập tên lớp..." maxlength="40" />
                         <span id="errTenLop" class="text-danger small mt-1 d-block"></span>
                     </div>
                 </div>
 
-                <div class="d-flex gap-2 mb-4 flex-wrap">
+                <div class="d-flex gap-2 flex-wrap mt-2">
                     <span id="wrapThemLop" class="d-inline-block">
-                        <button class="btn btn-primary btn-sm px-3 animate-btn" id="btnThemLop" onclick="themLop()">
+                        <button type="button" class="btn btn-primary px-4 animate-btn" id="btnThemLop" onclick="themLop()" disabled>
                             <i class="bi bi-plus-lg me-1"></i> Thêm
                         </button>
                     </span>
                     <span id="wrapSuaLop" class="d-inline-block">
-                        <button class="btn btn-warning btn-sm px-3 text-white animate-btn" id="btnSuaLop" onclick="suaLop()">
+                        <button type="button" class="btn btn-warning px-4 text-white animate-btn" id="btnSuaLop" onclick="suaLop()" disabled>
                             <i class="bi bi-pencil-square me-1"></i> Sửa
                         </button>
                     </span>
-
-                    <button type="button" class="btn btn-secondary btn-sm px-3 animate-btn" onclick="clickResetLop()">
-                        <i class="bi bi-arrow-clockwise me-1"></i> Reset
+                    <button type="button" class="btn btn-secondary px-4 animate-btn" onclick="clickResetLop()">
+                        <i class="bi bi-arrow-repeat me-1"></i> Đặt lại
                     </button>
-                    <button type="button" class="btn btn-info btn-sm px-3 text-white animate-btn" id="btnUndoLop" onclick="undoLop()" disabled>
-                        <i class="bi bi-arrow-counterclockwise me-1"></i> Undo
+                    <div class="vr mx-2 d-none d-md-block"></div>
+                    <button type="button" class="btn btn-outline-info animate-btn" id="btnUndoLop" onclick="undoLop()" disabled>
+                        <i class="bi bi-arrow-counterclockwise"></i> Undo
                     </button>
-                    <button type="button" class="btn btn-info btn-sm px-3 text-white animate-btn" id="btnRedoLop" onclick="redoLop()" disabled>
-                        <i class="bi bi-arrow-clockwise me-1"></i> Redo
+                    <button type="button" class="btn btn-outline-info animate-btn" id="btnRedoLop" onclick="redoLop()" disabled>
+                        <i class="bi bi-arrow-clockwise"></i> Redo
                     </button>
-                    <span id="wrapGhiLop" class="d-inline-block">
-                        <button type="button" class="btn btn-success btn-sm px-3 animate-btn" id="btnGhiLop" onclick="ghiLop()" disabled>
-                            <i class="bi bi-check-circle me-1"></i> Ghi
+                    <span id="wrapGhiLop" class="d-inline-block ms-auto">
+                        <button type="button" class="btn btn-success animate-btn px-4" id="btnGhiLop" onclick="ghiLop()" disabled>
+                            <i class="bi bi-cloud-arrow-up me-1"></i> Ghi (Lưu CSDL)
                         </button>
                     </span>
                 </div>
+            </div>
+        </div>
+    </div>
 
-                <hr class="text-muted opacity-25 mb-3" />
-
-                <!-- Search Class Input -->
-                <div class="input-group input-group-sm mb-3">
-                    <span class="input-group-text bg-white border-end-0 text-secondary"><i class="bi bi-search"></i></span>
-                    <input id="txtSearchLop" class="form-control border-start-0 shadow-none ps-0" placeholder="Tìm nhanh lớp học..." oninput="locLop()" />
-                    <button class="btn btn-outline-secondary border-start-0 d-none" type="button" id="btnClearSearchLop" onclick="clearSearchLop()">
-                        <i class="bi bi-x-lg"></i>
-                    </button>
-                </div>
-                
-                <div class="d-flex justify-content-between align-items-center mb-2 px-1">
-                    <span class="small text-secondary fw-medium" id="lblLopCount">Hiển thị @Model.Count/@Model.Count lớp</span>
-                </div>
-
-                <div class="class-list-container" style="max-height: 350px; overflow-y: auto;">
-                    <div id="lopEmptyState" class="text-center py-4 text-muted small d-none">
-                        <i class="bi bi-info-circle fs-5 d-block mb-2 text-secondary"></i>
-                        Không tìm thấy lớp học nào phù hợp.
+    <!-- LỚP HỌC: DANH SÁCH -->
+    <div class="col-12 mb-4">
+        <div class="card shadow-sm border-0 rounded-3">
+            <div class="card-header d-flex justify-content-between align-items-center py-2">
+                <span>Danh sách Lớp (<span id="lblLopCount">@Model.Count</span>)</span>
+                <div class="d-flex align-items-center gap-2">
+                    <div class="input-group input-group-sm mb-0" style="width: 250px;">
+                        <span class="input-group-text bg-white border-end-0 text-secondary"><i class="bi bi-search"></i></span>
+                        <input id="txtSearchLop" class="form-control border-start-0 shadow-none ps-0" placeholder="Tìm kiếm mã hoặc tên lớp..." oninput="locLop()" />
+                        <button class="btn btn-outline-secondary border-start-0 d-none" type="button" id="btnClearSearchLop" onclick="clearSearchLop()">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
                     </div>
-                    <ul class="list-group list-group-flush rounded-3" id="lopList">
-                        @foreach (var lop in Model)
-                        {
-                            <li class="list-group-item list-group-item-action border-light" 
-                                data-malop="@lop.MaLop" 
-                                data-tenlop="@lop.TenLop"
-                                data-original-tenlop="@lop.TenLop"
-                                onclick="chonLop(this)">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <span class="fw-semibold text-dark">@lop.TenLop</span>
-                                        <span class="badge bg-light text-secondary border border-light ms-2">@lop.MaLop</span>
-                                    </div>
-                                    <div class="d-flex gap-2">
-                                        <button type="button" class="btn btn-link p-0 text-warning" onclick="editLopClick(event, this.closest('li'))" title="Sửa">
-                                            <i class="bi bi-pencil-fill fs-6"></i>
-                                        </button>
-                                        <button type="button" class="btn btn-link p-0 text-danger" onclick="deleteLopClick(event, this.closest('li'))" title="Xóa">
-                                            <i class="bi bi-trash-fill fs-6"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            </li>
-                        }
-                    </ul>
                 </div>
             </div>
-            <div class="card-footer d-flex justify-content-between align-items-center py-2 bg-light border-top-0 rounded-bottom-3">
+            
+            <div class="card-body p-0 border rounded-3 mb-0 class-list-container" style="max-height: 400px; overflow-y: auto;">
+                <div id="lopEmptyState" class="text-center py-4 text-muted small d-none">
+                    <i class="bi bi-info-circle fs-5 d-block mb-2 text-secondary"></i>
+                    Không tìm thấy lớp học nào phù hợp.
+                </div>
+                <ul class="list-group list-group-flush rounded-3" id="lopList">
+                    @foreach (var lop in Model)
+                    {
+                        <li class="list-group-item list-group-item-action border-light" 
+                            data-malop="@lop.MaLop" 
+                            data-tenlop="@lop.TenLop"
+                            data-original-tenlop="@lop.TenLop"
+                            onclick="chonLop(this)">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <span class="fw-semibold text-dark">@lop.TenLop</span>
+                                    <span class="badge bg-light text-secondary border border-light ms-2">@lop.MaLop</span>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <button type="button" class="btn btn-link p-0 text-warning" onclick="editLopClick(event, this.closest('li'))" title="Sửa">
+                                        <i class="bi bi-pencil-square fs-5"></i>
+                                    </button>
+                                    <span class="d-inline-block" tabindex="0" title="@(lop.HasDependencies ? "Không thể xóa vì đã có dữ liệu liên quan" : "Xóa")">
+                                        <button type="button" class="btn btn-link p-0 text-danger" onclick="deleteLopClick(event, this.closest('li'))" @(lop.HasDependencies ? "disabled style=pointer-events:none;" : "")>
+                                            <i class="bi bi-trash fs-5"></i>
+                                        </button>
+                                    </span>
+                                </div>
+                            </div>
+                        </li>
+                    }
+                </ul>
+            </div>
+            <div class="card-footer d-flex justify-content-between align-items-center py-2 bg-light border-top-0">
                 <div class="d-flex align-items-center gap-2">
                     <span class="small text-secondary fw-medium" id="lblLopPaginationSummary">Hiển thị từ 0 đến 0 trong tổng số 0 dòng</span>
                     <select class="form-select form-select-sm shadow-none" id="selectLopPageSize" style="width: 80px;" onchange="changeLopPageSize(this.value)">
@@ -120,120 +125,127 @@
                 </div>
                 <nav aria-label="Page navigation">
                     <ul class="pagination pagination-sm mb-0" id="ulLopPagination">
-                        <!-- Pagination links dynamically injected -->
+                        <!-- Pagination items injected here -->
                     </ul>
                 </nav>
             </div>
         </div>
     </div>
 
-    <!-- STUDENT SUBFORM (Bottom) -->
-    <div class="col-12">
-        <div class="card shadow-sm border-0 rounded-3">
-            <div class="card-header bg-white py-3 border-bottom border-light d-flex justify-content-between align-items-center flex-wrap gap-3">
-                <h5 class="card-title mb-0 fw-bold text-dark">
-                    <i class="bi bi-people text-primary me-2"></i> Danh sách Sinh viên - 
-                    <span id="currentLop" class="text-primary fw-normal">Chưa chọn lớp</span>
-                </h5>
-                <div class="d-flex align-items-center gap-2">
-                    <button type="button" class="btn btn-outline-success btn-sm animate-btn" id="btnExport" onclick="exportExcel()" title="Xuất Excel" disabled>
-                        <i class="bi bi-file-earmark-excel"></i> Xuất Excel
-                    </button>
-                    <button type="button" class="btn btn-outline-primary btn-sm animate-btn" id="btnImport" onclick="openImportModal()" title="Nhập Excel" disabled>
-                        <i class="bi bi-file-earmark-arrow-up"></i> Nhập Excel
-                    </button>
-                    <div style="width: 200px;">
-                        <input id="txtSearchSV" class="form-control form-control-sm shadow-none" placeholder="Tìm kiếm sinh viên..." />
-                    </div>
-                </div>
-            </div>
+    <!-- ============================================ -->
+    <!-- SECTION: SINH VIÊN                           -->
+    <!-- ============================================ -->
 
+    <!-- SINH VIÊN: FORM -->
+    <div class="col-12 mb-1">
+        <div class="card shadow-sm border-0 rounded-3">
+            <div class="card-header bg-white border-bottom fw-bold py-3">
+                Thông tin Sinh viên - <span id="currentLop" class="text-primary fw-normal">Chưa chọn lớp</span>
+            </div>
             <div class="card-body">
-                <!-- Inputs Section -->
-                <div class="row g-3 mb-4">
+                <div class="row mb-3">
                     <div class="col-md-4">
-                        <label class="form-label small fw-medium text-secondary">Mã sinh viên</label>
-                        <input id="txtMaSV" class="form-control shadow-none" placeholder="Mã SV" />
+                        <label class="form-label fw-medium">Mã sinh viên <span class="text-danger">*</span></label>
+                        <input id="txtMaSV" class="form-control text-uppercase shadow-none" placeholder="Nhập mã SV..." />
                         <span id="errMaSV" class="text-danger small mt-1 d-block"></span>
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label small fw-medium text-secondary">Họ</label>
-                        <input id="txtHo" class="form-control shadow-none" placeholder="Họ đệm" />
+                        <label class="form-label fw-medium">Họ đệm <span class="text-danger">*</span></label>
+                        <input id="txtHo" class="form-control shadow-none" placeholder="Nhập họ đệm..." />
                         <span id="errHo" class="text-danger small mt-1 d-block"></span>
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label small fw-medium text-secondary">Tên</label>
-                        <input id="txtTen" class="form-control shadow-none" placeholder="Tên" />
+                        <label class="form-label fw-medium">Tên <span class="text-danger">*</span></label>
+                        <input id="txtTen" class="form-control shadow-none" placeholder="Nhập tên..." />
                         <span id="errTen" class="text-danger small mt-1 d-block"></span>
                     </div>
+                </div>
+                <div class="row mb-3">
                     <div class="col-md-4">
-                        <label class="form-label small fw-medium text-secondary">Ngày sinh</label>
-                        <input id="txtNgaySinh" type="date" class="form-control shadow-none" />
+                        <label class="form-label fw-medium">Ngày sinh <span class="text-danger">*</span></label>
+                        <input id="txtNgaySinh" type="date" class="form-control shadow-none" max="@DateTime.Now.ToString("yyyy-MM-dd")" />
                         <span id="errNgaySinh" class="text-danger small mt-1 d-block"></span>
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label small fw-medium text-secondary">Địa chỉ</label>
-                        <input id="txtDiaChi" class="form-control shadow-none" placeholder="Địa chỉ" />
+                        <label class="form-label fw-medium">Địa chỉ <span class="text-danger">*</span></label>
+                        <input id="txtDiaChi" class="form-control shadow-none" placeholder="Nhập địa chỉ..." />
                         <span id="errDiaChi" class="text-danger small mt-1 d-block"></span>
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label small fw-medium text-secondary">Mật khẩu</label>
-                        <input id="txtMatKhau" type="password" class="form-control shadow-none" placeholder="Mật khẩu tài khoản" />
+                        <label class="form-label fw-medium">Mật khẩu <span class="text-danger">*</span></label>
+                        <input id="txtMatKhau" type="password" class="form-control shadow-none" placeholder="Nhập mật khẩu..." />
                         <span id="errMatKhau" class="text-danger small mt-1 d-block"></span>
                     </div>
                 </div>
 
-                <!-- Action Buttons -->
-                <div class="d-flex gap-2 flex-wrap mb-4">
+                <div class="d-flex gap-2 flex-wrap mt-2">
                     <span id="wrapThemSV" class="d-inline-block">
-                        <button type="button" class="btn btn-primary btn-sm px-3 animate-btn" id="btnThemSV" onclick="themSV()" disabled>
+                        <button type="button" class="btn btn-primary px-4 animate-btn" id="btnThemSV" onclick="themSV()" disabled>
                             <i class="bi bi-plus-lg me-1"></i> Thêm
                         </button>
                     </span>
                     <span id="wrapSuaSV" class="d-inline-block">
-                        <button type="button" class="btn btn-warning btn-sm px-3 text-white animate-btn" id="btnSuaSV" onclick="suaSV()" disabled>
+                        <button type="button" class="btn btn-warning px-4 text-white animate-btn" id="btnSuaSV" onclick="suaSV()" disabled>
                             <i class="bi bi-pencil-square me-1"></i> Sửa
                         </button>
                     </span>
-
-                    <button type="button" class="btn btn-secondary btn-sm px-3 animate-btn" onclick="resetStudentForm()">
-                        <i class="bi bi-arrow-clockwise me-1"></i> Reset
+                    <button type="button" class="btn btn-secondary px-4 animate-btn" onclick="resetStudentForm()">
+                        <i class="bi bi-arrow-repeat me-1"></i> Đặt lại
                     </button>
-                    <button type="button" class="btn btn-info btn-sm px-3 text-white animate-btn" id="btnUndoSV" onclick="undoSV()" disabled>
-                        <i class="bi bi-arrow-counterclockwise me-1"></i> Undo
+                    <div class="vr mx-2 d-none d-md-block"></div>
+                    <button type="button" class="btn btn-outline-info animate-btn" id="btnUndoSV" onclick="undoSV()" disabled>
+                        <i class="bi bi-arrow-counterclockwise"></i> Undo
                     </button>
-                    <button type="button" class="btn btn-info btn-sm px-3 text-white animate-btn" id="btnRedoSV" onclick="redoSV()" disabled>
-                        <i class="bi bi-arrow-clockwise me-1"></i> Redo
+                    <button type="button" class="btn btn-outline-info animate-btn" id="btnRedoSV" onclick="redoSV()" disabled>
+                        <i class="bi bi-arrow-clockwise"></i> Redo
                     </button>
-                    <span id="wrapGhiSV" class="d-inline-block">
-                        <button type="button" class="btn btn-success btn-sm px-3 animate-btn" id="btnGhiSV" onclick="ghiSV()" disabled>
-                            <i class="bi bi-check-circle me-1"></i> Ghi (Lưu CSDL)
+                    <span id="wrapGhiSV" class="d-inline-block ms-auto">
+                        <button type="button" class="btn btn-success animate-btn px-4" id="btnGhiSV" onclick="ghiSV()" disabled>
+                            <i class="bi bi-cloud-arrow-up me-1"></i> Ghi (Lưu CSDL)
                         </button>
                     </span>
                 </div>
+            </div>
+        </div>
+    </div>
 
-                <!-- Student Table -->
-                <div class="table-responsive border rounded-3 mb-0" style="max-height: 400px; overflow-y: auto;">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead class="table-light sticky-top">
-                            <tr>
-                                <th>Mã SV</th>
-                                <th>Họ</th>
-                                <th>Tên</th>
-                                <th>Ngày sinh</th>
-                                <th>Địa chỉ</th>
-                                <th class="text-center" style="width: 100px;">Hành động</th>
-                            </tr>
-                        </thead>
-                        <tbody id="svTable">
-                            <!-- Injected dynamically -->
-                        </tbody>
-                    </table>
+    <!-- SINH VIÊN: DANH SÁCH -->
+    <div class="col-12">
+        <div class="card shadow-sm border-0 rounded-3">
+            <div class="card-header d-flex justify-content-between align-items-center py-2">
+                <span>Danh sách Sinh viên (<span id="lblSVCount">0</span>)</span>
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-outline-success btn-sm animate-btn text-nowrap" id="btnExport" onclick="exportExcel()" title="Xuất Excel" disabled>
+                        <i class="bi bi-file-earmark-excel"></i> Xuất Excel
+                    </button>
+                    <button type="button" class="btn btn-outline-primary btn-sm animate-btn text-nowrap" id="btnImport" onclick="openImportModal()" title="Nhập Excel" disabled>
+                        <i class="bi bi-file-earmark-arrow-up"></i> Nhập Excel
+                    </button>
+                    <div class="input-group input-group-sm mb-0" style="width: 250px;">
+                        <span class="input-group-text bg-white border-end-0 text-secondary"><i class="bi bi-search"></i></span>
+                        <input id="txtSearchSV" class="form-control border-start-0 shadow-none ps-0" placeholder="Tìm kiếm sinh viên..." />
+                    </div>
                 </div>
             </div>
 
-            <!-- Card Footer Pagination -->
-            <div class="card-footer d-flex justify-content-between align-items-center py-2 bg-light border-top-0 rounded-bottom-3">
+            <div class="card-body p-0 table-responsive border rounded-3 mb-0" style="max-height: 400px; overflow-y: auto;">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light sticky-top">
+                        <tr>
+                            <th>Mã SV</th>
+                            <th>Họ</th>
+                            <th>Tên</th>
+                            <th>Ngày sinh</th>
+                            <th>Địa chỉ</th>
+                            <th class="text-center" style="width: 100px;">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="svTable">
+                        <!-- Injected dynamically -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="card-footer d-flex justify-content-between align-items-center py-2 bg-light border-top-0">
                 <div class="d-flex align-items-center gap-2">
                     <span class="small text-secondary fw-medium" id="lblPaginationSummary">Hiển thị từ 0 đến 0 trong tổng số 0 dòng</span>
                     <select class="form-select form-select-sm shadow-none" id="selectPageSize" style="width: 80px;" onchange="changePageSize(this.value)">

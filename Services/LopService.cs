@@ -10,7 +10,6 @@ namespace DMS_Examify.Services
 
         private static class StoredProcedures
         {
-            public const string GetAll = "dbo.usp_Lop_GetAll";
             public const string Insert = "dbo.usp_Lop_Insert";
             public const string Update = "dbo.usp_Lop_Update";
             public const string Delete = "dbo.usp_Lop_Delete";
@@ -29,7 +28,7 @@ namespace DMS_Examify.Services
         {
             var list = new List<Lop>();
             using var conn = _connectionFactory.CreateConnection();
-            using var cmd = CreateStoredProcedureCommand(StoredProcedures.GetAll, conn);
+            using var cmd = new SqlCommand("SELECT MALOP, TENLOP FROM dbo.vw_Lop_GetAll ORDER BY MALOP", conn);
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
             {
@@ -133,8 +132,7 @@ namespace DMS_Examify.Services
             cmd.Parameters.Add("@MALOP", SqlDbType.NChar, 8).Value = maLop.Trim();
             return (int)cmd.ExecuteScalar() > 0;
         }
-
-        public bool CheckIsSoftDelete(string maLop)
+        public bool CheckHasDependencies(string maLop)
         {
             if (string.IsNullOrWhiteSpace(maLop))
             {

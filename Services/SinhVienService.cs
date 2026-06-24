@@ -148,8 +148,7 @@ namespace DMS_Examify.Services
             cmd.Parameters.Add("@MASV", SqlDbType.NChar, 8).Value = maSV.Trim();
             return (int)cmd.ExecuteScalar() > 0;
         }
-
-        public bool CheckIsSoftDelete(string maSV)
+        public bool CheckHasDependencies(string maSV)
         {
             if (string.IsNullOrWhiteSpace(maSV))
             {

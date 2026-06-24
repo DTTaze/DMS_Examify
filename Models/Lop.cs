@@ -11,5 +11,6 @@ namespace DMS_Examify.Models
         public string TenLop { get; set; } = "";
 
         public List<SinhVien> DanhSachSV { get; set; } = new();
+        public bool HasDependencies { get; set; }
     }
 }

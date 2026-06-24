@@ -10,67 +10,65 @@
 }
 
 <div class="row g-4">
-    <!-- FORM (Left) -->
-    <div class="col-md-5">
+    <!-- FORM -->
+    <div class="col-12 mb-4">
         <div class="card shadow-sm border-0 rounded-3">
-            <div class="card-header bg-white py-3 border-bottom border-light">
-                <h5 class="card-title mb-0 fw-bold text-dark">
-                    <i class="bi bi-person-badge text-primary me-2"></i> Thông tin Giáo viên
-                </h5>
-            </div>
+            <div class="card-header bg-white border-bottom fw-bold py-3">Thông tin Giáo viên</div>
             <div class="card-body">
-                <div class="mb-3">
-                    <label class="form-label small fw-medium text-secondary">Mã giáo viên</label>
-                    <input id="txtMaGV" class="form-control shadow-none" placeholder="VD: GV001" />
-                    <span id="errMaGV" class="text-danger small mt-1 d-block"></span>
-                </div>
-                <div class="row g-3 mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label small fw-medium text-secondary">Họ</label>
-                        <input id="txtHoGV" class="form-control shadow-none" placeholder="VD: Nguyễn Văn" />
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-medium">Mã giáo viên <span class="text-danger">*</span></label>
+                        <input id="txtMaGV" class="form-control text-uppercase shadow-none" placeholder="Nhập mã giáo viên..." maxlength="8" />
+                        <span id="errMaGV" class="text-danger small mt-1 d-block"></span>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-medium">Họ <span class="text-danger">*</span></label>
+                        <input id="txtHoGV" class="form-control shadow-none" placeholder="Nhập họ..." maxlength="40" />
                         <span id="errHoGV" class="text-danger small mt-1 d-block"></span>
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label small fw-medium text-secondary">Tên</label>
-                        <input id="txtTenGV" class="form-control shadow-none" placeholder="VD: An" />
+                    <div class="col-md-4">
+                        <label class="form-label fw-medium">Tên <span class="text-danger">*</span></label>
+                        <input id="txtTenGV" class="form-control shadow-none" placeholder="Nhập tên..." maxlength="10" />
                         <span id="errTenGV" class="text-danger small mt-1 d-block"></span>
                     </div>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label small fw-medium text-secondary">Số điện thoại liên lạc</label>
-                    <input id="txtSoDTLL" class="form-control shadow-none" placeholder="VD: 0901234567" />
-                    <span id="errSoDTLL" class="text-danger small mt-1 d-block"></span>
-                </div>
-                <div class="mb-4">
-                    <label class="form-label small fw-medium text-secondary">Địa chỉ</label>
-                    <input id="txtDiaChiGV" class="form-control shadow-none" placeholder="VD: 123 Lê Lợi, Đà Nẵng" />
-                    <span id="errDiaChiGV" class="text-danger small mt-1 d-block"></span>
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-medium">Số điện thoại liên lạc</label>
+                        <input id="txtSoDTLL" class="form-control shadow-none" placeholder="Nhập số điện thoại..." maxlength="15" />
+                        <span id="errSoDTLL" class="text-danger small mt-1 d-block"></span>
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label fw-medium">Địa chỉ</label>
+                        <input id="txtDiaChiGV" class="form-control shadow-none" placeholder="Nhập địa chỉ..." maxlength="50" />
+                        <span id="errDiaChiGV" class="text-danger small mt-1 d-block"></span>
+                    </div>
                 </div>
 
-                <div class="d-flex gap-2 flex-wrap">
+                <div class="d-flex gap-2 flex-wrap mt-2">
                     <span id="wrapThemGV" class="d-inline-block">
-                        <button type="button" class="btn btn-primary btn-sm px-3 animate-btn" id="btnThemGV" onclick="themGV()" disabled>
+                        <button type="button" class="btn btn-primary px-4 animate-btn" id="btnThemGV" onclick="themGV()" disabled>
                             <i class="bi bi-plus-lg me-1"></i> Thêm
                         </button>
                     </span>
                     <span id="wrapSuaGV" class="d-inline-block">
-                        <button type="button" class="btn btn-warning btn-sm px-3 text-white animate-btn" id="btnSuaGV" onclick="hieuChinhGV()" disabled>
+                        <button type="button" class="btn btn-warning px-4 text-white animate-btn" id="btnSuaGV" onclick="hieuChinhGV()" disabled>
                             <i class="bi bi-pencil-square me-1"></i> Sửa
                         </button>
                     </span>
-
-                    <button type="button" class="btn btn-secondary btn-sm px-3 animate-btn" onclick="resetGiaoVienForm()">
-                        <i class="bi bi-arrow-clockwise me-1"></i> Reset
+                    <button type="button" class="btn btn-secondary px-4 animate-btn" onclick="resetGiaoVienForm()">
+                        <i class="bi bi-arrow-repeat me-1"></i> Đặt lại
                     </button>
-                    <button type="button" class="btn btn-info btn-sm px-3 text-white animate-btn" id="btnUndoGV" onclick="undoGV()" disabled>
-                        <i class="bi bi-arrow-counterclockwise me-1"></i> Undo
+                    <div class="vr mx-2 d-none d-md-block"></div>
+                    <button type="button" class="btn btn-outline-info animate-btn" id="btnUndoGV" onclick="undoGV()" disabled>
+                        <i class="bi bi-arrow-counterclockwise"></i> Undo
                     </button>
-                    <button type="button" class="btn btn-info btn-sm px-3 text-white animate-btn" id="btnRedoGV" onclick="redoGV()" disabled>
-                        <i class="bi bi-arrow-clockwise me-1"></i> Redo
+                    <button type="button" class="btn btn-outline-info animate-btn" id="btnRedoGV" onclick="redoGV()" disabled>
+                        <i class="bi bi-arrow-clockwise"></i> Redo
                     </button>
-                    <span id="wrapGhiGV" class="d-inline-block">
-                        <button type="button" class="btn btn-success btn-sm px-3 animate-btn" id="btnGhiGV" onclick="ghiGV()" disabled>
-                            <i class="bi bi-check-circle me-1"></i> Ghi (Lưu CSDL)
+                    <span id="wrapGhiGV" class="d-inline-block ms-auto mt-2 mt-md-0">
+                        <button type="button" class="btn btn-success animate-btn px-4" id="btnGhiGV" onclick="ghiGV()" disabled>
+                            <i class="bi bi-cloud-arrow-up me-1"></i> Ghi (Lưu CSDL)
                         </button>
                     </span>
                 </div>
@@ -78,69 +76,61 @@
         </div>
     </div>
 
-    <!-- TABLE (Right) -->
-    <div class="col-md-7">
+    <!-- TABLE -->
+    <div class="col-12">
         <div class="card shadow-sm border-0 rounded-3">
-            <div class="card-header bg-white py-3 border-bottom border-light d-flex justify-content-between align-items-center flex-wrap gap-3">
-                <h5 class="card-title mb-0 fw-bold text-dark">
-                    <i class="bi bi-people text-primary me-2"></i> Danh sách Giáo viên (<span id="lblCount">0</span>)
-                </h5>
+            <div class="card-header d-flex justify-content-between align-items-center py-2">
+                <span>Danh sách Giáo viên (<span id="lblCount">@Model.Count</span>)</span>
                 <div class="d-flex align-items-center gap-2">
-                    <button type="button" class="btn btn-outline-success btn-sm animate-btn" onclick="exportExcel()" title="Xuất Excel">
+                    <button type="button" class="btn btn-outline-success btn-sm animate-btn text-nowrap" onclick="exportExcel()" title="Xuất Excel">
                         <i class="bi bi-file-earmark-excel"></i> Xuất Excel
                     </button>
-                    <button type="button" class="btn btn-outline-primary btn-sm animate-btn" onclick="openImportModal()" title="Nhập Excel">
+                    <button type="button" class="btn btn-outline-primary btn-sm animate-btn text-nowrap" onclick="openImportModal()" title="Nhập dữ liệu từ file Excel">
                         <i class="bi bi-file-earmark-arrow-up"></i> Nhập Excel
                     </button>
-                    <div style="width: 180px;">
-                        <input id="txtSearchGV" class="form-control form-control-sm shadow-none" placeholder="Tìm kiếm giáo viên..." />
+                    <div class="input-group input-group-sm mb-0" style="width: 250px;">
+                        <span class="input-group-text bg-white border-end-0 text-secondary"><i class="bi bi-search"></i></span>
+                        <input id="txtSearchGV" class="form-control border-start-0 shadow-none ps-0" placeholder="Tìm kiếm mã hoặc tên..." />
                     </div>
                 </div>
             </div>
 
-            <div class="card-body p-0">
-                <div class="table-responsive border-0 mb-0" style="max-height: 480px; overflow-y: auto;">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead class="table-light sticky-top">
-                            <tr>
-                                <th>Mã GV</th>
-                                <th>Họ</th>
-                                <th>Tên</th>
-                                <th>Số ĐT</th>
-                                <th>Địa chỉ</th>
-                                <th class="text-center" style="width: 100px;">Thao tác</th>
+            <div class="card-body p-0 table-responsive border rounded-3 mb-0" style="max-height: 480px; overflow-y: auto;">
+                <table class="table table-hover align-middle mb-0" id="tbl">
+                    <thead class="table-light sticky-top">
+                        <tr>
+                            <th>Mã GV</th>
+                            <th>Họ</th>
+                            <th>Tên</th>
+                            <th>Số ĐT</th>
+                            <th>Địa chỉ</th>
+                            <th class="text-center" style="width: 100px;">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="gvTable">
+                        @foreach (var gv in Model)
+                        {
+                            <tr data-magv="@gv.MaGV" data-ho="@gv.Ho" data-ten="@gv.Ten" data-sdt="@gv.SoDTLL" data-diachi="@gv.DiaChi"
+                                data-original-ho="@gv.Ho" data-original-ten="@gv.Ten" data-original-sdt="@gv.SoDTLL" data-original-diachi="@gv.DiaChi"
+                                data-id="@gv.MaGV">
+                                <td><span class="badge bg-light text-secondary border border-light">@gv.MaGV</span></td>
+                                <td class="fw-semibold">@gv.Ho</td>
+                                <td class="fw-semibold">@gv.Ten</td>
+                                <td>@gv.SoDTLL</td>
+                                <td>@gv.DiaChi</td>
+                                <td class="text-center">
+                                    <div class="d-flex gap-2 justify-content-center">
+                                        <button type="button" class="btn btn-link text-warning p-0 btn-edit" title="Hiệu chỉnh"><i class="bi bi-pencil-square fs-5"></i></button>
+                                        <button type="button" class="btn btn-link text-danger p-0 btn-delete" title="Xóa"><i class="bi bi-trash fs-5"></i></button>
+                                    </div>
+                                </td>
                             </tr>
-                        </thead>
-                        <tbody id="gvTable">
-                            @foreach (var gv in Model)
-                            {
-                                <tr data-magv="@gv.MaGV" data-ho="@gv.Ho" data-ten="@gv.Ten" data-sdt="@gv.SoDTLL" data-diachi="@gv.DiaChi"
-                                    data-original-ho="@gv.Ho" data-original-ten="@gv.Ten" data-original-sdt="@gv.SoDTLL" data-original-diachi="@gv.DiaChi"
-                                    data-id="@gv.MaGV">
-                                    <td>@gv.MaGV</td>
-                                    <td>@gv.Ho</td>
-                                    <td>@gv.Ten</td>
-                                    <td>@gv.SoDTLL</td>
-                                    <td>@gv.DiaChi</td>
-                                    <td class="text-center">
-                                        <div class="d-flex gap-2 justify-content-center">
-                                            <button type="button" class="btn btn-link p-0 text-warning btn-edit" title="Sửa">
-                                                <i class="bi bi-pencil-fill"></i>
-                                            </button>
-                                            <button type="button" class="btn btn-link p-0 text-danger btn-delete" title="Xóa">
-                                                <i class="bi bi-trash-fill"></i>
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
+                        }
+                    </tbody>
+                </table>
             </div>
-
-            <!-- Card Footer Pagination -->
-            <div class="card-footer d-flex justify-content-between align-items-center py-2 bg-light border-top-0 rounded-bottom-3">
+            
+            <div class="card-footer d-flex justify-content-between align-items-center py-2 bg-light border-top-0">
                 <div class="d-flex align-items-center gap-2">
                     <span class="small text-secondary fw-medium" id="lblPaginationSummary">Hiển thị từ 0 đến 0 trong tổng số 0 dòng</span>
                     <select class="form-select form-select-sm shadow-none" id="selectPageSize" style="width: 80px;" onchange="changePageSize(this.value)">

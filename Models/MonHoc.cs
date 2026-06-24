@@ -9,5 +9,7 @@ namespace DMS_Examify.Models
 
         [Required(ErrorMessage = "Tên môn học không được để trống.")]
         public string TenMH { get; set; } = "";
+        
+        public bool HasDependencies { get; set; }
     }
 }

@@ -22,7 +22,15 @@ namespace DMS_Examify.Controllers
             _logger = logger;
         }
 
-        public IActionResult Index() => View(_lopService.GetAll());
+        public IActionResult Index()
+        {
+            var lops = _lopService.GetAll();
+            foreach (var lop in lops)
+            {
+                lop.HasDependencies = _lopService.CheckHasDependencies(lop.MaLop);
+            }
+            return View(lops);
+        }
 
         [HttpPost]
         public IActionResult CreateClass([FromBody] Lop? model)
@@ -87,6 +95,10 @@ namespace DMS_Examify.Controllers
             try
             {
                 var classes = _lopService.Search(keyword ?? string.Empty);
+                foreach (var lop in classes)
+                {
+                    lop.HasDependencies = _lopService.CheckHasDependencies(lop.MaLop);
+                }
                 return Json(classes);
             }
             catch (Exception ex)
@@ -101,6 +113,10 @@ namespace DMS_Examify.Controllers
             try
             {
                 var students = _sinhVienService.Search(keyword ?? string.Empty);
+                foreach (var sv in students)
+                {
+                    sv.HasDependencies = _sinhVienService.CheckHasDependencies(sv.MaSV);
+                }
                 return Json(students);
             }
             catch (Exception ex)
@@ -177,6 +193,10 @@ namespace DMS_Examify.Controllers
             try
             {
                 var students = _sinhVienService.GetByLop(maLop);
+                foreach (var sv in students)
+                {
+                    sv.HasDependencies = _sinhVienService.CheckHasDependencies(sv.MaSV);
+                }
                 return Json(students);
             }
             catch (Exception ex)
@@ -242,7 +262,7 @@ namespace DMS_Examify.Controllers
         }
 
         [HttpGet]
-        public IActionResult CheckDeleteClass(string maLop)
+        public IActionResult CheckHasDependenciesClass(string maLop)
         {
             if (string.IsNullOrWhiteSpace(maLop))
             {
@@ -251,8 +271,8 @@ namespace DMS_Examify.Controllers
 
             try
             {
-                bool isSoftDelete = _lopService.CheckIsSoftDelete(maLop);
-                return Json(new { isSoftDelete });
+                bool hasDependencies = _lopService.CheckHasDependencies(maLop);
+                return Json(new { hasDependencies });
             }
             catch (Exception ex)
             {
@@ -261,7 +281,7 @@ namespace DMS_Examify.Controllers
         }
 
         [HttpGet]
-        public IActionResult CheckDeleteStudent(string maSV)
+        public IActionResult CheckHasDependenciesStudent(string maSV)
         {
             if (string.IsNullOrWhiteSpace(maSV))
             {
@@ -270,8 +290,8 @@ namespace DMS_Examify.Controllers
 
             try
             {
-                bool isSoftDelete = _sinhVienService.CheckIsSoftDelete(maSV);
-                return Json(new { isSoftDelete });
+                bool hasDependencies = _sinhVienService.CheckHasDependencies(maSV);
+                return Json(new { hasDependencies });
             }
             catch (Exception ex)
             {

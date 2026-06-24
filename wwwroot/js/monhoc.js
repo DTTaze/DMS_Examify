@@ -39,7 +39,9 @@
         btnConfirmImport: null,
         importSummary: null,
         lblPaginationSummary: null,
-        ulPagination: null
+        ulPagination: null,
+        btnClearSearch: null,
+        emptyState: null
     };
 
     AppCommon.onReady(() => {
@@ -67,6 +69,8 @@
         dom.importSummary = AppCommon.byId("importSummary");
         dom.lblPaginationSummary = AppCommon.byId("lblPaginationSummary");
         dom.ulPagination = AppCommon.byId("ulPagination");
+        dom.btnClearSearch = AppCommon.byId("btnClearSearch");
+        dom.emptyState = AppCommon.byId("emptyState");
 
         // Event listeners
         dom.txtMaMH.addEventListener("input", handleSubjectCodeInput);
@@ -97,8 +101,19 @@
     }
 
     function triggerSearch() {
+        if (dom.txtTim.value.trim() !== "") {
+            dom.btnClearSearch.classList.remove("d-none");
+        } else {
+            dom.btnClearSearch.classList.add("d-none");
+        }
         searchDebounceTimer = AppCommon.debounce(searchDebounceTimer, executeSearch, 300);
     }
+
+    window.clearSearch = function() {
+        dom.txtTim.value = "";
+        triggerSearch();
+        dom.txtTim.focus();
+    };
 
     function executeSearch() {
         undoHistoryStack = [];
@@ -120,6 +135,8 @@
                     row.dataset.tenmh = subject.tenMH;
                     row.dataset.originalTenmh = subject.tenMH;
 
+                    const disableDel = subject.hasDependencies ? 'disabled style="pointer-events:none;"' : '';
+                    const titleDel = subject.hasDependencies ? 'Không thể xóa vì đã có dữ liệu liên quan' : 'Xóa';
                     row.innerHTML = `
                         <td>${index + 1}</td>
                         <td>${subject.maMH}</td>
@@ -128,14 +145,23 @@
                             <button type="button" class="btn btn-link text-warning p-0 me-2 btn-edit" title="Hiệu chỉnh">
                                 <i class="bi bi-pencil-square fs-5"></i>
                             </button>
-                            <button type="button" class="btn btn-link text-danger p-0 btn-delete" title="Xóa">
-                                <i class="bi bi-trash fs-5"></i>
-                            </button>
+                            <span class="d-inline-block" tabindex="0" title="${titleDel}">
+                                <button type="button" class="btn btn-link text-danger p-0 btn-delete" ${disableDel}>
+                                    <i class="bi bi-trash fs-5"></i>
+                                </button>
+                            </span>
                         </td>
                     `;
                 });
 
                 dom.lblCount.textContent = data.length;
+                if (data.length === 0) {
+                    dom.emptyState.classList.remove("d-none");
+                    dom.tbl.classList.add("d-none");
+                } else {
+                    dom.emptyState.classList.add("d-none");
+                    dom.tbl.classList.remove("d-none");
+                }
                 bindRowEventHandlers();
                 currentPage = 1;
                 updatePagination();
@@ -207,6 +233,9 @@
 
         const isTenMHChanged = formValues.TenMH !== originalTenMH;
 
+        const hasDependencies = selectedTableRow.querySelector('.btn-delete').disabled;
+        const disableDel = hasDependencies ? 'disabled style="pointer-events:none;"' : '';
+        const titleDel = hasDependencies ? 'Không thể xóa vì đã có dữ liệu liên quan' : 'Xóa';
         selectedTableRow.innerHTML = `
             <td>${isNew ? "..." : (selectedTableRow.dataset.id || "")}</td>
             <td>${formValues.MaMH}</td>
@@ -218,9 +247,11 @@
                 <button type="button" class="btn btn-link text-warning p-0 me-2 btn-edit" title="Hiệu chỉnh">
                     <i class="bi bi-pencil-square fs-5"></i>
                 </button>
-                <button type="button" class="btn btn-link text-danger p-0 btn-delete" title="Xóa">
-                    <i class="bi bi-trash fs-5"></i>
-                </button>
+                <span class="d-inline-block" tabindex="0" title="${titleDel}">
+                    <button type="button" class="btn btn-link text-danger p-0 btn-delete" ${disableDel}>
+                        <i class="bi bi-trash fs-5"></i>
+                    </button>
+                </span>
             </td>
         `;
 
@@ -442,18 +473,7 @@
                     if (isNew) {
                         performDeleteAction(`Bạn có chắc chắn muốn xóa môn học tạm thời <strong>"${subjectCode} - ${subjectName}"</strong> không?`);
                     } else {
-                        fetch(`/MonHoc/CheckDelete?maMH=${encodeURIComponent(subjectCode)}`)
-                            .then(res => res.json())
-                            .then(data => {
-                                const msg = data.isSoftDelete
-                                    ? `Môn học <strong>"${subjectCode} - ${subjectName}"</strong> đã được liên kết trong hệ thống. Hệ thống sẽ <strong>XÓA MỀM</strong> (ngừng hoạt động) để bảo toàn lịch sử. Bạn có chắc chắn muốn xóa không?`
-                                    : `Môn học <strong>"${subjectCode} - ${subjectName}"</strong> chưa có liên kết. Hệ thống sẽ <strong>XÓA CỨNG</strong> (xóa vĩnh viễn) khỏi cơ sở dữ liệu. Bạn có chắc chắn muốn xóa không?`;
-                                performDeleteAction(msg);
-                            })
-                            .catch(err => {
-                                console.error("Lỗi khi kiểm tra xóa:", err);
-                                performDeleteAction(`Bạn có chắc chắn muốn xóa môn học <strong>"${subjectCode} - ${subjectName}"</strong> không?`);
-                            });
+                        performDeleteAction(`Bạn có chắc chắn muốn xóa vĩnh viễn môn học <strong>"${subjectCode} - ${subjectName}"</strong> không?`);
                     }
                 };
             }
@@ -1104,6 +1124,8 @@
         updatePagination();
     }
 
+
+
     // Expose public API
     window.addSubject = addSubject;
     window.editSubject = editSubject;
@@ -1118,6 +1140,7 @@
     window.handleFileSelect = handleFileSelect;
     window.confirmImport = confirmImport;
     window.changePage = changePage;
+    window.changePageSize = changePageSize;
     window.changePageSize = changePageSize;
 
 })(window, window.AppCommon);

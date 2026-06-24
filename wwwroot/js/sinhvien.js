@@ -862,6 +862,8 @@
                 row.dataset.originalDiachi = sv.diaChi;
                 row.dataset.originalMatkhau = sv.matKhau || "";
 
+                const disableDel = sv.hasDependencies ? 'disabled style="pointer-events:none;"' : '';
+                const titleDel = sv.hasDependencies ? 'Không thể xóa vì đã có dữ liệu liên quan' : 'Xóa';
                 row.innerHTML = `
                     <td>${sv.maSV}</td>
                     <td>${sv.ho}</td>
@@ -873,9 +875,11 @@
                             <button type="button" class="btn btn-link p-0 text-warning" onclick="editSVClick(event, this.closest('tr'))" title="Sửa">
                                 <i class="bi bi-pencil-fill"></i>
                             </button>
-                            <button type="button" class="btn btn-link p-0 text-danger" onclick="deleteSVClick(event, this.closest('tr'))" title="Xóa">
-                                <i class="bi bi-trash-fill"></i>
-                            </button>
+                            <span class="d-inline-block" tabindex="0" title="${titleDel}">
+                                <button type="button" class="btn btn-link p-0 text-danger" onclick="deleteSVClick(event, this.closest('tr'))" ${disableDel}>
+                                    <i class="bi bi-trash-fill"></i>
+                                </button>
+                            </span>
                         </div>
                     </td>
                 `;
@@ -969,6 +973,10 @@
         const nsFormatted = d.NgaySinh ? new Date(d.NgaySinh).toLocaleDateString('vi-VN') : "";
         const oNsFormatted = oNgaySinh ? new Date(oNgaySinh).toLocaleDateString('vi-VN') : "";
 
+        const oHasDep = selectedRow.dataset.hasdependencies === "true";
+        const disableDel = oHasDep ? 'disabled style="pointer-events:none;"' : '';
+        const titleDel = oHasDep ? 'Không thể xóa vì đã có dữ liệu liên quan' : 'Xóa';
+
         selectedRow.innerHTML = `
             <td>${id}</td>
             <td class="${(!isNew && isHoChanged) ? 'cell-edited' : ''}">
@@ -992,9 +1000,11 @@
                     <button type="button" class="btn btn-link p-0 text-warning" onclick="editSVClick(event, this.closest('tr'))" title="Sửa">
                         <i class="bi bi-pencil-fill"></i>
                     </button>
-                    <button type="button" class="btn btn-link p-0 text-danger" onclick="deleteSVClick(event, this.closest('tr'))" title="Xóa">
-                        <i class="bi bi-trash-fill"></i>
-                    </button>
+                    <span class="d-inline-block" tabindex="0" title="${titleDel}">
+                        <button type="button" class="btn btn-link p-0 text-danger" onclick="deleteSVClick(event, this.closest('tr'))" ${disableDel}>
+                            <i class="bi bi-trash-fill"></i>
+                        </button>
+                    </span>
                 </div>
             </td>
         `;
@@ -1172,6 +1182,15 @@
         }
         if (!d.NgaySinh) {
             hasClientError = true;
+        } else {
+            const selectedDate = new Date(d.NgaySinh);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            if (selectedDate > today) {
+                dom.errNgaySinh.textContent = "Ngày sinh không được lớn hơn ngày hiện tại.";
+                dom.txtNgaySinh.classList.add("is-invalid");
+                hasClientError = true;
+            }
         }
         if (!d.DiaChi) {
             hasClientError = true;
@@ -1726,13 +1745,14 @@
         if (isNew) {
             performDeleteLop(`Bạn có chắc chắn muốn xóa lớp học tạm thời <strong>"${ma} - ${ten}"</strong> không?`);
         } else {
-            fetch(`/LopSinhVien/CheckDeleteClass?maLop=${encodeURIComponent(ma)}`)
+            fetch(`/LopSinhVien/CheckHasDependenciesClass?maLop=${encodeURIComponent(ma)}`)
                 .then(res => res.json())
                 .then(data => {
-                    const msg = data.isSoftDelete
-                        ? `Lớp học <strong>"${ma} - ${ten}"</strong> đã có dữ liệu liên kết (Sinh viên hoặc Đăng ký thi). Hệ thống sẽ <strong>XÓA MỀM</strong> (ngừng hoạt động) lớp học này. Bạn có chắc chắn muốn xóa không?`
-                        : `Lớp học <strong>"${ma} - ${ten}"</strong> chưa có liên kết. Hệ thống sẽ <strong>XÓA CỨNG</strong> (xóa vĩnh viễn) khỏi cơ sở dữ liệu. Bạn có chắc chắn muốn xóa không?`;
-                    performDeleteLop(msg);
+                    if (data.hasDependencies) {
+                        window.hienThongBao(`Không thể xóa lớp học <strong>"${ma} - ${ten}"</strong> vì đã có sinh viên hoặc đã đăng ký lịch thi.`, "Lỗi");
+                    } else {
+                        performDeleteLop(`Lớp học <strong>"${ma} - ${ten}"</strong> chưa có dữ liệu liên kết. Bạn có chắc chắn muốn xóa lớp học này khỏi cơ sở dữ liệu không?`);
+                    }
                 })
                 .catch(err => {
                     console.error("Lỗi khi kiểm tra xóa lớp:", err);
@@ -1799,13 +1819,14 @@
         if (isNew) {
             performDeleteSV(`Bạn có chắc chắn muốn xóa sinh viên tạm thời <strong>"${id} - ${name}"</strong> không?`);
         } else {
-            fetch(`/LopSinhVien/CheckDeleteStudent?maSV=${encodeURIComponent(id)}`)
+            fetch(`/LopSinhVien/CheckHasDependenciesStudent?maSV=${encodeURIComponent(id)}`)
                 .then(res => res.json())
                 .then(data => {
-                    const msg = data.isSoftDelete
-                        ? `Sinh viên <strong>"${id} - ${name}"</strong> đã có lịch sử thi (Bảng điểm). Hệ thống sẽ <strong>XÓA MỀM</strong> (ngừng hoạt động) tài khoản sinh viên này. Bạn có chắc chắn muốn xóa không?`
-                        : `Sinh viên <strong>"${id} - ${name}"</strong> chưa có lịch sử. Hệ thống sẽ <strong>XÓA CỨNG</strong> (xóa vĩnh viễn) khỏi cơ sở dữ liệu. Bạn có chắc chắn muốn xóa không?`;
-                    performDeleteSV(msg);
+                    if (data.hasDependencies) {
+                        window.hienThongBao(`Không thể xóa sinh viên <strong>"${id} - ${name}"</strong> vì đã có điểm thi trong cơ sở dữ liệu.`, "Lỗi");
+                    } else {
+                        performDeleteSV(`Sinh viên <strong>"${id} - ${name}"</strong> chưa có điểm thi. Bạn có chắc chắn muốn xóa sinh viên này khỏi cơ sở dữ liệu không?`);
+                    }
                 })
                 .catch(err => {
                     console.error("Lỗi khi kiểm tra xóa sinh viên:", err);

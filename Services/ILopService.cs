@@ -14,6 +14,6 @@ namespace DMS_Examify.Services
         bool ExistsMaLop(string maLop);
         bool ExistsTenLop(string tenLop);
         bool ExistsTenLopExcludingMaLop(string tenLop, string maLop);
-        bool CheckIsSoftDelete(string maLop);
+        bool CheckHasDependencies(string maLop);
     }
 }

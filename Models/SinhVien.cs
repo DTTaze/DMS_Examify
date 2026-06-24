@@ -20,5 +20,7 @@ namespace DMS_Examify.Models
         public string MaLop { get; set; } = "";
 
         public string MatKhau { get; set; } = "";
+        
+        public bool HasDependencies { get; set; }
     }
 }

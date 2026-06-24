@@ -6,40 +6,48 @@
 
 <div class="row g-4">
     <!-- FORM -->
-    <div class="col-md-5">
-        <div class="card">
-            <div class="card-header">Thông tin Môn học</div>
+    <div class="col-12 mb-4">
+        <div class="card shadow-sm border-0 rounded-3">
+            <div class="card-header bg-white border-bottom fw-bold py-3">Thông tin Môn học</div>
             <div class="card-body">
 
-                <div class="mb-3">
-                    <label>Mã môn học</label>
-                    <input id="txtMaMH" class="form-control text-uppercase" maxlength="5" />
-                    <span id="errMaMH" class="text-danger small mt-1 d-block"></span>
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-medium">Mã môn học <span class="text-danger">*</span></label>
+                        <input id="txtMaMH" class="form-control text-uppercase shadow-none" maxlength="5" placeholder="Nhập mã môn học..." />
+                        <span id="errMaMH" class="text-danger small mt-1 d-block"></span>
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label fw-medium">Tên môn học <span class="text-danger">*</span></label>
+                        <input id="txtTenMH" class="form-control shadow-none" maxlength="40" placeholder="Nhập tên môn học..." />
+                        <span id="errTenMH" class="text-danger small mt-1 d-block"></span>
+                    </div>
                 </div>
 
-                <div class="mb-3">
-                    <label>Tên môn học</label>
-                    <input id="txtTenMH" class="form-control" />
-                    <span id="errTenMH" class="text-danger small mt-1 d-block"></span>
-                </div>
-
-                <div class="d-flex gap-2 flex-wrap">
+                <div class="d-flex gap-2 flex-wrap mt-2">
                     <span id="wrapThem" class="d-inline-block">
-                        <button type="button" class="btn btn-primary" onclick="addSubject()" id="btnThem" disabled>Thêm</button>
+                        <button type="button" class="btn btn-primary px-4" onclick="addSubject()" id="btnThem" disabled>
+                            <i class="bi bi-plus-lg me-1"></i> Thêm
+                        </button>
                     </span>
                     <span id="wrapSua" class="d-inline-block">
-                        <button type="button" class="btn btn-warning" onclick="editSubject()" id="btnSua" disabled>Sửa</button>
+                        <button type="button" class="btn btn-warning px-4 text-white" onclick="editSubject()" id="btnSua" disabled>
+                            <i class="bi bi-pencil-square me-1"></i> Sửa
+                        </button>
                     </span>
-                    <button type="button" class="btn btn-secondary" onclick="resetForm()">Reset</button>
-                    <button type="button" class="btn btn-info text-white animate-btn" onclick="undoLastAction()" id="btnUndo" disabled>
+                    <button type="button" class="btn btn-secondary px-4" onclick="resetForm()">
+                        <i class="bi bi-arrow-repeat me-1"></i> Đặt lại
+                    </button>
+                    <div class="vr mx-2 d-none d-md-block"></div>
+                    <button type="button" class="btn btn-outline-info animate-btn" onclick="undoLastAction()" id="btnUndo" disabled>
                         <i class="bi bi-arrow-counterclockwise"></i> Undo
                     </button>
-                    <button type="button" class="btn btn-info text-white animate-btn" onclick="redoLastAction()" id="btnRedo" disabled>
+                    <button type="button" class="btn btn-outline-info animate-btn" onclick="redoLastAction()" id="btnRedo" disabled>
                         <i class="bi bi-arrow-clockwise"></i> Redo
                     </button>
-                    <span id="wrapGhi" class="d-inline-block">
-                        <button type="button" class="btn btn-success animate-btn" onclick="saveChangesToDb()" id="btnGhi" disabled>
-                            <i class="bi bi-check-circle me-1"></i> Ghi (Lưu CSDL)
+                    <span id="wrapGhi" class="d-inline-block ms-auto">
+                        <button type="button" class="btn btn-success animate-btn px-4" onclick="saveChangesToDb()" id="btnGhi" disabled>
+                            <i class="bi bi-cloud-arrow-up me-1"></i> Ghi (Lưu CSDL)
                         </button>
                     </span>
                 </div>
@@ -49,26 +57,34 @@
     </div>
 
     <!-- TABLE -->
-    <div class="col-md-7">
-        <div class="card">
+    <div class="col-12">
+        <div class="card shadow-sm border-0 rounded-3">
             <div class="card-header d-flex justify-content-between align-items-center py-2">
                 <span>Danh sách Môn học (<span id="lblCount">@Model.Count</span>)</span>
                 <div class="d-flex align-items-center gap-2">
-                    <button type="button" class="btn btn-outline-success btn-sm animate-btn" onclick="exportExcel()" title="Xuất Excel">
+                    <button type="button" class="btn btn-outline-success btn-sm animate-btn text-nowrap" onclick="exportExcel()" title="Xuất Excel">
                         <i class="bi bi-file-earmark-excel"></i> Xuất Excel
                     </button>
-                    <button type="button" class="btn btn-outline-primary btn-sm animate-btn" onclick="openImportModal()" title="Nhập dữ liệu từ file Excel">
+                    <button type="button" class="btn btn-outline-primary btn-sm animate-btn text-nowrap" onclick="openImportModal()" title="Nhập dữ liệu từ file Excel">
                         <i class="bi bi-file-earmark-arrow-up"></i> Nhập Excel
                     </button>
-                    <div style="width: 200px;">
-                        <input id="txtTim" class="form-control form-control-sm" placeholder="Tìm kiếm mã hoặc tên..." />
+                    <div class="input-group input-group-sm mb-0" style="width: 250px;">
+                        <span class="input-group-text bg-white border-end-0 text-secondary"><i class="bi bi-search"></i></span>
+                        <input id="txtTim" class="form-control border-start-0 shadow-none ps-0" placeholder="Tìm kiếm mã hoặc tên..." />
+                        <button class="btn btn-outline-secondary border-start-0 d-none" type="button" id="btnClearSearch" onclick="clearSearch()">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
                     </div>
                 </div>
             </div>
 
-            <div class="card-body p-0">
-                <table class="table table-hover" id="tbl">
-                    <thead>
+            <div class="card-body p-0 table-responsive border rounded-3 mb-0" style="max-height: 400px; overflow-y: auto;">
+                <div id="emptyState" class="text-center py-4 text-muted small d-none">
+                    <i class="bi bi-info-circle fs-5 d-block mb-2 text-secondary"></i>
+                    Không tìm thấy môn học nào phù hợp.
+                </div>
+                <table class="table table-hover align-middle mb-0" id="tbl">
+                    <thead class="table-light sticky-top">
                         <tr>
                             <th>STT</th>
                             <th>Mã</th>
@@ -85,7 +101,9 @@
                                 <td>@Model[i].TenMH</td>
                                 <td class="text-center">
                                     <button type="button" class="btn btn-link text-warning p-0 me-2 btn-edit" title="Hiệu chỉnh"><i class="bi bi-pencil-square fs-5"></i></button>
-                                    <button type="button" class="btn btn-link text-danger p-0 btn-delete" title="Xóa"><i class="bi bi-trash fs-5"></i></button>
+                                    <span class="d-inline-block" tabindex="0" title="@(Model[i].HasDependencies ? "Không thể xóa vì đã có dữ liệu liên quan" : "Xóa")">
+                                        <button type="button" class="btn btn-link text-danger p-0 btn-delete" @(Model[i].HasDependencies ? "disabled style=pointer-events:none;" : "")><i class="bi bi-trash fs-5"></i></button>
+                                    </span>
                                 </td>
                             </tr>
                         }
@@ -191,6 +209,8 @@
         </div>
     </div>
 </div>
+
+
 
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
