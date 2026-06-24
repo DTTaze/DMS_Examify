@@ -1,6 +1,6 @@
-namespace DMS_Examify.Models
+﻿namespace DMS_Examify.Models
 {
-    // Chọn thông tin thi
+    // Chá»n thÃ´ng tin thi
     public class ThiChonViewModel
     {
         public string MaSV { get; set; } = "";
@@ -17,7 +17,7 @@ namespace DMS_Examify.Models
         public List<MonHoc> DanhSachMH { get; set; } = new();
     }
 
-    // Làm bài thi
+    // LÃ m bÃ i thi
     public class ThiLamBaiViewModel
     {
         public string MaSV { get; set; } = "";
@@ -25,7 +25,8 @@ namespace DMS_Examify.Models
         public string MaMH { get; set; } = "";
         public string TenMH { get; set; } = "";
         public int Lan { get; set; }
-        public int ThoiGian { get; set; } // phút
+        public int ThoiGian { get; set; } // phÃºt
+        public int ThoiGianConLaiGiay { get; set; }
         public string TrinhDo { get; set; } = "";
         public DateTime NgayThi { get; set; }
         public List<CauHoiThi> DanhSachCauHoi { get; set; } = new();
@@ -34,7 +35,7 @@ namespace DMS_Examify.Models
     public class CauHoiThi
     {
         public int STT { get; set; }
-        public int CauHoi { get; set; } // số câu trong bộ đề
+        public int CauHoi { get; set; } // sá»‘ cÃ¢u trong bá»™ Ä‘á»
         public string NoiDung { get; set; } = "";
         public string DapAnA { get; set; } = "";
         public string DapAnB { get; set; } = "";
@@ -44,7 +45,7 @@ namespace DMS_Examify.Models
         public string TraLoiSV { get; set; } = "";
     }
 
-    // Kết quả thi
+    // Káº¿t quáº£ thi
     public class KetQuaThiViewModel
     {
         public string MaSV { get; set; } = "";
@@ -59,4 +60,24 @@ namespace DMS_Examify.Models
         public int TongSoCau { get; set; }
         public List<CauHoiThi> DanhSachCauHoi { get; set; } = new();
     }
+    public class BatDauThiRequest
+    {
+        public string MaMH { get; set; } = "";
+        public int Lan { get; set; }
+    }
+
+    public class TraLoiCauHoiRequest
+    {
+        public string MaMH { get; set; } = "";
+        public int Lan { get; set; }
+        public int CauHoi { get; set; }
+        public string CauTraLoi { get; set; } = "";
+    }
+
+    public class NopBaiThiRequest
+    {
+        public string MaMH { get; set; } = "";
+        public int Lan { get; set; }
+    }
 }
+

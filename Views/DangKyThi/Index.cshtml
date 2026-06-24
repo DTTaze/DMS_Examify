@@ -1,236 +1,284 @@
-@model List<DMS_Examify.Models.GiaoVienDangKy>
+@model DMS_Examify.Models.DangKyThiViewModel
 @{
     ViewData["Title"] = "Đăng ký thi";
     ViewData["Subtitle"] = "Lên lịch thi cho lớp";
 }
 
+@section Styles {
+    <link rel="stylesheet" href="~/css/sinhvien.css" asp-append-version="true" />
+}
+
 <div class="row g-4">
-    <!-- Form đăng ký -->
-    <div class="col-md-5 animate-in animate-in-delay-1">
-        <div class="card">
-            <div class="card-header">
-                <span><i class="bi bi-calendar-plus me-2"></i>Đăng ký lịch thi</span>
+    <div class="col-12">
+        <div class="card shadow-sm border-0 rounded-3">
+            <div class="card-header bg-white py-3 border-bottom border-light">
+                <h5 class="card-title mb-0 fw-bold text-dark">
+                    <i class="bi bi-calendar-plus text-primary me-2"></i> Thông tin đăng ký thi
+                </h5>
             </div>
             <div class="card-body">
-                <div class="mb-3">
-                    <label class="form-label">Lớp</label>
-                    <select class="form-select" id="selLop">
-                        @if (ViewBag.Lops != null)
-                        {
-                            foreach (var lop in ViewBag.Lops)
-                            {
-                                <option value="@lop.Value">@lop.Text</option>
-                            }
-                        }
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Môn học</label>
-                    <select class="form-select" id="selMonHoc">
-                        @if (ViewBag.MonHocs != null)
-                        {
-                            foreach (var mon in ViewBag.MonHocs)
-                            {
-                                <option value="@mon.Value">@mon.Text</option>
-                            }
-                        }
-                    </select>
-                </div>
                 <div class="row g-3 mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label">Trình độ</label>
-                        <select class="form-select" id="selTrinhDoDK">
-                            @if (ViewBag.TrinhDos != null)
-                            {
-                                foreach (var trinhDo in ViewBag.TrinhDos)
+                    @if (Model.IsPGV)
+                    {
+                        <div class="col-md-4">
+                            <label class="form-label small fw-medium text-secondary">Giáo viên</label>
+                            <select class="form-select shadow-none" id="selGiaoVien">
+                                @foreach (var gv in Model.GiaoVienList)
                                 {
-                                    <option value="@trinhDo.Value">@trinhDo.Text</option>
+                                    <option value="@gv.MaGV">@gv.MaGV - @gv.HoTen</option>
                                 }
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-medium text-secondary">Lớp</label>
+                            <select class="form-select shadow-none" id="selLop">
+                                @foreach (var lop in Model.LopList)
+                                {
+                                    <option value="@lop.MaLop">@lop.MaLop - @lop.TenLop</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-medium text-secondary">Môn học</label>
+                            <select class="form-select shadow-none" id="selMonHoc">
+                                @foreach (var mon in Model.MonHocList)
+                                {
+                                    <option value="@mon.MaMH">@mon.MaMH - @mon.TenMH</option>
+                                }
+                            </select>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="col-md-6">
+                            <label class="form-label small fw-medium text-secondary">Lớp</label>
+                            <select class="form-select shadow-none" id="selLop">
+                                @foreach (var lop in Model.LopList)
+                                {
+                                    <option value="@lop.MaLop">@lop.MaLop - @lop.TenLop</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-medium text-secondary">Môn học</label>
+                            <select class="form-select shadow-none" id="selMonHoc">
+                                @foreach (var mon in Model.MonHocList)
+                                {
+                                    <option value="@mon.MaMH">@mon.MaMH - @mon.TenMH</option>
+                                }
+                            </select>
+                        </div>
+                    }
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-2 col-sm-6">
+                        <label class="form-label small fw-medium text-secondary">Trình độ</label>
+                        <select class="form-select shadow-none" id="selTrinhDoDK">
+                            @foreach (var trinhDo in Model.TrinhDoList)
+                            {
+                                <option value="@trinhDo.MaTrinhDo">@trinhDo.TenTrinhDo</option>
                             }
                         </select>
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Lần thi</label>
-                        <select class="form-select" id="selLanThi">
+                    <div class="col-md-2 col-sm-6">
+                        <label class="form-label small fw-medium text-secondary">Lần thi</label>
+                        <select class="form-select shadow-none" id="selLanThi">
                             <option value="1">Lần 1</option>
                             <option value="2">Lần 2</option>
                         </select>
                     </div>
-                </div>
-                <div class="row g-3 mb-3">
-                    <div class="col-md-4">
-                        <label class="form-label">Số câu thi</label>
-                        <input type="number" class="form-control" id="txtSoCau" placeholder="20" value="20" />
+                    <div class="col-md-2 col-sm-6">
+                        <label class="form-label small fw-medium text-secondary">Số câu thi</label>
+                        <input type="number" class="form-control shadow-none" id="txtSoCau" placeholder="20" value="20" min="1" />
                     </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Ngày thi</label>
-                        <input type="date" class="form-control" id="txtNgayThiDK" />
+                    <div class="col-md-4 col-sm-6">
+                        <label class="form-label small fw-medium text-secondary">Ngày thi</label>
+                        <input type="date" class="form-control shadow-none" id="txtNgayThiDK" />
                     </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Thời gian (phút)</label>
-                        <input type="number" class="form-control" id="txtThoiGian" placeholder="45" value="45" />
+                    <div class="col-md-2 col-sm-12">
+                        <label class="form-label small fw-medium text-secondary">Thời gian (phút)</label>
+                        <input type="number" class="form-control shadow-none" id="txtThoiGian" placeholder="45" value="45" min="1" />
                     </div>
                 </div>
 
-                <!-- Cảnh báo số câu hỏi -->
-                <div class="alert alert-info" id="alertSoCau">
-                    <i class="bi bi-info-circle me-1"></i>
-                    Số câu hỏi của trình độ bạn chọn hiện có trong bộ đề: <strong id="lblSoCau">...</strong> câu.
-                    Vui lòng kiểm tra đủ số câu trước khi đăng ký.
+                <div class="alert alert-info border-0 rounded-3 small d-flex align-items-start gap-2 mb-3" id="alertSoCau">
+                    <i class="bi bi-info-circle fs-5"></i>
+                    <div>
+                        Số câu hỏi của trình độ đang chọn: <strong id="lblSoCau">...</strong> câu.
+                        <span class="text-muted ms-1">Vui lòng kiểm tra đủ số câu trước khi đăng ký.</span>
+                    </div>
                 </div>
 
-                <div class="action-toolbar">
-                    <button type="button" class="btn btn-success" id="btnDangKy" style="min-width:160px;">
-                        <i class="bi bi-check-lg"></i> Đăng ký
+                <div class="d-flex gap-2 flex-wrap">
+                    <span id="wrapThemDK" class="d-inline-block">
+                        <button type="button" class="btn btn-primary btn-sm px-3 animate-btn" id="btnDangKy" onclick="addDangKy()" disabled>
+                            <i class="bi bi-plus-lg me-1"></i> Thêm
+                        </button>
+                    </span>
+                    <span id="wrapSuaDK" class="d-inline-block">
+                        <button type="button" class="btn btn-warning btn-sm px-3 text-white animate-btn" id="btnSuaDK" onclick="editDangKy()" disabled>
+                            <i class="bi bi-pencil-square me-1"></i> Sửa
+                        </button>
+                    </span>
+                    <button type="button" class="btn btn-secondary btn-sm px-3 animate-btn" onclick="resetDangKyForm()">
+                        <i class="bi bi-arrow-clockwise me-1"></i> Reset
                     </button>
-                    <button type="button" class="btn btn-outline-secondary" id="btnHuy">
-                        <i class="bi bi-arrow-counterclockwise"></i> Hủy
+                    <button type="button" class="btn btn-info btn-sm px-3 text-white animate-btn" id="btnUndoDK" onclick="undoDangKy()" disabled>
+                        <i class="bi bi-arrow-counterclockwise me-1"></i> Undo
                     </button>
+                    <button type="button" class="btn btn-info btn-sm px-3 text-white animate-btn" id="btnRedoDK" onclick="redoDangKy()" disabled>
+                        <i class="bi bi-arrow-clockwise me-1"></i> Redo
+                    </button>
+                    <span id="wrapGhiDK" class="d-inline-block">
+                        <button type="button" class="btn btn-success btn-sm px-3 animate-btn" id="btnGhiDK" onclick="saveDangKyChanges()" disabled>
+                            <i class="bi bi-check-circle me-1"></i> Ghi (Lưu CSDL)
+                        </button>
+                    </span>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Danh sách đã đăng ký -->
-    <div class="col-md-7 animate-in animate-in-delay-2">
-        <div class="card">
-            <div class="card-header">
-                <span><i class="bi bi-calendar-check me-2"></i>Danh sách đăng ký thi</span>
-                <span class="badge bg-primary">@Model.Count lịch</span>
+    <div class="col-12">
+        <div class="card shadow-sm border-0 rounded-3 text-dark">
+            <div class="card-header bg-white py-3 border-bottom border-light d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <h5 class="card-title mb-0 fw-bold text-dark">
+                    <i class="bi bi-calendar-check text-primary me-2"></i> Danh sách đăng ký thi
+                    <span class="badge bg-primary ms-2" id="lblDangKyCount">@Model.DangKyList.Count lịch</span>
+                </h5>
+                <div style="width: 220px;">
+                    <input id="txtSearchDangKy" class="form-control form-control-sm shadow-none" placeholder="Tìm kiếm lịch thi..." />
+                </div>
             </div>
             <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
+                <div class="table-responsive border-0 mb-0" style="max-height: 520px; overflow-y: auto;">
+                    <table class="table table-hover align-middle mb-0" id="tblDangKy">
+                        <thead class="table-light sticky-top">
                             <tr>
+                                @if (Model.IsPGV)
+                                {
+                                    <th>Giáo viên</th>
+                                }
                                 <th>Lớp</th>
-                                <th>Môn</th>
+                                <th>Môn học</th>
                                 <th>Trình độ</th>
                                 <th>Lần</th>
                                 <th>Số câu</th>
                                 <th>Ngày thi</th>
                                 <th>TG (phút)</th>
+                                <th>Trạng thái</th>
+                                <th class="text-center" style="width: 100px;">Thao tác</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (var dk in Model)
+                            @foreach (var dk in Model.DangKyList)
                             {
                                 var badgeClass = dk.TrinhDo == "A" ? "badge-level-a" : dk.TrinhDo == "B" ? "badge-level-b" : "badge-level-c";
-                                <tr>
-                                    <td><strong>@dk.MaLop</strong></td>
-                                    <td>@dk.MaMH</td>
+                                var rowClass = dk.DaThi ? "table-secondary text-muted" : "";
+                                var rowKey = $"{dk.MaLop.Trim()}|{dk.MaMH.Trim()}|{dk.Lan}";
+                                var rowTitle = $"{dk.MaLop.Trim()} - {dk.TenMH} - lần {dk.Lan}";
+                                <tr class="@rowClass"
+                                    style="cursor: @(dk.DaThi ? "default" : "pointer")"
+                                    data-id="@rowKey"
+                                    data-title="@rowTitle"
+                                    data-magv="@dk.MaGV"
+                                    data-mamh="@dk.MaMH"
+                                    data-malop="@dk.MaLop"
+                                    data-trinhdo="@dk.TrinhDo"
+                                    data-lan="@dk.Lan"
+                                    data-socau="@dk.SoCauThi"
+                                    data-ngaythi="@dk.NgayThi.ToString("yyyy-MM-dd")"
+                                    data-thoigian="@dk.ThoiGian"
+                                    data-original-magv="@dk.MaGV"
+                                    data-original-mamh="@dk.MaMH"
+                                    data-original-malop="@dk.MaLop"
+                                    data-original-trinhdo="@dk.TrinhDo"
+                                    data-original-lan="@dk.Lan"
+                                    data-original-socau="@dk.SoCauThi"
+                                    data-original-ngaythi="@dk.NgayThi.ToString("yyyy-MM-dd")"
+                                    data-original-thoigian="@dk.ThoiGian"
+                                    data-dathi="@dk.DaThi.ToString().ToLower()">
+                                    @if (Model.IsPGV)
+                                    {
+                                        <td>@dk.MaGV.Trim() - @dk.TenGV</td>
+                                    }
+                                    <td><strong>@dk.MaLop.Trim()</strong> <small class="text-muted">@dk.TenLop</small></td>
+                                    <td>@dk.TenMH</td>
                                     <td><span class="badge @badgeClass">@dk.TrinhDo</span></td>
                                     <td>@dk.Lan</td>
                                     <td>@dk.SoCauThi</td>
                                     <td>@dk.NgayThi.ToString("dd/MM/yyyy")</td>
                                     <td>@dk.ThoiGian</td>
+                                    <td>
+                                        @if (dk.DaThi)
+                                        {
+                                            <span class="badge bg-secondary rounded-pill">Đã thi</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-success rounded-pill">Chưa thi</span>
+                                        }
+                                    </td>
+                                    <td class="text-center">
+                                        <button type="button" class="btn btn-link text-warning p-0 me-2 btn-edit" title="Hiệu chỉnh" disabled="@dk.DaThi">
+                                            <i class="bi bi-pencil-square fs-5"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-link text-danger p-0 btn-delete" title="Xóa cứng" disabled="@dk.DaThi">
+                                            <i class="bi bi-trash fs-5"></i>
+                                        </button>
+                                    </td>
                                 </tr>
                             }
                         </tbody>
                     </table>
+                    <div id="dangKyEmptyState" class="text-center py-4 text-muted small d-none">
+                        <i class="bi bi-info-circle fs-5 d-block mb-2 text-secondary"></i>
+                        Không tìm thấy lịch thi phù hợp.
+                    </div>
                 </div>
+            </div>
+            <div class="card-footer d-flex justify-content-between align-items-center py-2 bg-light border-top-0 rounded-bottom-3">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="small text-secondary fw-medium" id="lblPaginationSummary">Hiển thị từ 0 đến 0 trong tổng số 0 dòng</span>
+                    <select class="form-select form-select-sm shadow-none" id="selectPageSize" style="width: 80px;" onchange="changeDangKyPageSize(this.value)">
+                        <option value="5">5</option>
+                        <option value="10" selected>10</option>
+                        <option value="20">20</option>
+                        <option value="50">50</option>
+                    </select>
+                    <span class="small text-secondary fw-medium">dòng/trang</span>
+                </div>
+                <nav aria-label="Page navigation">
+                    <ul class="pagination pagination-sm mb-0" id="ulPagination"></ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="customModal" tabindex="-1" aria-labelledby="customModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-3">
+            <div class="modal-header border-0 bg-light py-3">
+                <h5 class="modal-title d-flex align-items-center gap-2 fw-semibold" id="customModalLabel">
+                    <i id="customModalIcon" class="bi fs-4"></i>
+                    <span id="customModalTitle">Thông báo</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body py-4 fs-6 text-dark" id="customModalMessage">
+                Nội dung thông báo ở đây.
+            </div>
+            <div class="modal-footer border-0 bg-light py-2">
+                <button type="button" class="btn btn-secondary btn-sm px-3" id="btnCustomModalCancel" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-primary btn-sm px-3" id="btnCustomModalOk">Xác nhận</button>
             </div>
         </div>
     </div>
 </div>
 
 @section Scripts {
-    <script>
-        $(document).ready(function() {
-            function loadSoCauHoi() {
-                var maMH = $("#selMonHoc").val();
-                var trinhDo = $("#selTrinhDoDK").val();
-                
-                if (maMH && trinhDo) {
-                    $.ajax({
-                        url: '@Url.Action("GetSoCauHoi", "DangKyThi")',
-                        type: 'GET',
-                        data: { maMH: maMH, trinhDo: trinhDo },
-                        success: function(res) {
-                            if (res.success) {
-                                $("#lblSoCau").text(res.soCau);
-                            } else {
-                                $("#lblSoCau").text("0");
-                            }
-                        },
-                        error: function() {
-                            $("#lblSoCau").text("0");
-                        }
-                    });
-                }
-            }
-
-            $("#selMonHoc, #selTrinhDoDK").change(function() {
-                loadSoCauHoi();
-            });
-
-            // Tải số câu lần đầu
-            loadSoCauHoi();
-
-            var today = new Date().toISOString().split('T')[0];
-            $("#txtNgayThiDK").attr('min', today);
-            $("#btnDangKy").click(function() {
-                var model = {
-                    MaLop: $("#selLop").val(),
-                    MaMH: $("#selMonHoc").val(),
-                    TrinhDo: $("#selTrinhDoDK").val(),
-                    Lan: parseInt($("#selLanThi").val()),
-                    SoCauThi: parseInt($("#txtSoCau").val()),
-                    NgayThi: $("#txtNgayThiDK").val(),
-                    ThoiGian: parseInt($("#txtThoiGian").val())
-                };
-
-                if (!model.NgayThi) {
-                    alert("Vui lòng chọn ngày thi.");
-                    return;
-                }
-
-                if (model.NgayThi < today) {
-                    alert("Ngày thi không được ở trong quá khứ.");
-                    return;
-                }
-
-                if (isNaN(model.SoCauThi) || model.SoCauThi <= 0) {
-                    alert("Số câu thi không hợp lệ.");
-                    return;
-                }
-
-                if (isNaN(model.ThoiGian) || model.ThoiGian <= 0) {
-                    alert("Thời gian thi không hợp lệ.");
-                    return;
-                }
-
-                $.ajax({
-                    url: '@Url.Action("DangKy", "DangKyThi")',
-                    type: 'POST',
-                    contentType: 'application/json',
-                    data: JSON.stringify(model),
-                    success: function(res) {
-                        if (res.success) {
-                            alert(res.message);
-                            location.reload(); // Tải lại trang để cập nhật danh sách
-                        } else {
-                            alert("Lỗi: " + res.message);
-                        }
-                    },
-                    error: function(err) {
-                        alert("Có lỗi xảy ra trong quá trình kết nối.");
-                        console.error(err);
-                    }
-                });
-            });
-
-            $("#btnHuy").click(function() {
-                $("#selLop").prop("selectedIndex", 0);
-                $("#selMonHoc").prop("selectedIndex", 0);
-                $("#selTrinhDoDK").prop("selectedIndex", 0);
-                $("#selLanThi").val("1");
-                $("#txtSoCau").val("20");
-                $("#txtNgayThiDK").val("");
-                $("#txtThoiGian").val("45");
-                
-                loadSoCauHoi();
-            });
-        });
-    </script>
+    <script src="~/js/app-common.js" asp-append-version="true"></script>
+    <script src="~/js/dangkythi.js" asp-append-version="true"></script>
 }

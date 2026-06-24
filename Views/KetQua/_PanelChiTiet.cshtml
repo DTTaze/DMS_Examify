@@ -1,0 +1,92 @@
+@* Panel chi tiết: dùng chung cho cả SV lẫn GV *@
+<div id="detailPanel" style="display:none;">
+    <div class="d-flex align-items-center mb-3">
+        <button class="btn btn-outline-secondary btn-sm" id="btnBack">
+            <i class="bi bi-arrow-left me-1"></i>Quay lại
+        </button>
+        <h5 class="mb-0 ms-3" id="detailTitle"></h5>
+    </div>
+
+    @* Sub-panel: Danh sách kết quả SV (chỉ dùng bởi GV/PGV) *@
+    <div id="ketQuaSVPanel" style="display:none;">
+        <div class="card mb-4">
+            <div class="card-header">
+                <span><i class="bi bi-people me-2"></i>Kết quả sinh viên</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th style="width:50px;">STT</th>
+                                <th style="width:100px;">Mã SV</th>
+                                <th>Họ</th>
+                                <th>Tên</th>
+                                <th>Ngày thi</th>
+                                <th style="width:80px;">Điểm</th>
+                                <th style="width:110px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="ketQuaSVBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* Sub-panel: Chi tiết bài thi (dùng chung cho SV + GV drill-down) *@
+    <div id="chiTietBaiPanel" style="display:none;">
+        @* Header thông tin bài thi theo mẫu đề bài 4.8 *@
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="row mb-1">
+                    <div class="col-sm-2 fw-bold">Lớp</div>
+                    <div class="col-sm-10" id="infoLop">—</div>
+                </div>
+                <div class="row mb-1">
+                    <div class="col-sm-2 fw-bold">Họ tên</div>
+                    <div class="col-sm-4" id="infoHoTen">—</div>
+                    <div class="col-sm-2 fw-bold">Mã số SV</div>
+                    <div class="col-sm-4" id="infoMaSV">—</div>
+                </div>
+                <div class="row mb-1">
+                    <div class="col-sm-2 fw-bold">Môn thi</div>
+                    <div class="col-sm-10" id="infoMonThi">—</div>
+                </div>
+                <div class="row mb-1">
+                    <div class="col-sm-2 fw-bold">Ngày thi</div>
+                    <div class="col-sm-4" id="infoNgayThi">—</div>
+                    <div class="col-sm-2 fw-bold">Lần thi</div>
+                    <div class="col-sm-4" id="infoLanThi">—</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-list-check me-2"></i>Chi tiết bài thi</span>
+                <span id="chiTietScore" class="badge bg-primary" style="font-size:14px;"></span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th style="width:45px;">STT</th>
+                                <th style="width:65px;">Câu số</th>
+                                <th>Nội dung câu hỏi</th>
+                                <th>A</th>
+                                <th>B</th>
+                                <th>C</th>
+                                <th>D</th>
+                                <th style="width:70px;">Trả lời</th>
+                                <th style="width:70px;">Đáp án</th>
+                            </tr>
+                        </thead>
+                        <tbody id="chiTietBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

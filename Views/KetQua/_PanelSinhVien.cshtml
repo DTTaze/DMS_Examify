@@ -1,0 +1,47 @@
+@* Panel: Lịch sử bài thi - dành cho Sinh viên *@
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-journal-check me-2"></i>Lịch sử bài thi</span>
+        <div class="d-flex gap-2">
+            <select class="form-select form-select-sm" id="filterMonHocSV" style="width:200px;">
+                <option value="">Tất cả môn</option>
+            </select>
+            <select class="form-select form-select-sm" id="filterLanSV" style="width:120px;">
+                <option value="">Tất cả lần</option>
+                <option value="1">Lần 1</option>
+                <option value="2">Lần 2</option>
+            </select>
+            <select class="form-select form-select-sm" id="filterTrinhDoSV" style="width:130px;">
+                <option value="">Tất cả trình độ</option>
+                <option value="A">A</option>
+                <option value="B">B</option>
+                <option value="C">C</option>
+            </select>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div id="svLoading" class="text-center py-4">
+            <span class="spinner-border spinner-border-sm me-2"></span>Đang tải...
+        </div>
+        <div class="table-responsive" id="svTableWrap" style="display:none;">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th style="width:50px;">STT</th>
+                        <th>Môn thi</th>
+                        <th style="width:70px;">Lần</th>
+                        <th>Trình độ</th>
+                        <th style="width:90px;">Số câu</th>
+                        <th>Ngày thi</th>
+                        <th style="width:80px;">Điểm</th>
+                        <th style="width:100px;"></th>
+                    </tr>
+                </thead>
+                <tbody id="svTableBody"></tbody>
+            </table>
+        </div>
+        <div id="svEmpty" class="text-center py-4 text-muted" style="display:none;">
+            <i class="bi bi-inbox me-1"></i>Chưa có bài thi nào.
+        </div>
+    </div>
+</div>

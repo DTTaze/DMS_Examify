@@ -1,262 +1,247 @@
+using DMS_Examify.Filters;
 using DMS_Examify.Models;
-using System.Data;
+using DMS_Examify.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 
 namespace DMS_Examify.Controllers
 {
+    [RequireRole("PGV", "Giangvien")]
     public class DangKyThiController : BaseController
     {
+        private const string RegistrarRole = "PGV";
+        private const string LecturerRole = "Giangvien";
 
+        private const string SessionExpiredMessage = "Hết phiên đăng nhập.";
+        private const string MissingTeacherMessage = "Vui lòng chọn giáo viên.";
+        private const string PastExamDateMessage = "Ngày thi không hợp lệ, không được chọn ngày trong quá khứ.";
+        private const string InvalidRegistrationMessage = "Thông tin đăng ký thi không hợp lệ.";
 
+        private readonly IDangKyThiService _dangKyThiService;
+        private readonly ILogger<DangKyThiController> _logger;
+
+        public DangKyThiController(
+            IDangKyThiService dangKyThiService,
+            ILogger<DangKyThiController> logger)
+        {
+            _dangKyThiService = dangKyThiService;
+            _logger = logger;
+        }
 
         public IActionResult Index()
         {
-            if (!CheckRole("PGV", "Giangvien")) return Denied();
             ViewData["Title"] = "Đăng ký thi";
             ViewData["Subtitle"] = "Lên lịch thi cho lớp";
 
-            List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> lops = new List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>();
-            string connectionString = ConnectionString;
             try
             {
-                using (SqlConnection conn = new SqlConnection(connectionString))
-                {
-                    using (SqlCommand cmd = new SqlCommand("usp_LayDanhSachLop", conn))
-                    {
-                        cmd.CommandType = CommandType.StoredProcedure;
-                        conn.Open();
-                        using (SqlDataReader reader = cmd.ExecuteReader())
-                        {
-                            while (reader.Read())
-                            {
-                                string maLop = reader["MALOP"] != DBNull.Value ? reader["MALOP"].ToString() : "";
-                                string tenLop = reader["TENLOP"] != DBNull.Value ? reader["TENLOP"].ToString() : "";
-                                if (!string.IsNullOrEmpty(maLop))
-                                {
-                                    lops.Add(new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem
-                                    {
-                                        Value = maLop,
-                                        Text = $"{maLop} - {tenLop}"
-                                    });
-                                }
-                            }
-                        }
-                    }
-                }
+                return View(CreateViewModel());
             }
             catch (Exception ex)
             {
-                ViewBag.ErrorMessage = "Lỗi khi truy xuất danh sách lớp từ Server: " + ex.Message;
+                return LogAndReturnServerError(_logger, ex, "Lỗi khi tải màn hình đăng ký thi.");
             }
-
-            List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> monHocs = new List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>();
-            try
-            {
-                using (SqlConnection conn = new SqlConnection(connectionString))
-                {
-                    using (SqlCommand cmd = new SqlCommand("usp_LayDanhSachMonHoc", conn))
-                    {
-                        cmd.CommandType = CommandType.StoredProcedure;
-                        conn.Open();
-                        using (SqlDataReader reader = cmd.ExecuteReader())
-                        {
-                            while (reader.Read())
-                            {
-                                string maMH = reader["MAMH"] != DBNull.Value ? reader["MAMH"].ToString() : "";
-                                string tenMH = reader["TENMH"] != DBNull.Value ? reader["TENMH"].ToString() : "";
-                                if (!string.IsNullOrEmpty(maMH))
-                                {
-                                    monHocs.Add(new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem
-                                    {
-                                        Value = maMH,
-                                        Text = tenMH
-                                    });
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                ViewBag.ErrorMessage = "Lỗi khi truy xuất danh sách môn học từ Server: " + ex.Message;
-            }
-
-            List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> trinhDos = new List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>();
-            try
-            {
-                using (SqlConnection conn = new SqlConnection(connectionString))
-                {
-                    using (SqlCommand cmd = new SqlCommand("usp_LayDanhSachTrinhDo", conn))
-                    {
-                        cmd.CommandType = CommandType.StoredProcedure;
-                        conn.Open();
-                        using (SqlDataReader reader = cmd.ExecuteReader())
-                        {
-                            while (reader.Read())
-                            {
-                                string maTrinhDo = reader["MaTrinhDo"] != DBNull.Value ? reader["MaTrinhDo"].ToString() : "";
-                                string tenTrinhDo = reader["TenTrinhDo"] != DBNull.Value ? reader["TenTrinhDo"].ToString() : "";
-                                if (!string.IsNullOrEmpty(maTrinhDo))
-                                {
-                                    trinhDos.Add(new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem
-                                    {
-                                        Value = maTrinhDo,
-                                        Text = tenTrinhDo
-                                    });
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                ViewBag.ErrorMessage = (ViewBag.ErrorMessage != null ? ViewBag.ErrorMessage + " | " : "") + "Lỗi khi truy xuất danh sách trình độ từ Server: " + ex.Message;
-            }
-
-            ViewBag.Lops = lops;
-            ViewBag.MonHocs = monHocs;
-            ViewBag.TrinhDos = trinhDos;
-
-            List<GiaoVienDangKy> danhSach = new List<GiaoVienDangKy>();
-            var maGV = HttpContext.Session.GetString("UserLogin");
-
-            if (!string.IsNullOrEmpty(maGV))
-            {
-                try
-                {
-                    using (SqlConnection conn = new SqlConnection(connectionString))
-                    {
-                        using (SqlCommand cmd = new SqlCommand("usp_LayDanhSachDeThi", conn))
-                        {
-                            cmd.CommandType = CommandType.StoredProcedure;
-                            cmd.Parameters.AddWithValue("@MaGV", maGV);
-                            conn.Open();
-                            using (SqlDataReader reader = cmd.ExecuteReader())
-                            {
-                                while (reader.Read())
-                                {
-                                    danhSach.Add(new GiaoVienDangKy
-                                    {
-                                        MaMH = reader["MAMH"]?.ToString() ?? "",
-                                        MaLop = reader["MALOP"]?.ToString() ?? "",
-                                        TrinhDo = reader["TRINHDO"]?.ToString() ?? "",
-                                        NgayThi = reader["NGAYTHI"] != DBNull.Value ? Convert.ToDateTime(reader["NGAYTHI"]) : DateTime.MinValue,
-                                        Lan = reader["LAN"] != DBNull.Value ? Convert.ToInt32(reader["LAN"]) : 1,
-                                        SoCauThi = reader["SOCAUTHI"] != DBNull.Value ? Convert.ToInt32(reader["SOCAUTHI"]) : 0,
-                                        ThoiGian = reader["THOIGIAN"] != DBNull.Value ? Convert.ToInt32(reader["THOIGIAN"]) : 0
-                                    });
-                                }
-                            }
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    ViewBag.ErrorMessage = (ViewBag.ErrorMessage != null ? ViewBag.ErrorMessage + " | " : "") + "Lỗi khi tải danh sách đã đăng ký: " + ex.Message;
-                }
-            }
-
-            return View(danhSach);
         }
 
         [HttpPost]
-        public IActionResult DangKy([FromBody] GiaoVienDangKy model)
+        public IActionResult DangKy([FromBody] GiaoVienDangKy? registration)
         {
-            if (!CheckRole("PGV", "Giangvien"))
+            var preparedRegistration = PrepareNewRegistration(registration);
+            if (!preparedRegistration.IsValid)
             {
-                return Json(new { success = false, message = "Không có quyền thực hiện chức năng này." });
+                return JsonFailure(preparedRegistration.Message);
             }
 
-            var maGV = HttpContext.Session.GetString("UserLogin");
-            if (string.IsNullOrEmpty(maGV))
-            {
-                return Json(new { success = false, message = "Hết phiên đăng nhập." });
-            }
-
-            // Gán mã GV đăng nhập vào model
-            model.MaGV = maGV;
-
-            if (model.NgayThi.Date < DateTime.Now.Date)
-            {
-                return Json(new { success = false, message = "Ngày thi không hợp lệ, không được chọn ngày trong quá khứ." });
-            }
-
-            string connectionString = ConnectionString;
             try
             {
-                using (SqlConnection conn = new SqlConnection(connectionString))
-                {
-                    using (SqlCommand cmd = new SqlCommand("usp_ThucHienDangKyThi", conn))
-                    {
-                        cmd.CommandType = CommandType.StoredProcedure;
-                        
-                        cmd.Parameters.AddWithValue("@MAGV", model.MaGV);
-                        cmd.Parameters.AddWithValue("@MALOP", model.MaLop);
-                        cmd.Parameters.AddWithValue("@MAMH", model.MaMH);
-                        cmd.Parameters.AddWithValue("@TRINHDO", model.TrinhDo);
-                        cmd.Parameters.AddWithValue("@LAN", model.Lan);
-                        cmd.Parameters.AddWithValue("@SOCAUTHI", model.SoCauThi);
-                        cmd.Parameters.AddWithValue("@THOIGIAN", model.ThoiGian);
-                        cmd.Parameters.AddWithValue("@NGAYTHI", model.NgayThi);
-
-                        conn.Open();
-                        using (SqlDataReader reader = cmd.ExecuteReader())
-                        {
-                            if (reader.Read())
-                            {
-                                bool isSuccess = reader["IsSuccess"] != DBNull.Value && Convert.ToBoolean(reader["IsSuccess"]);
-                                string message = reader["ThongBao"] != DBNull.Value ? reader["ThongBao"].ToString() : "";
-                                
-                                return Json(new { success = isSuccess, message = message });
-                            }
-                            else
-                            {
-                                return Json(new { success = false, message = "Không nhận được phản hồi từ server." });
-                            }
-                        }
-                    }
-                }
+                var result = _dangKyThiService.CreateRegistration(preparedRegistration.Model!);
+                return ToJsonResult(result);
+            }
+            catch (SqlException ex)
+            {
+                return JsonFailure(ex.Message);
             }
             catch (Exception ex)
             {
-                return Json(new { success = false, message = "Lỗi hệ thống: " + ex.Message });
+                return LogAndReturnServerError(_logger, ex, "Lỗi khi đăng ký thi.");
             }
         }
 
         [HttpGet]
-        public IActionResult GetSoCauHoi(string maMH, string trinhDo)
+        public IActionResult GetSoCauHoi(string? maMH, string? trinhDo)
         {
-            if (string.IsNullOrEmpty(maMH) || string.IsNullOrEmpty(trinhDo))
+            if (string.IsNullOrWhiteSpace(maMH) || string.IsNullOrWhiteSpace(trinhDo))
+            {
                 return Json(new { success = false, soCau = 0 });
+            }
 
-            int soCau = 0;
-            string connectionString = ConnectionString;
             try
             {
-                using (SqlConnection conn = new SqlConnection(connectionString))
-                {
-                    conn.Open();
-                    string query = "SELECT dbo.udf_DemSoCauTrongBoDe(@MAMH, @TRINHDO)";
-                    using (SqlCommand cmd = new SqlCommand(query, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@MAMH", maMH);
-                        cmd.Parameters.AddWithValue("@TRINHDO", trinhDo);
-                        
-                        object result = cmd.ExecuteScalar();
-                        if (result != null && result != DBNull.Value)
-                        {
-                            soCau = Convert.ToInt32(result);
-                        }
-                    }
-                }
-                return Json(new { success = true, soCau = soCau });
+                var questionCount = _dangKyThiService.CountQuestions(maMH, trinhDo);
+                return Json(new { success = true, soCau = questionCount });
             }
             catch (Exception ex)
             {
-                return Json(new { success = false, message = ex.Message });
+                return LogAndReturnServerError(_logger, ex, "Lỗi khi lấy số câu hỏi.");
+            }
+        }
+
+        [HttpPost]
+        public IActionResult CapNhat([FromBody] GiaoVienDangKy? registration)
+        {
+            var preparedRegistration = PrepareExistingRegistration(registration);
+            if (!preparedRegistration.IsValid)
+            {
+                return JsonFailure(preparedRegistration.Message);
+            }
+
+            try
+            {
+                var result = _dangKyThiService.UpdateRegistration(preparedRegistration.Model!);
+                return ToJsonResult(result);
+            }
+            catch (SqlException ex)
+            {
+                return JsonFailure(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return LogAndReturnServerError(_logger, ex, "Lỗi khi cập nhật đăng ký thi.");
+            }
+        }
+
+        [HttpPost]
+        public IActionResult Xoa([FromBody] GiaoVienDangKy? registration)
+        {
+            if (registration == null)
+            {
+                return JsonFailure(InvalidRegistrationMessage);
+            }
+
+            if (!HasActiveTeacherSession)
+            {
+                return JsonFailure(SessionExpiredMessage);
+            }
+
+            try
+            {
+                var result = _dangKyThiService.DeleteRegistration(
+                    registration.MaMH,
+                    registration.MaLop,
+                    registration.Lan);
+
+                return ToJsonResult(result);
+            }
+            catch (SqlException ex)
+            {
+                return JsonFailure(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return LogAndReturnServerError(_logger, ex, "Lỗi khi xóa đăng ký thi.");
+            }
+        }
+
+        private DangKyThiViewModel CreateViewModel()
+        {
+            return new DangKyThiViewModel
+            {
+                LopList = _dangKyThiService.GetAvailableClasses(),
+                MonHocList = _dangKyThiService.GetAvailableSubjects(),
+                TrinhDoList = _dangKyThiService.GetAvailableLevels(),
+                GiaoVienList = IsRegistrar ? _dangKyThiService.GetAvailableTeachers() : new List<GiaoVienDropdownItem>(),
+                DangKyList = HasActiveTeacherSession
+                    ? _dangKyThiService.GetRegistrations(CurrentRole, CurrentTeacherId!)
+                    : new List<GiaoVienDangKy>(),
+                IsPGV = IsRegistrar
+            };
+        }
+
+        private PreparedRegistration PrepareNewRegistration(GiaoVienDangKy? registration)
+        {
+            var preparedRegistration = PrepareExistingRegistration(registration);
+            if (!preparedRegistration.IsValid)
+            {
+                return preparedRegistration;
+            }
+
+            return IsPastExamDate(preparedRegistration.Model!)
+                ? PreparedRegistration.Invalid(PastExamDateMessage)
+                : preparedRegistration;
+        }
+
+        private PreparedRegistration PrepareExistingRegistration(GiaoVienDangKy? registration)
+        {
+            if (registration == null)
+            {
+                return PreparedRegistration.Invalid(InvalidRegistrationMessage);
+            }
+
+            if (!HasActiveTeacherSession)
+            {
+                return PreparedRegistration.Invalid(SessionExpiredMessage);
+            }
+
+            return TryAssignTeacher(registration);
+        }
+
+        private PreparedRegistration TryAssignTeacher(GiaoVienDangKy registration)
+        {
+            if (IsLecturer)
+            {
+                registration.MaGV = CurrentTeacherId!;
+                return PreparedRegistration.Valid(registration);
+            }
+
+            return string.IsNullOrWhiteSpace(registration.MaGV)
+                ? PreparedRegistration.Invalid(MissingTeacherMessage)
+                : PreparedRegistration.Valid(registration);
+        }
+
+        private bool IsPastExamDate(GiaoVienDangKy registration)
+        {
+            return registration.NgayThi.Date < DateTime.Now.Date;
+        }
+
+        private bool HasActiveTeacherSession => !string.IsNullOrWhiteSpace(CurrentTeacherId);
+
+        private bool IsRegistrar => string.Equals(CurrentRole, RegistrarRole, StringComparison.OrdinalIgnoreCase);
+
+        private bool IsLecturer => string.Equals(CurrentRole, LecturerRole, StringComparison.OrdinalIgnoreCase);
+
+        private JsonResult ToJsonResult((bool IsSuccess, string Message) result)
+        {
+            return Json(new { success = result.IsSuccess, message = result.Message });
+        }
+
+        private JsonResult JsonFailure(string message)
+        {
+            return Json(new { success = false, message });
+        }
+
+        private sealed class PreparedRegistration
+        {
+            private PreparedRegistration(bool isValid, string message, GiaoVienDangKy? model)
+            {
+                IsValid = isValid;
+                Message = message;
+                Model = model;
+            }
+
+            public bool IsValid { get; }
+
+            public string Message { get; }
+
+            public GiaoVienDangKy? Model { get; }
+
+            public static PreparedRegistration Valid(GiaoVienDangKy model)
+            {
+                return new PreparedRegistration(true, string.Empty, model);
+            }
+
+            public static PreparedRegistration Invalid(string message)
+            {
+                return new PreparedRegistration(false, message, null);
             }
         }
     }

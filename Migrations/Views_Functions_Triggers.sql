@@ -117,6 +117,9 @@ GO
 PRINT N'OK: Da tao View vw_GiaoVien_DanhSach.';
 GO
 
+GRANT SELECT ON dbo.vw_GiaoVien_DanhSach TO [PGV];
+GO
+
 -- ------------------------------------------------------------
 -- 5. Trigger trg_BODE_KiemTraTruocKhiXoa
 --    Da bo: logic xoa mem/xoa cung duoc xu ly trong usp_BoDe_Delete
@@ -128,4 +131,87 @@ END
 GO
 
 PRINT N'OK: Da bo Trigger trg_BODE_KiemTraTruocKhiXoa.';
+GO
+
+-- ------------------------------------------------------------
+-- 6. View vw_DanhSachLop
+--    Lay danh sach cac lop co trong he thong (5.2)
+-- ------------------------------------------------------------
+CREATE OR ALTER VIEW dbo.vw_DanhSachLop
+AS
+    SELECT
+        MALOP,
+        TENLOP
+    FROM LOP
+    WHERE TrangThai = 1;
+GO
+
+GRANT SELECT ON dbo.vw_DanhSachLop TO [PGV];
+GO
+GRANT SELECT ON dbo.vw_DanhSachLop TO [Giangvien];
+GO
+
+PRINT N'OK: Da tao view vw_DanhSachLop'
+GO
+
+-- ------------------------------------------------------------
+-- 7. View vw_DanhSachMonHoc
+--    Lay danh sach cac mon hoc co trong he thong
+-- ------------------------------------------------------------
+CREATE OR ALTER VIEW dbo.vw_DanhSachMonHoc
+AS
+    SELECT
+        MaMH,
+        TenMH
+    FROM MONHOC
+    WHERE TrangThai = 1;
+GO
+
+GRANT SELECT ON dbo.vw_DanhSachMonHoc TO [PGV];
+GO
+GRANT SELECT ON dbo.vw_DanhSachMonHoc TO [Giangvien];
+GO
+
+PRINT N'OK: Da tao view vw_DanhSachMonHoc'
+GO
+
+-- ------------------------------------------------------------
+-- 8. View vw_GiaoVienDangKy
+--    Lay danh sach dang ky thi kem ten mon, ten lop, ten GV
+--    Loc theo MAGV o tang ung dung (PGV xem tat ca, GV xem cua minh)
+-- ------------------------------------------------------------
+CREATE OR ALTER VIEW dbo.vw_GiaoVienDangKy
+AS
+    SELECT
+        gvdk.MAGV,
+        dbo.udf_LayHoTen(gv.HO, gv.TEN) AS TenGV,
+        gvdk.MAMH,
+        mh.TENMH,
+        gvdk.MALOP,
+        l.TENLOP,
+        gvdk.TRINHDO,
+        gvdk.NGAYTHI,
+        gvdk.LAN,
+        gvdk.SOCAUTHI,
+        gvdk.THOIGIAN,
+        CASE
+            WHEN EXISTS (
+                SELECT 1 FROM dbo.BAITHI bt
+                WHERE bt.MAMH = gvdk.MAMH
+                  AND bt.MALOP = gvdk.MALOP
+                  AND bt.LAN = gvdk.LAN
+            ) THEN CAST(1 AS BIT)
+            ELSE CAST(0 AS BIT)
+        END AS DaThi
+    FROM dbo.GIAOVIEN_DANGKY gvdk
+    JOIN dbo.GIAOVIEN gv ON gvdk.MAGV = gv.MAGV
+    JOIN dbo.MONHOC   mh ON gvdk.MAMH = mh.MAMH
+    JOIN dbo.LOP       l ON gvdk.MALOP = l.MALOP;
+GO
+
+GRANT SELECT ON dbo.vw_GiaoVienDangKy TO [PGV];
+GO
+GRANT SELECT ON dbo.vw_GiaoVienDangKy TO [Giangvien];
+GO
+PRINT N'OK: Da tao view vw_GiaoVienDangKy.';
 GO

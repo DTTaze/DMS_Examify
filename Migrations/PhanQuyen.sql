@@ -12,6 +12,12 @@ CREATE ROLE [Giangvien];
 CREATE ROLE [Sinhvien];
 GO
 
+GRANT CREATE USER TO PGV;
+GRANT ALTER ANY USER TO PGV;
+GRANT ALTER ANY ROLE TO PGV;
+EXEC sp_addrolemember 'db_accessadmin', 'PGV';
+GO
+
 -- PGV duoc Them, Xoa, Sua, Doc tren tat ca cac bang
 GRANT SELECT, INSERT, UPDATE, DELETE ON [Lop] TO [PGV];
 GRANT SELECT, INSERT, UPDATE, DELETE ON [Monhoc] TO [PGV];
@@ -20,11 +26,13 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON [Giaovien] TO [PGV];
 GRANT SELECT, INSERT, UPDATE, DELETE ON [Giaovien_Dangky] TO [PGV];
 GRANT SELECT, INSERT, UPDATE, DELETE ON [BODE] TO [PGV];
 GRANT SELECT, INSERT, UPDATE, DELETE ON [BangDiem] TO [PGV];
+GRANT SELECT, INSERT, UPDATE, DELETE ON [CT_DETHI] TO [PGV];
 GO
 
 -- 1. Quyen thao tac (Them, Xoa, Sua, Doc) tren cac bang nghiep vu cua GV
 GRANT SELECT, INSERT, UPDATE, DELETE ON [BODE] TO [Giangvien];
 GRANT SELECT, INSERT, UPDATE, DELETE ON [Giaovien_Dangky] TO [Giangvien];
+GRANT SELECT, INSERT, UPDATE, DELETE ON [CT_DETHI] TO [Giangvien];
 
 -- 2. Chi duoc quyen Xem (Doc) tren cac bang danh muc va ket qua
 GRANT SELECT ON [Lop] TO [Giangvien];
@@ -40,6 +48,8 @@ GRANT SELECT ON [Monhoc] TO [Sinhvien];
 GRANT SELECT ON [Sinhvien] TO [Sinhvien];
 GRANT SELECT ON [Giaovien_Dangky] TO [Sinhvien];
 GRANT SELECT ON [BODE] TO [Sinhvien];
+GRANT SELECT ON [CT_DETHI] TO [Sinhvien];
+
 
 -- 2. Quyen ghi diem khi thi xong va xem lai diem
 GRANT INSERT, SELECT ON [BangDiem] TO [Sinhvien];
@@ -47,15 +57,4 @@ GRANT INSERT, SELECT ON [BangDiem] TO [Sinhvien];
 -- 3. Cam tuyet doi (DENY) viec sua/xoa tren tat ca cac bang
 DENY UPDATE, DELETE ON [BODE] TO [Sinhvien];
 DENY UPDATE, DELETE ON [BangDiem] TO [Sinhvien];
-GO
-
--- Cap quyen thuc thi SP lay thong tin tai khoan cho PGV va Giangvien
-GRANT EXECUTE ON [dbo].[usp_TaiKhoan_LayThongTin] TO [PGV];
-GRANT EXECUTE ON [dbo].[usp_TaiKhoan_LayThongTin] TO [Giangvien];
-GO
-
-GRANT EXECUTE ON [dbo].[SP_TAOTAIKHOAN] TO [PGV];
-GO
-
-GRANT EXECUTE ON [dbo].[usp_SinhVien_Login] TO [Sinhvien];
 GO
