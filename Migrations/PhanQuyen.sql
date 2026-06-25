@@ -50,11 +50,18 @@ GRANT SELECT ON [Giaovien_Dangky] TO [Sinhvien];
 GRANT SELECT ON [BODE] TO [Sinhvien];
 GRANT SELECT ON [CT_DETHI] TO [Sinhvien];
 
+-- 2. Quyen tren bang thi chinh thuc (chi INSERT va SELECT khi nop bai)
+GRANT SELECT, INSERT ON [BAITHI] TO [Sinhvien];
+GRANT SELECT, INSERT ON [CT_BAITHI] TO [Sinhvien];
 
--- 2. Quyen ghi diem khi thi xong va xem lai diem
+-- 3. Quyen tren bang tam staging (CRUD day du trong qua trinh lam bai)
+GRANT SELECT, INSERT, UPDATE, DELETE ON [BAITHI_TEMP] TO [Sinhvien];
+GRANT SELECT, INSERT, UPDATE, DELETE ON [CT_BAITHI_TEMP] TO [Sinhvien];
+
+-- 4. Quyen ghi diem khi thi xong va xem lai diem
 GRANT INSERT, SELECT ON [BangDiem] TO [Sinhvien];
 
--- 3. Cam tuyet doi (DENY) viec sua/xoa tren tat ca cac bang
+-- 5. Cam tuyet doi (DENY) viec sua/xoa tren cac bang khong duoc phep
 DENY UPDATE, DELETE ON [BODE] TO [Sinhvien];
 DENY UPDATE, DELETE ON [BangDiem] TO [Sinhvien];
 GO

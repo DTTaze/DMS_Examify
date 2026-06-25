@@ -130,7 +130,6 @@ CREATE TABLE dbo.BAITHI (
     LAN            smallint  NOT NULL,
     MALOP          nchar(8)  NOT NULL,
     THOIDIEMBATDAU datetime  NOT NULL DEFAULT GETDATE(),
-    TRANGTHAI      bit       NOT NULL DEFAULT 0, -- 0: dang thi, 1: da nop
 
     CONSTRAINT PK_BAITHI PRIMARY KEY CLUSTERED (MASV ASC, MAMH ASC, LAN ASC)
         WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF,
@@ -166,6 +165,31 @@ CREATE TABLE dbo.CT_BAITHI (
         REFERENCES dbo.BODE(CAUHOI),
 
     CONSTRAINT CK_CT_BAITHI_CAUTRALOI CHECK (CAUTRALOI IN ('A', 'B', 'C', 'D'))
+) ON [PRIMARY]
+GO
+
+-- Bang tam luu bai thi dang lam (staging)
+CREATE TABLE dbo.BAITHI_TEMP (
+    MASV             nchar(8)  NOT NULL,
+    MAMH             nchar(5)  NOT NULL,
+    LAN              smallint  NOT NULL,
+    MALOP            nchar(8)  NOT NULL,
+    THOIDIEMBATDAU   datetime  NOT NULL DEFAULT GETDATE(),
+    THOIGIANCONLAI   int       NOT NULL, -- so giay con lai
+    LANCAPNHATCUOI   datetime  NOT NULL DEFAULT GETDATE(),
+    CONSTRAINT PK_BAITHI_TEMP PRIMARY KEY (MASV, MAMH, LAN)
+) ON [PRIMARY]
+GO
+
+CREATE TABLE dbo.CT_BAITHI_TEMP (
+    MASV      nchar(8)  NOT NULL,
+    MAMH      nchar(5)  NOT NULL,
+    LAN       smallint  NOT NULL,
+    CAUHOI    int       NOT NULL,
+    STT       smallint  NOT NULL,
+    CAUTRALOI char(1)   NULL,
+    CONSTRAINT PK_CT_BAITHI_TEMP PRIMARY KEY (MASV, MAMH, LAN, CAUHOI),
+    CONSTRAINT CK_CT_BAITHI_TEMP_CAUTRALOI CHECK (CAUTRALOI IN ('A', 'B', 'C', 'D'))
 ) ON [PRIMARY]
 GO
 
