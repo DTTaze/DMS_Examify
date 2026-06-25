@@ -82,8 +82,7 @@ SELECT
     dbo.udf_LayHoTen(gv.HO, gv.TEN) AS TenGV
 FROM [dbo].[BODE] b
 JOIN      [dbo].[MONHOC]   mh ON b.MAMH = mh.MAMH
-LEFT JOIN [dbo].[GIAOVIEN] gv ON b.MAGV = gv.MAGV
-WHERE b.TrangThai = 1;
+LEFT JOIN [dbo].[GIAOVIEN] gv ON b.MAGV = gv.MAGV;
 GO
 
 PRINT N'OK: Da tao View vw_BoDeCuaGiaoVien.';
@@ -93,14 +92,6 @@ GO
 -- 4. View vw_GiaoVien_DanhSach
 --    Projection dung chung cho man hinh quan ly giao vien
 -- ------------------------------------------------------------
-IF COL_LENGTH('dbo.GIAOVIEN', 'TrangThai') IS NULL
-BEGIN
-    ALTER TABLE dbo.GIAOVIEN
-    ADD TrangThai BIT NOT NULL
-        CONSTRAINT DF_GIAOVIEN_TrangThai DEFAULT (1);
-END
-GO
-
 CREATE OR ALTER VIEW [dbo].[vw_GiaoVien_DanhSach]
 AS
 SELECT
@@ -110,8 +101,7 @@ SELECT
     gv.SODTLL,
     gv.DIACHI,
     dbo.udf_LayHoTen(gv.HO, gv.TEN) AS HOTEN
-FROM [dbo].[GIAOVIEN] gv
-WHERE gv.TrangThai = 1;
+FROM [dbo].[GIAOVIEN] gv;
 GO
 
 PRINT N'OK: Da tao View vw_GiaoVien_DanhSach.';
@@ -142,8 +132,7 @@ AS
     SELECT
         MALOP,
         TENLOP
-    FROM LOP
-    WHERE TrangThai = 1;
+    FROM LOP;
 GO
 
 GRANT SELECT ON dbo.vw_DanhSachLop TO [PGV];
@@ -163,8 +152,7 @@ AS
     SELECT
         MaMH,
         TenMH
-    FROM MONHOC
-    WHERE TrangThai = 1;
+    FROM MONHOC;
 GO
 
 GRANT SELECT ON dbo.vw_DanhSachMonHoc TO [PGV];
@@ -224,8 +212,7 @@ CREATE OR ALTER VIEW dbo.vw_BangDiem_DanhSachLop AS
 SELECT DISTINCT L.MALOP, L.TENLOP
 FROM LOP L
 INNER JOIN SINHVIEN SV ON L.MALOP = SV.MALOP
-INNER JOIN BANGDIEM BD ON SV.MASV = BD.MASV
-WHERE L.TrangThai = 1 AND SV.TrangThai = 1;
+INNER JOIN BANGDIEM BD ON SV.MASV = BD.MASV;
 GO
 
 GRANT SELECT ON dbo.vw_BangDiem_DanhSachLop TO [PGV];
@@ -244,8 +231,7 @@ CREATE OR ALTER VIEW dbo.vw_BangDiem_MonHocTheoLop AS
 SELECT DISTINCT SV.MALOP, MH.MAMH, MH.TENMH
 FROM BANGDIEM BD
 INNER JOIN SINHVIEN SV ON BD.MASV = SV.MASV
-INNER JOIN MONHOC MH ON BD.MAMH = MH.MAMH
-WHERE SV.TrangThai = 1 AND MH.TrangThai = 1;
+INNER JOIN MONHOC MH ON BD.MAMH = MH.MAMH;
 GO
 
 GRANT SELECT ON dbo.vw_BangDiem_MonHocTheoLop TO [PGV];
@@ -263,8 +249,7 @@ GO
 CREATE OR ALTER VIEW dbo.vw_BangDiem_LanThiTheoLopMon AS
 SELECT DISTINCT SV.MALOP, BD.MAMH, BD.LAN
 FROM BANGDIEM BD
-INNER JOIN SINHVIEN SV ON BD.MASV = SV.MASV
-WHERE SV.TrangThai = 1;
+INNER JOIN SINHVIEN SV ON BD.MASV = SV.MASV;
 GO
 
 GRANT SELECT ON dbo.vw_BangDiem_LanThiTheoLopMon TO [PGV];
