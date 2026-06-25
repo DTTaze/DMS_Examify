@@ -165,12 +165,20 @@
                                 <td class="text-center">
                                     <div class="d-flex gap-2 justify-content-center">
                                         <button type="button" class="btn btn-link text-warning p-0 btn-edit" title="Hiệu chỉnh"><i class="bi bi-pencil-square fs-5"></i></button>
-                                        <button type="button"
-                                                class="btn btn-link p-0 btn-delete @(ch.HasDependencies ? "text-muted" : "text-danger")"
-                                                title="@(ch.HasDependencies ? "Khong the xoa vi cau hoi da co lien ket" : "Xoa")"
-                                                disabled="@ch.HasDependencies">
-                                            <i class="bi bi-trash fs-5"></i>
-                                        </button>
+                                        @if (ch.HasDependencies)
+                                        {
+                                            <span class="d-inline-block" title="Không thể xóa vì câu hỏi đã có liên kết">
+                                                <button type="button" class="btn btn-link p-0 btn-delete text-muted" disabled>
+                                                    <i class="bi bi-trash fs-5"></i>
+                                                </button>
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <button type="button" class="btn btn-link p-0 btn-delete text-danger" title="Xóa">
+                                                <i class="bi bi-trash fs-5"></i>
+                                            </button>
+                                        }
                                     </div>
                                 </td>
                             </tr>

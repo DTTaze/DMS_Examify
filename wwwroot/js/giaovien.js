@@ -18,12 +18,20 @@
     }
 
     function getDeleteButtonHtml(hasDependencies) {
-        const disabledAttr = hasDependencies ? "disabled" : "";
-        const title = hasDependencies ? "Khong the xoa vi giao vien da co lien ket" : "Xoa";
+        const title = hasDependencies ? "Không thể xóa vì giáo viên đã có liên kết" : "Xóa";
         const textClass = hasDependencies ? "text-muted" : "text-danger";
 
+        if (hasDependencies) {
+            return `
+                <span class="d-inline-block" title="${title}">
+                    <button type="button" class="btn btn-link p-0 ${textClass} btn-delete" disabled>
+                        <i class="bi bi-trash-fill"></i>
+                    </button>
+                </span>`;
+        }
+
         return `
-            <button type="button" class="btn btn-link p-0 ${textClass} btn-delete" title="${title}" ${disabledAttr}>
+            <button type="button" class="btn btn-link p-0 ${textClass} btn-delete" title="${title}">
                 <i class="bi bi-trash-fill"></i>
             </button>`;
     }
@@ -308,6 +316,7 @@
 
         const newIdx = newItems.findIndex(x => x.MaGV === id);
         const isNew = newIdx >= 0;
+        const hasDeps = hasTeacherDependencies(selectedRow);
 
         const isHoChanged = d.Ho !== oHo;
         const isTenChanged = d.Ten !== oTen;
@@ -337,9 +346,7 @@
                     <button type="button" class="btn btn-link p-0 text-warning btn-edit" title="Sửa">
                         <i class="bi bi-pencil-fill"></i>
                     </button>
-                    <button type="button" class="btn btn-link p-0 text-danger btn-delete" title="Xóa">
-                        <i class="bi bi-trash-fill"></i>
-                    </button>
+                    ${getDeleteButtonHtml(hasDeps)}
                 </div>
             </td>
         `;

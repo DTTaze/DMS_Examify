@@ -29,12 +29,20 @@
     }
 
     function getDeleteButtonHtml(hasDependencies) {
-        const disabledAttr = hasDependencies ? "disabled" : "";
-        const title = hasDependencies ? "Khong the xoa vi cau hoi da co lien ket" : "Xoa";
+        const title = hasDependencies ? "Không thể xóa vì câu hỏi đã có liên kết" : "Xóa";
         const textClass = hasDependencies ? "text-muted" : "text-danger";
 
+        if (hasDependencies) {
+            return `
+                <span class="d-inline-block" title="${title}">
+                    <button type="button" class="btn btn-link p-0 ${textClass} btn-delete" disabled>
+                        <i class="bi bi-trash-fill"></i>
+                    </button>
+                </span>`;
+        }
+
         return `
-            <button type="button" class="btn btn-link p-0 ${textClass} btn-delete" title="${title}" ${disabledAttr}>
+            <button type="button" class="btn btn-link p-0 ${textClass} btn-delete" title="${title}">
                 <i class="bi bi-trash-fill"></i>
             </button>`;
     }
