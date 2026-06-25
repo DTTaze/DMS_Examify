@@ -1854,19 +1854,18 @@ BEGIN
         RETURN;
     END
 
-    -- Random cau hoi
-    DECLARE @CauHoiRandom TABLE (CAUHOI INT, STT INT);
+    -- Random cau hoi (thu thap CAUHOI truoc, gan STT lien tuc sau)
+    DECLARE @CauHoiRaw TABLE (CAUHOI INT);
     DECLARE @SoCauTrinhDoCao INT;
     DECLARE @SoCauTrinhDoThap INT;
 
     IF @TRINHDO = 'C'
     BEGIN
-        INSERT INTO @CauHoiRandom (CAUHOI, STT)
-        SELECT CAUHOI, ROW_NUMBER() OVER (ORDER BY NEWID())
+        INSERT INTO @CauHoiRaw (CAUHOI)
+        SELECT TOP (@SOCAUTHI) CAUHOI
         FROM dbo.BODE
         WHERE MAMH = @MAMH AND TRINHDO = 'C'
-        ORDER BY NEWID()
-        OFFSET 0 ROWS FETCH NEXT @SOCAUTHI ROWS ONLY;
+        ORDER BY NEWID();
     END
     ELSE
     BEGIN
@@ -1874,32 +1873,35 @@ BEGIN
         SET @SoCauTrinhDoThap = @SOCAUTHI - @SoCauTrinhDoCao;
 
         -- Lay cau trinh do goc
-        INSERT INTO @CauHoiRandom (CAUHOI, STT)
-        SELECT CAUHOI, ROW_NUMBER() OVER (ORDER BY NEWID())
+        INSERT INTO @CauHoiRaw (CAUHOI)
+        SELECT TOP (@SoCauTrinhDoCao) CAUHOI
         FROM dbo.BODE
         WHERE MAMH = @MAMH AND TRINHDO = @TRINHDO
-        ORDER BY NEWID()
-        OFFSET 0 ROWS FETCH NEXT @SoCauTrinhDoCao ROWS ONLY;
+        ORDER BY NEWID();
 
         -- Lay cau trinh do thap hon de bu
         DECLARE @TrinhDoThap CHAR(1) = CASE WHEN @TRINHDO = 'A' THEN 'B' ELSE 'C' END;
-        DECLARE @STTOffset INT = (SELECT ISNULL(MAX(STT), 0) FROM @CauHoiRandom);
 
-        INSERT INTO @CauHoiRandom (CAUHOI, STT)
-        SELECT CAUHOI, @STTOffset + ROW_NUMBER() OVER (ORDER BY NEWID())
+        INSERT INTO @CauHoiRaw (CAUHOI)
+        SELECT TOP (@SoCauTrinhDoThap) CAUHOI
         FROM dbo.BODE
         WHERE MAMH = @MAMH AND TRINHDO = @TrinhDoThap
-          AND CAUHOI NOT IN (SELECT CAUHOI FROM @CauHoiRandom)
-        ORDER BY NEWID()
-        OFFSET 0 ROWS FETCH NEXT @SoCauTrinhDoThap ROWS ONLY;
+          AND CAUHOI NOT IN (SELECT CAUHOI FROM @CauHoiRaw)
+        ORDER BY NEWID();
     END
 
     -- Kiem tra du cau hoi
-    IF (SELECT COUNT(*) FROM @CauHoiRandom) < @SOCAUTHI
+    IF (SELECT COUNT(*) FROM @CauHoiRaw) < @SOCAUTHI
     BEGIN
         SELECT CAST(0 AS BIT) AS IsSuccess, N'Khong du cau hoi trong bo de.' AS ThongBao;
         RETURN;
     END
+
+    -- Gan STT lien tuc 1..N (xao tron thu tu)
+    DECLARE @CauHoiFinal TABLE (CAUHOI INT, STT INT);
+    INSERT INTO @CauHoiFinal (CAUHOI, STT)
+    SELECT CAUHOI, ROW_NUMBER() OVER (ORDER BY NEWID())
+    FROM @CauHoiRaw;
 
     -- Tao phien thi trong bang tam
     BEGIN TRY
@@ -1910,7 +1912,7 @@ BEGIN
 
         INSERT INTO dbo.CT_BAITHI_TEMP (MASV, MAMH, LAN, CAUHOI, STT, CAUTRALOI)
         SELECT @MASV, @MAMH, @LAN, CAUHOI, STT, NULL
-        FROM @CauHoiRandom;
+        FROM @CauHoiFinal;
 
         COMMIT TRAN;
 
@@ -1993,9 +1995,14 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    -- Reset moc thoi gian khi resume (bo qua thoi gian offline)
+    -- Tru thoi gian da troi ke tu lan cap nhat cuoi, roi reset moc
     UPDATE dbo.BAITHI_TEMP
-    SET LANCAPNHATCUOI = GETDATE()
+    SET THOIGIANCONLAI = CASE
+            WHEN THOIGIANCONLAI - DATEDIFF(SECOND, LANCAPNHATCUOI, GETDATE()) > 0
+            THEN THOIGIANCONLAI - DATEDIFF(SECOND, LANCAPNHATCUOI, GETDATE())
+            ELSE 0
+        END,
+        LANCAPNHATCUOI = GETDATE()
     WHERE MASV = @MASV AND MAMH = @MAMH AND LAN = @LAN;
 
     -- Tra ve noi dung bai thi
