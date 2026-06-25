@@ -8,8 +8,22 @@ namespace DMS_Examify.Controllers
     {
         public IActionResult Index()
         {
-            ViewData["Title"] = "Dashboard";
-            return View();
+            var role = HttpContext.Session.GetString("UserRole");
+
+            if (role == "PGV")
+            {
+                return RedirectToAction("Index", "MonHoc");
+            }
+            if (role == "Giangvien")
+            {
+                return RedirectToAction("Index", "BoDe");
+            }
+            if (role == "Sinhvien")
+            {
+                return RedirectToAction("Index", "Thi");
+            }
+
+            return RedirectToAction("Login", "Auth");
         }
 
         public IActionResult Privacy()
