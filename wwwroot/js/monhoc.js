@@ -120,6 +120,11 @@
         redoHistoryStack = [];
         updateUndoRedoButtonStates();
 
+        pendingNewItems = [];
+        pendingUpdatedItems = [];
+        pendingDeletedItems = [];
+        updateSaveButtonState();
+
         const keyword = dom.txtTim.value.trim();
         
         fetch(`/MonHoc/Search?keyword=${encodeURIComponent(keyword)}`)
@@ -196,9 +201,11 @@
                 <button type="button" class="btn btn-link text-warning p-0 me-2 btn-edit" title="Hiệu chỉnh">
                     <i class="bi bi-pencil-square fs-5"></i>
                 </button>
-                <button type="button" class="btn btn-link text-danger p-0 btn-delete" title="Xóa">
-                    <i class="bi bi-trash fs-5"></i>
-                </button>
+                <span class="d-inline-block" tabindex="0" title="Xóa">
+                    <button type="button" class="btn btn-link text-danger p-0 btn-delete">
+                        <i class="bi bi-trash fs-5"></i>
+                    </button>
+                </span>
             </td>
         `;
         AppCommon.setChangeState(row, "new");
@@ -1118,9 +1125,11 @@
                     <button type="button" class="btn btn-link text-warning p-0 me-2 btn-edit" title="Hiệu chỉnh">
                         <i class="bi bi-pencil-square fs-5"></i>
                     </button>
-                    <button type="button" class="btn btn-link text-danger p-0 btn-delete" title="Xóa">
-                        <i class="bi bi-trash fs-5"></i>
-                    </button>
+                    <span class="d-inline-block" tabindex="0" title="Xóa">
+                        <button type="button" class="btn btn-link text-danger p-0 btn-delete">
+                            <i class="bi bi-trash fs-5"></i>
+                        </button>
+                    </span>
                 </td>
             `;
             AppCommon.setChangeState(row, "new");
