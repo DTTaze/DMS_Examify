@@ -28,10 +28,12 @@
 
     <!-- Progress dots -->
     <div class="exam-progress mb-4 animate-in animate-in-delay-1">
-        @foreach (var ch in Model.DanhSachCauHoi)
+        @for (int i = 0; i < Model.DanhSachCauHoi.Count; i++)
         {
+            var ch = Model.DanhSachCauHoi[i];
+            var isFirst = (i == 0);
             var isAnswered = !string.IsNullOrWhiteSpace(ch.TraLoiSV);
-            <div class="q-dot @(ch.STT == 1 ? "current" : "") @(isAnswered ? "answered" : "")"
+            <div class="q-dot @(isFirst ? "current" : "") @(isAnswered ? "answered" : "")"
                  onclick="goToQuestion(@ch.STT)" id="dot-@ch.STT">
                 @ch.STT
             </div>
@@ -39,10 +41,12 @@
     </div>
 
     <!-- Câu hỏi -->
-    @foreach (var ch in Model.DanhSachCauHoi)
+    @for (int i = 0; i < Model.DanhSachCauHoi.Count; i++)
     {
+        var ch = Model.DanhSachCauHoi[i];
+        var isFirst = (i == 0);
         <div class="question-card animate-in animate-in-delay-2" id="q-@ch.STT"
-             style="@(ch.STT != 1 ? "display:none;" : "")" data-cauhoi="@ch.CauHoi">
+             style="@(isFirst ? "" : "display:none;")" data-cauhoi="@ch.CauHoi">
             <div class="q-number">Câu @ch.STT / @Model.DanhSachCauHoi.Count — Câu số @ch.CauHoi trong bộ đề</div>
             <div class="q-text">@ch.NoiDung</div>
 
