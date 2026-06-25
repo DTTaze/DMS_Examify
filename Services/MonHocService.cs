@@ -160,12 +160,15 @@ namespace DMS_Examify.Services
 
                 foreach (var item in items)
                 {
-                    if (!string.IsNullOrWhiteSpace(item.MaMH) || !string.IsNullOrWhiteSpace(item.TenMH))
+                    var code = item.MaMH?.Trim() ?? string.Empty;
+                    var name = item.TenMH?.Trim() ?? string.Empty;
+                    
+                    if (code.Length <= 5 && name.Length <= 40)
                     {
-                        dt.Rows.Add(
-                            item.MaMH?.Trim() ?? string.Empty,
-                            item.TenMH?.Trim() ?? string.Empty
-                        );
+                        if (!string.IsNullOrWhiteSpace(code) || !string.IsNullOrWhiteSpace(name))
+                        {
+                            dt.Rows.Add(code, name);
+                        }
                     }
                 }
 

@@ -41,8 +41,8 @@ namespace DMS_Examify.Services
         {
             using var conn = _connectionFactory.CreateConnection();
             using var cmd = CreateStoredProcedureCommand(StoredProcedures.Insert, conn);
-            cmd.Parameters.Add("@MALOP", SqlDbType.NChar, 8).Value = lop.MaLop;
-            cmd.Parameters.Add("@TENLOP", SqlDbType.NVarChar, 40).Value = lop.TenLop;
+            cmd.Parameters.Add("@MALOP", SqlDbType.NChar, 8).Value = lop.MaLop.Trim().ToUpperInvariant();
+            cmd.Parameters.Add("@TENLOP", SqlDbType.NVarChar, 40).Value = lop.TenLop.Trim();
             cmd.ExecuteNonQuery();
         }
 
@@ -50,17 +50,24 @@ namespace DMS_Examify.Services
         {
             using var conn = _connectionFactory.CreateConnection();
             using var cmd = CreateStoredProcedureCommand(StoredProcedures.Update, conn);
-            cmd.Parameters.Add("@MALOP", SqlDbType.NChar, 8).Value = lop.MaLop;
-            cmd.Parameters.Add("@TENLOP", SqlDbType.NVarChar, 40).Value = lop.TenLop;
+            cmd.Parameters.Add("@MALOP", SqlDbType.NChar, 8).Value = lop.MaLop.Trim().ToUpperInvariant();
+            cmd.Parameters.Add("@TENLOP", SqlDbType.NVarChar, 40).Value = lop.TenLop.Trim();
             cmd.ExecuteNonQuery();
         }
 
         public void Delete(string maLop)
         {
-            using var conn = _connectionFactory.CreateConnection();
-            using var cmd = CreateStoredProcedureCommand(StoredProcedures.Delete, conn);
-            cmd.Parameters.Add("@MALOP", SqlDbType.NChar, 8).Value = maLop;
-            cmd.ExecuteNonQuery();
+            try
+            {
+                using var conn = _connectionFactory.CreateConnection();
+                using var cmd = CreateStoredProcedureCommand(StoredProcedures.Delete, conn);
+                cmd.Parameters.Add("@MALOP", SqlDbType.NChar, 8).Value = maLop.Trim().ToUpperInvariant();
+                cmd.ExecuteNonQuery();
+            }
+            catch (SqlException ex) when (ex.Number == 547)
+            {
+                throw new InvalidOperationException("Không thể xóa lớp học vì đã có sinh viên hoặc lịch đăng ký thi liên quan.", ex);
+            }
         }
 
         public List<Lop> Search(string keyword)
@@ -104,7 +111,7 @@ namespace DMS_Examify.Services
             }
             using var conn = _connectionFactory.CreateConnection();
             using var cmd = CreateStoredProcedureCommand(StoredProcedures.ExistsMaLop, conn);
-            cmd.Parameters.Add("@MALOP", SqlDbType.NChar, 8).Value = maLop.Trim();
+            cmd.Parameters.Add("@MALOP", SqlDbType.NChar, 8).Value = maLop.Trim().ToUpperInvariant();
             return (int)cmd.ExecuteScalar() > 0;
         }
 
@@ -129,7 +136,7 @@ namespace DMS_Examify.Services
             using var conn = _connectionFactory.CreateConnection();
             using var cmd = CreateStoredProcedureCommand(StoredProcedures.ExistsTenLopExcludingMaLop, conn);
             cmd.Parameters.Add("@TENLOP", SqlDbType.NVarChar, 40).Value = tenLop.Trim();
-            cmd.Parameters.Add("@MALOP", SqlDbType.NChar, 8).Value = maLop.Trim();
+            cmd.Parameters.Add("@MALOP", SqlDbType.NChar, 8).Value = maLop.Trim().ToUpperInvariant();
             return (int)cmd.ExecuteScalar() > 0;
         }
         public bool CheckHasDependencies(string maLop)
@@ -147,7 +154,7 @@ namespace DMS_Examify.Services
                     SELECT 1 FROM dbo.GIAOVIEN_DANGKY WHERE MALOP = @MaLop
                 )";
             using var cmd = new SqlCommand(sql, conn);
-            cmd.Parameters.Add("@MaLop", SqlDbType.NChar, 8).Value = maLop.Trim();
+            cmd.Parameters.Add("@MaLop", SqlDbType.NChar, 8).Value = maLop.Trim().ToUpperInvariant();
 
             var result = cmd.ExecuteScalar();
             return result != null && result != DBNull.Value;

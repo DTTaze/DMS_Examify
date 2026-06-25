@@ -311,8 +311,8 @@
         li.innerHTML = `
             <div class="d-flex justify-content-between align-items-center">
                 <div>
-                    <span class="fw-semibold text-dark">${ten}</span>
-                    <span class="badge bg-light text-secondary border border-light ms-2">${ma}</span>
+                    <span class="fw-semibold text-dark">${AppCommon.escapeHtml(ten)}</span>
+                    <span class="badge bg-light text-secondary border border-light ms-2">${AppCommon.escapeHtml(ma)}</span>
                 </div>
                 <div class="d-flex gap-2">
                     <button type="button" class="btn btn-link p-0 text-warning" onclick="editLopClick(event, this.closest('li'))" title="Sửa">
@@ -358,9 +358,9 @@
         selectedLopRow.innerHTML = `
             <div class="d-flex justify-content-between align-items-center">
                 <div>
-                    <span class="fw-semibold text-dark">${ten}</span>
-                    ${isTenChanged ? `<span class="original-val text-muted small ms-2" style="font-size: 0.8rem;">(Gốc: <span class="text-decoration-line-through">${originalTenLop}</span>)</span>` : ''}
-                    <span class="badge bg-light text-secondary border border-light ms-2">${oldMa}</span>
+                    <span class="fw-semibold text-dark">${AppCommon.escapeHtml(ten)}</span>
+                    ${isTenChanged ? `<span class="original-val text-muted small ms-2" style="font-size: 0.8rem;">(Gốc: <span class="text-decoration-line-through">${AppCommon.escapeHtml(originalTenLop)}</span>)</span>` : ''}
+                    <span class="badge bg-light text-secondary border border-light ms-2">${AppCommon.escapeHtml(oldMa)}</span>
                 </div>
                 <div class="d-flex gap-2">
                     <button type="button" class="btn btn-link p-0 text-warning" onclick="editLopClick(event, this.closest('li'))" title="Sửa">
@@ -584,16 +584,16 @@
 
         if (maLop === "") {
             hasClientError = true;
-        } else if (maLop.length > 20) {
-            dom.errMaLop.textContent = "Mã lớp tối đa 20 ký tự.";
+        } else if (maLop.length > 8) {
+            dom.errMaLop.textContent = "Mã lớp tối đa 8 ký tự.";
             dom.txtMaLop.classList.add("is-invalid");
             hasClientError = true;
         }
 
         if (tenLop === "") {
             hasClientError = true;
-        } else if (tenLop.length > 50) {
-            dom.errTenLop.textContent = "Tên lớp tối đa 50 ký tự.";
+        } else if (tenLop.length > 40) {
+            dom.errTenLop.textContent = "Tên lớp tối đa 40 ký tự.";
             dom.txtTenLop.classList.add("is-invalid");
             hasClientError = true;
         }
@@ -880,11 +880,11 @@
                 const disableDel = sv.hasDependencies ? 'disabled style="pointer-events:none;"' : '';
                 const titleDel = sv.hasDependencies ? 'Không thể xóa vì đã có dữ liệu liên quan' : 'Xóa';
                 row.innerHTML = `
-                    <td>${sv.maSV}</td>
-                    <td>${sv.ho}</td>
-                    <td>${sv.ten}</td>
+                    <td>${AppCommon.escapeHtml(sv.maSV)}</td>
+                    <td>${AppCommon.escapeHtml(sv.ho)}</td>
+                    <td>${AppCommon.escapeHtml(sv.ten)}</td>
                     <td>${sv.ngaySinh ? new Date(sv.ngaySinh).toLocaleDateString('vi-VN') : ""}</td>
-                    <td>${sv.diaChi}</td>
+                    <td>${AppCommon.escapeHtml(sv.diaChi)}</td>
                     <td class="text-center">
                         <div class="d-flex gap-2 justify-content-center">
                             <button type="button" class="btn btn-link p-0 text-warning" onclick="editSVClick(event, this.closest('tr'))" title="Sửa">
@@ -935,11 +935,11 @@
         row.dataset.originalMatkhau = "";
 
         row.innerHTML = `
-            <td>${d.MaSV}</td>
-            <td>${d.Ho}</td>
-            <td>${d.Ten}</td>
+            <td>${AppCommon.escapeHtml(d.MaSV)}</td>
+            <td>${AppCommon.escapeHtml(d.Ho)}</td>
+            <td>${AppCommon.escapeHtml(d.Ten)}</td>
             <td>${d.NgaySinh ? new Date(d.NgaySinh).toLocaleDateString('vi-VN') : ""}</td>
-            <td>${d.DiaChi}</td>
+            <td>${AppCommon.escapeHtml(d.DiaChi)}</td>
             <td class="text-center">
                 <div class="d-flex gap-2 justify-content-center">
                     <button type="button" class="btn btn-link p-0 text-warning" onclick="editSVClick(event, this.closest('tr'))" title="Sửa">
@@ -993,22 +993,22 @@
         const titleDel = oHasDep ? 'Không thể xóa vì đã có dữ liệu liên quan' : 'Xóa';
 
         selectedRow.innerHTML = `
-            <td>${id}</td>
+            <td>${AppCommon.escapeHtml(id)}</td>
             <td class="${(!isNew && isHoChanged) ? 'cell-edited' : ''}">
-                ${d.Ho}
-                ${(!isNew && isHoChanged) ? `<div class="original-val text-muted small mt-1" style="font-size: 0.8rem;">(Gốc: <span class="text-decoration-line-through">${oHo}</span>)</div>` : ''}
+                ${AppCommon.escapeHtml(d.Ho)}
+                ${(!isNew && isHoChanged) ? `<div class="original-val text-muted small mt-1" style="font-size: 0.8rem;">(Gốc: <span class="text-decoration-line-through">${AppCommon.escapeHtml(oHo)}</span>)</div>` : ''}
             </td>
             <td class="${(!isNew && isTenChanged) ? 'cell-edited' : ''}">
-                ${d.Ten}
-                ${(!isNew && isTenChanged) ? `<div class="original-val text-muted small mt-1" style="font-size: 0.8rem;">(Gốc: <span class="text-decoration-line-through">${oTen}</span>)</div>` : ''}
+                ${AppCommon.escapeHtml(d.Ten)}
+                ${(!isNew && isTenChanged) ? `<div class="original-val text-muted small mt-1" style="font-size: 0.8rem;">(Gốc: <span class="text-decoration-line-through">${AppCommon.escapeHtml(oTen)}</span>)</div>` : ''}
             </td>
             <td class="${(!isNew && isNgaySinhChanged) ? 'cell-edited' : ''}">
-                ${nsFormatted}
-                ${(!isNew && isNgaySinhChanged) ? `<div class="original-val text-muted small mt-1" style="font-size: 0.8rem;">(Gốc: <span class="text-decoration-line-through">${oNsFormatted}</span>)</div>` : ''}
+                ${AppCommon.escapeHtml(nsFormatted)}
+                ${(!isNew && isNgaySinhChanged) ? `<div class="original-val text-muted small mt-1" style="font-size: 0.8rem;">(Gốc: <span class="text-decoration-line-through">${AppCommon.escapeHtml(oNsFormatted)}</span>)</div>` : ''}
             </td>
             <td class="${(!isNew && isDiaChiChanged) ? 'cell-edited' : ''}">
-                ${d.DiaChi}
-                ${(!isNew && isDiaChiChanged) ? `<div class="original-val text-muted small mt-1" style="font-size: 0.8rem;">(Gốc: <span class="text-decoration-line-through">${oDiaChi}</span>)</div>` : ''}
+                ${AppCommon.escapeHtml(d.DiaChi)}
+                ${(!isNew && isDiaChiChanged) ? `<div class="original-val text-muted small mt-1" style="font-size: 0.8rem;">(Gốc: <span class="text-decoration-line-through">${AppCommon.escapeHtml(oDiaChi)}</span>)</div>` : ''}
             </td>
             <td class="text-center">
                 <div class="d-flex gap-2 justify-content-center">
@@ -1207,8 +1207,8 @@
         }
         if (!d.DiaChi) {
             hasClientError = true;
-        } else if (d.DiaChi.length > 40) {
-            dom.errDiaChi.textContent = "Địa chỉ tối đa 40 ký tự.";
+        } else if (d.DiaChi.length > 100) {
+            dom.errDiaChi.textContent = "Địa chỉ tối đa 100 ký tự.";
             dom.txtDiaChi.classList.add("is-invalid");
             hasClientError = true;
         }
@@ -1545,8 +1545,8 @@
                 error = "Họ tối đa 40 ký tự";
             } else if (ten.length > 10) {
                 error = "Tên tối đa 10 ký tự";
-            } else if (diaChi.length > 40) {
-                error = "Địa chỉ tối đa 40 ký tự";
+            } else if (diaChi.length > 100) {
+                error = "Địa chỉ tối đa 100 ký tự";
             } else {
                 const idUpper = maSV.toUpperCase();
 
@@ -1700,7 +1700,7 @@
                     <input type="text"
                            class="form-control form-control-sm import-edit-input"
                            value="${AppCommon.escapeHtml(row.diaChi)}"
-                           maxlength="40"
+                           maxlength="100"
                            placeholder="Địa chỉ"
                            data-import-index="${row.index}"
                            data-import-field="diaChi" />
@@ -1785,11 +1785,11 @@
             row.dataset.matkhau = item.MatKhau;
 
             row.innerHTML = `
-                <td>${item.MaSV}</td>
-                <td>${item.Ho}</td>
-                <td>${item.Ten}</td>
+                <td>${AppCommon.escapeHtml(item.MaSV)}</td>
+                <td>${AppCommon.escapeHtml(item.Ho)}</td>
+                <td>${AppCommon.escapeHtml(item.Ten)}</td>
                 <td>${item.NgaySinh ? new Date(item.NgaySinh).toLocaleDateString('vi-VN') : ""}</td>
-                <td>${item.DiaChi}</td>
+                <td>${AppCommon.escapeHtml(item.DiaChi)}</td>
                 <td class="text-center">
                     <div class="d-flex gap-2 justify-content-center">
                         <button type="button" class="btn btn-link p-0 text-warning" onclick="editSVClick(event, this.closest('tr'))" title="Sửa">
