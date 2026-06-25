@@ -215,6 +215,11 @@ GO
 CREATE NONCLUSTERED INDEX [IX_GIAOVIEN_DANGKY_MAGV] ON [dbo].[GIAOVIEN_DANGKY] ([MAGV] ASC)
 INCLUDE ([MAMH], [MALOP], [LAN]);
 
+CREATE NONCLUSTERED INDEX [IX_BANGDIEM_MAMH_LAN]
+ON [dbo].[BANGDIEM] ([MAMH] ASC, [LAN] ASC)
+INCLUDE ([MASV], [DIEM]);
+GO
+
 -- =============================================
 -- 4. INSERT DATA
 -- =============================================
