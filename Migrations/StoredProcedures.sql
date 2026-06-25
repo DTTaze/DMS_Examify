@@ -68,35 +68,163 @@ SET QUOTED_IDENTIFIER ON
 GO
 
 CREATE OR ALTER PROCEDURE [dbo].[SP_TAOTAIKHOAN]
-    @LGNAME  VARCHAR(50),
-    @PASS    VARCHAR(50),
+    @LGNAME   VARCHAR(50),
+    @PASS     VARCHAR(50),
     @USERNAME VARCHAR(50),
-    @ROLE    VARCHAR(50)
+    @ROLE     VARCHAR(50)
 AS
 BEGIN
-    IF EXISTS (SELECT * FROM sys.server_principals WHERE name = @LGNAME)
-        RETURN 1;
+    SET NOCOUNT ON;
 
-    IF EXISTS (SELECT * FROM sys.database_principals WHERE name = @USERNAME)
+    DECLARE @result INT;
+    DECLARE @Step NVARCHAR(200);
+
+    -- Trim khoảng trắng đầu cuối
+    SET @LGNAME   = LTRIM(RTRIM(@LGNAME));
+    SET @PASS     = LTRIM(RTRIM(@PASS));
+    SET @USERNAME = LTRIM(RTRIM(@USERNAME));
+    SET @ROLE     = LTRIM(RTRIM(@ROLE));
+
+    -- Kiểm tra login đã tồn tại chưa
+    IF EXISTS (
+        SELECT 1
+        FROM master.dbo.syslogins
+        WHERE name = @LGNAME
+    )
+    BEGIN
+        RAISERROR(N'Login name bị trùng', 16, 1);
+        RETURN 1;
+    END
+
+    -- Kiểm tra database user đã tồn tại chưa
+    IF EXISTS (
+        SELECT 1
+        FROM sys.sysusers
+        WHERE name = @USERNAME
+    )
+    BEGIN
+        RAISERROR(N'User name bị trùng', 16, 1);
         RETURN 2;
+    END
+
+    -- Kiểm tra role có tồn tại không
+    IF NOT EXISTS (
+        SELECT 1
+        FROM sys.sysusers
+        WHERE name = @ROLE
+          AND issqlrole = 1
+    )
+    BEGIN
+        RAISERROR(N'Role không tồn tại trong database', 16, 1);
+        RETURN 4;
+    END
 
     BEGIN TRY
-        EXEC sp_addlogin @loginame = @LGNAME, @passwd = @PASS;
+        -- ----------------------------------------------------
+        -- BƯỚC 1: Tạo login bằng sp_addlogin
+        -- ----------------------------------------------------
+        SET @Step = N'1. Tạo login bằng sp_addlogin';
 
-        EXEC sp_adduser @loginame = @LGNAME, @name_in_db = @USERNAME;
+        EXEC @result = sp_addlogin 
+            @loginame = @LGNAME,
+            @passwd   = @PASS,
+            @defdb    = 'THITRACNGHIEM';
 
-        EXEC sp_addrolemember @rolename = @ROLE, @membername = @USERNAME;
+        IF @result <> 0
+        BEGIN
+            RAISERROR(N'Tạo login thất bại', 16, 1);
+            RETURN 1;
+        END
+
+        -- ----------------------------------------------------
+        -- BƯỚC 2: Tạo database user bằng sp_grantdbaccess
+        -- ----------------------------------------------------
+        SET @Step = N'2. Tạo database user bằng sp_grantdbaccess';
+
+        EXEC @result = sp_grantdbaccess 
+            @loginame   = @LGNAME,
+            @name_in_db = @USERNAME;
+
+        IF @result <> 0
+        BEGIN
+            EXEC sp_droplogin @LGNAME;
+            RAISERROR(N'Tạo database user thất bại hoặc user name bị trùng', 16, 1);
+            RETURN 2;
+        END
+
+        -- ----------------------------------------------------
+        -- BƯỚC 3: Add user vào database role
+        -- ----------------------------------------------------
+        SET @Step = N'3. Add user vào database role';
+
+        EXEC @result = sp_addrolemember 
+            @rolename   = @ROLE,
+            @membername = @USERNAME;
+
+        IF @result <> 0
+        BEGIN
+            EXEC sp_dropuser @USERNAME;
+            EXEC sp_droplogin @LGNAME;
+            RAISERROR(N'Add user vào role thất bại', 16, 1);
+            RETURN 3;
+        END
+
+        -- ----------------------------------------------------
+        -- BƯỚC 4: Add login vào securityadmin (nếu role là PGV)
+        -- ----------------------------------------------------
+        IF @ROLE = 'PGV'
+        BEGIN
+            SET @Step = N'4. Add login vào securityadmin';
+
+            EXEC @result = sp_addsrvrolemember 
+                @loginame = @LGNAME,
+                @rolename = 'securityadmin';
+
+            IF @result <> 0
+            BEGIN
+                EXEC sp_dropuser @USERNAME;
+                EXEC sp_droplogin @LGNAME;
+                RAISERROR(N'Add login vào securityadmin thất bại', 16, 1);
+                RETURN 5;
+            END
+        END
 
         RETURN 0;
     END TRY
     BEGIN CATCH
-        IF EXISTS (SELECT * FROM sys.server_principals WHERE name = @LGNAME)
-            EXEC sp_droplogin @loginame = @LGNAME;
+        DECLARE @ErrorMessage NVARCHAR(4000);
 
+        SET @ErrorMessage = N'Lỗi tại bước: ' + ISNULL(@Step, N'Không xác định')
+                          + N'. Chi tiết: ' + ERROR_MESSAGE();
+
+        -- Cleanup: xóa user trước, rồi mới xóa login
+        BEGIN TRY
+            IF EXISTS (
+                SELECT 1
+                FROM sys.sysusers
+                WHERE name = @USERNAME
+            )
+            BEGIN
+                EXEC sp_dropuser @USERNAME;
+            END
+
+            IF EXISTS (
+                SELECT 1
+                FROM master.dbo.syslogins
+                WHERE name = @LGNAME
+            )
+            BEGIN
+                EXEC sp_droplogin @LGNAME;
+            END
+        END TRY
+        BEGIN CATCH
+            -- Không để lỗi cleanup che lỗi gốc
+        END CATCH
+
+        RAISERROR(@ErrorMessage, 16, 1);
         RETURN 3;
     END CATCH
 END
-GO
 
 GRANT EXECUTE ON [dbo].[SP_TAOTAIKHOAN] TO [PGV];
 
