@@ -13,6 +13,7 @@ namespace DMS_Examify.Models
         [Required(ErrorMessage = "Tên giáo viên không được để trống.")]
         public string Ten { get; set; } = "";
 
+        [RegularExpression(@"^(0[35789]\d{8}|02\d{9})?$", ErrorMessage = "Số điện thoại không hợp lệ.")]
         public string SoDTLL { get; set; } = "";
         public string DiaChi { get; set; } = "";
     }

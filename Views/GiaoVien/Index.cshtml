@@ -35,7 +35,7 @@
                 <div class="row mb-3">
                     <div class="col-md-4">
                         <label class="form-label fw-medium">Số điện thoại liên lạc</label>
-                        <input id="txtSoDTLL" class="form-control shadow-none" placeholder="Nhập số điện thoại..." maxlength="15" />
+                        <input id="txtSoDTLL" class="form-control shadow-none" placeholder="Nhập số điện thoại..." maxlength="15" pattern="^(0[35789]\d{8}|02\d{9})?$" title="Số điện thoại phải bắt đầu bằng 03, 05, 07, 08, 09 (10 số) hoặc 02 (11 số)" />
                         <span id="errSoDTLL" class="text-danger small mt-1 d-block"></span>
                     </div>
                     <div class="col-md-8">

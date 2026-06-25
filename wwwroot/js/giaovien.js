@@ -531,10 +531,13 @@
             dom.txtTenGV.classList.add("is-invalid");
             hasClientError = true;
         }
-        if (d.SoDTLL && d.SoDTLL.length > 15) {
-            dom.errSoDTLL.textContent = "Số điện thoại tối đa 15 ký tự.";
-            dom.txtSoDTLL.classList.add("is-invalid");
-            hasClientError = true;
+        if (d.SoDTLL) {
+            const phoneRegex = /^(0[35789]\d{8}|02\d{9})$/;
+            if (!phoneRegex.test(d.SoDTLL)) {
+                dom.errSoDTLL.textContent = "Số điện thoại không hợp lệ (phải bắt đầu bằng 03, 05, 07, 08, 09 với 10 chữ số, hoặc 02 với 11 chữ số).";
+                dom.txtSoDTLL.classList.add("is-invalid");
+                hasClientError = true;
+            }
         }
         if (d.DiaChi && d.DiaChi.length > 40) {
             dom.errDiaChiGV.textContent = "Địa chỉ tối đa 40 ký tự.";
@@ -818,8 +821,8 @@
                 error = "Họ tối đa 50 ký tự";
             } else if (ten.length > 10) {
                 error = "Tên tối đa 10 ký tự";
-            } else if (soDTLL.length > 15) {
-                error = "Số ĐT tối đa 15 ký tự";
+            } else if (soDTLL !== "" && !/^(0[35789]\d{8}|02\d{9})$/.test(soDTLL)) {
+                error = "Số ĐT không hợp lệ (10 số di động hoặc 11 số bàn)";
             } else if (diaChi.length > 40) {
                 error = "Địa chỉ tối đa 40 ký tự";
             } else {
