@@ -2242,3 +2242,188 @@ GO
 GRANT EXECUTE ON [dbo].[usp_LayDanhSachQuyen_TaoTaiKhoan] TO [PGV];
 GRANT EXECUTE ON [dbo].[usp_LayDanhSachQuyen_TaoTaiKhoan] TO [Giangvien];
 GO
+
+-- ============================================================
+-- usp_LayDanhSachBaiThiCuaSV
+-- Lay danh sach cac bai thi da nop cua 1 sinh vien.
+-- Dung cho trang Ket Qua (Sinh vien).
+-- ============================================================
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_LayDanhSachBaiThiCuaSV
+    @MASV NCHAR(8)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT
+        bt.MAMH,
+        mh.TENMH,
+        bt.LAN,
+        bd.NGAYTHI,
+        bd.DIEM,
+        bt.MALOP,
+        l.TENLOP,
+        gvdk.TRINHDO,
+        gvdk.SOCAUTHI
+    FROM dbo.BAITHI bt
+    JOIN dbo.MONHOC mh ON bt.MAMH = mh.MAMH
+    JOIN dbo.LOP l ON bt.MALOP = l.MALOP
+    JOIN dbo.BANGDIEM bd ON bd.MASV = bt.MASV
+                         AND bd.MAMH = bt.MAMH
+                         AND bd.LAN  = bt.LAN
+    JOIN dbo.GIAOVIEN_DANGKY gvdk ON gvdk.MAMH  = bt.MAMH
+                                  AND gvdk.MALOP = bt.MALOP
+                                  AND gvdk.LAN   = bt.LAN
+    WHERE bt.MASV = @MASV
+    ORDER BY bd.NGAYTHI DESC, bt.MAMH;
+END
+GO
+
+GRANT EXECUTE ON dbo.usp_LayDanhSachBaiThiCuaSV TO [Sinhvien];
+GO
+
+PRINT N'OK: usp_LayDanhSachBaiThiCuaSV da san sang.';
+GO
+
+-- ============================================================
+-- usp_LayChiTietBaiThi
+-- Lay chi tiet tung cau hoi cua 1 bai thi da nop.
+-- Tra ve: STT, CAUHOI, NOIDUNG, A, B, C, D, CAUTRALOI, DAP_AN
+-- ============================================================
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_LayChiTietBaiThi
+    @MASV NCHAR(8),
+    @MAMH NCHAR(5),
+    @LAN  SMALLINT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT
+        ct.STT,
+        ct.CAUHOI,
+        bd.NOIDUNG,
+        bd.A,
+        bd.B,
+        bd.C,
+        bd.D,
+        ct.CAUTRALOI,
+        bd.DAP_AN
+    FROM dbo.CT_BAITHI ct
+    JOIN dbo.BODE bd ON ct.CAUHOI = bd.CAUHOI
+    WHERE ct.MASV = @MASV
+      AND ct.MAMH = @MAMH
+      AND ct.LAN  = @LAN
+    ORDER BY ct.STT;
+END
+GO
+
+GRANT EXECUTE ON dbo.usp_LayChiTietBaiThi TO [Sinhvien];
+GRANT EXECUTE ON dbo.usp_LayChiTietBaiThi TO [Giangvien];
+GRANT EXECUTE ON dbo.usp_LayChiTietBaiThi TO [PGV];
+GO
+
+PRINT N'OK: usp_LayChiTietBaiThi da san sang.';
+GO
+
+-- ============================================================
+-- usp_LayDanhSachDeThiChoGV
+-- Lay danh sach de thi ma giang vien da dang ky.
+-- Neu @MAGV = NULL (PGV) thi tra ve tat ca de thi.
+-- Kem so luong SV da thi.
+-- ============================================================
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_LayDanhSachDeThiChoGV
+    @MAGV NCHAR(8) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT
+        gvdk.MAMH,
+        mh.TENMH,
+        gvdk.MALOP,
+        l.TENLOP,
+        gvdk.LAN,
+        gvdk.TRINHDO,
+        gvdk.SOCAUTHI,
+        gvdk.THOIGIAN,
+        gvdk.NGAYTHI,
+        gvdk.MAGV,
+        ISNULL(svCount.SoSVDaThi, 0) AS SoSVDaThi
+    FROM dbo.GIAOVIEN_DANGKY gvdk
+    JOIN dbo.MONHOC mh ON gvdk.MAMH = mh.MAMH
+    JOIN dbo.LOP l ON gvdk.MALOP = l.MALOP
+    LEFT JOIN (
+        SELECT MAMH, MALOP, LAN, COUNT(*) AS SoSVDaThi
+        FROM dbo.BAITHI
+        GROUP BY MAMH, MALOP, LAN
+    ) svCount ON svCount.MAMH  = gvdk.MAMH
+             AND svCount.MALOP = gvdk.MALOP
+             AND svCount.LAN   = gvdk.LAN
+    WHERE @MAGV IS NULL OR gvdk.MAGV = @MAGV
+    ORDER BY gvdk.NGAYTHI DESC, gvdk.MAMH, gvdk.MALOP, gvdk.LAN;
+END
+GO
+
+GRANT EXECUTE ON dbo.usp_LayDanhSachDeThiChoGV TO [Giangvien];
+GRANT EXECUTE ON dbo.usp_LayDanhSachDeThiChoGV TO [PGV];
+GO
+
+PRINT N'OK: usp_LayDanhSachDeThiChoGV da san sang.';
+GO
+
+-- ============================================================
+-- usp_LayKetQuaSVTheoDeThi
+-- Lay danh sach ket qua cac SV da thi 1 de thi cu the.
+-- Dung cho GV/PGV xem ket qua theo de thi.
+-- ============================================================
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_LayKetQuaSVTheoDeThi
+    @MAMH  NCHAR(5),
+    @MALOP NCHAR(8),
+    @LAN   SMALLINT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT
+        sv.MASV,
+        sv.HO,
+        sv.TEN,
+        bd.NGAYTHI,
+        bd.DIEM
+    FROM dbo.BAITHI bt
+    JOIN dbo.SINHVIEN sv ON bt.MASV = sv.MASV
+    JOIN dbo.BANGDIEM bd ON bd.MASV = bt.MASV
+                         AND bd.MAMH = bt.MAMH
+                         AND bd.LAN  = bt.LAN
+    WHERE bt.MAMH  = @MAMH
+      AND bt.MALOP = @MALOP
+      AND bt.LAN   = @LAN
+    ORDER BY sv.TEN, sv.HO;
+END
+GO
+
+GRANT EXECUTE ON dbo.usp_LayKetQuaSVTheoDeThi TO [Giangvien];
+GRANT EXECUTE ON dbo.usp_LayKetQuaSVTheoDeThi TO [PGV];
+GO
+
+PRINT N'OK: usp_LayKetQuaSVTheoDeThi da san sang.';
+GO
