@@ -1,8 +1,20 @@
+using DevExpress.AspNetCore;
+using DevExpress.AspNetCore.Reporting;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+
+builder.Services.AddDevExpressControls();
+builder.Services.ConfigureReportingServices(configurator => {
+    if (builder.Environment.IsDevelopment()) {
+        configurator.UseDevelopmentMode();
+    }
+    configurator.ConfigureWebDocumentViewer(viewerConfigurator => {
+        viewerConfigurator.UseCachedReportSourceBuilder();
+    });
+});
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<DMS_Examify.Services.IDbConnectionFactory, DMS_Examify.Services.DbConnectionFactory>();
@@ -27,6 +39,8 @@ builder.Services.AddSession(options =>
 
 var app = builder.Build();
 
+app.UseDevExpressControls();
+
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
@@ -40,6 +54,7 @@ app.UseRouting();
 app.UseSession(); // Phải trước UseAuthorization
 app.UseAuthorization();
 
+app.UseStaticFiles();
 app.MapStaticAssets();
 
 app.MapControllerRoute(

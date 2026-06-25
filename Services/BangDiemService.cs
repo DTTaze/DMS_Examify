@@ -106,7 +106,7 @@ namespace DMS_Examify.Services
                 }
 
                 rowNumber++;
-                var score = ReadDouble(reader, Columns.Score);
+                var score = ReadNullableDouble(reader, Columns.Score);
 
                 viewModel.DanhSach.Add(new BangDiemSinhVien
                 {
@@ -115,7 +115,7 @@ namespace DMS_Examify.Services
                     Ho = ReadString(reader, Columns.LastName),
                     Ten = ReadString(reader, Columns.FirstName),
                     Diem = score,
-                    DiemChu = ConvertToGradeLetter(score)
+                    DiemChu = score.HasValue ? ConvertToGradeLetter(score.Value) : ""
                 });
             }
 
@@ -226,6 +226,12 @@ namespace DMS_Examify.Services
         {
             var value = reader[columnName];
             return value == DBNull.Value ? 0.0 : Convert.ToDouble(value);
+        }
+
+        private static double? ReadNullableDouble(SqlDataReader reader, string columnName)
+        {
+            var value = reader[columnName];
+            return value == DBNull.Value ? null : Convert.ToDouble(value);
         }
     }
 }

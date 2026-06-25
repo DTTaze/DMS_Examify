@@ -122,5 +122,42 @@ namespace DMS_Examify.Controllers
                 return LogAndReturnServerError(_logger, ex, "Lỗi khi lấy bảng điểm môn học.");
             }
         }
+
+        [HttpGet]
+        public IActionResult InBangDiem(
+            [FromServices] DevExpress.XtraReports.Web.WebDocumentViewer.IWebDocumentViewerClientSideModelGenerator viewerModelGenerator,
+            string maLop, string maMH, int lan)
+        {
+            if (string.IsNullOrWhiteSpace(maLop) ||
+                string.IsNullOrWhiteSpace(maMH) ||
+                lan < 1 || lan > 2)
+            {
+                return BadRequest("Thông tin bộ lọc không hợp lệ.");
+            }
+
+            try
+            {
+                var reportData = _bangDiemService.GetGradeReport(maLop, maMH, lan);
+                var report = new DMS_Examify.Reports.BangDiemReport();
+
+                // Bind data
+                report.DataSource = reportData.DanhSach;
+
+                // Bind parameters
+                report.Parameters["TenLop"].Value = reportData.TenLop;
+                report.Parameters["TenMH"].Value = reportData.TenMH;
+                report.Parameters["Lan"].Value = reportData.Lan;
+                report.Parameters["TongSo"].Value = reportData.DanhSach.Count;
+
+                // Create the viewer model using the default URI
+                var model = viewerModelGenerator.GetModel(report, DevExpress.AspNetCore.Reporting.WebDocumentViewer.WebDocumentViewerController.DefaultUri);
+                return View(model);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Lỗi khi sinh báo cáo bảng điểm.");
+                return StatusCode(500, "Đã xảy ra lỗi khi tạo báo cáo.");
+            }
+        }
     }
 }

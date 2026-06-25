@@ -73,7 +73,7 @@
                         </button>
                     </div>
                     <div class="col-md-2">
-                        <button id="btnIn" class="btn btn-outline-secondary w-100" onclick="window.print()" disabled>
+                        <button id="btnIn" class="btn btn-outline-secondary w-100" disabled>
                             <i class="bi bi-printer me-1"></i> In
                         </button>
                     </div>
@@ -145,9 +145,21 @@
     const ddlMonHoc = document.getElementById('ddlMonHoc');
     const ddlLanThi = document.getElementById('ddlLanThi');
     const btnXem = document.getElementById('btnXem');
+    const btnIn = document.getElementById('btnIn');
     const bangDiemContainer = document.getElementById('bangDiemContainer');
     const emptyState = document.getElementById('emptyState');
     const tbodyBangDiem = document.getElementById('tbodyBangDiem');
+
+    btnIn.addEventListener('click', function () {
+        const maLop = ddlLop.value;
+        const maMH = ddlMonHoc.value;
+        const lan = ddlLanThi.value;
+
+        if (!maLop || !maMH || !lan) return;
+
+        const url = `/BangDiem/InBangDiem?maLop=${encodeURIComponent(maLop)}&maMH=${encodeURIComponent(maMH)}&lan=${lan}`;
+        window.open(url, '_blank');
+    });
 
     ddlLop.addEventListener('change', function () {
         resetDropdown(ddlMonHoc, '-- Chọn môn học --');
@@ -257,15 +269,18 @@
                 </tr>`;
         } else {
             data.danhSach.forEach(sv => {
-                const diemColor = sv.diem >= 8 ? 'var(--success)' : sv.diem >= 5 ? 'var(--warning)' : 'var(--danger)';
+                const chuaThi = sv.diem === null || sv.diem === undefined;
+                const diemColor = chuaThi ? 'var(--text-secondary)' : sv.diem >= 8 ? 'var(--success)' : sv.diem >= 5 ? 'var(--warning)' : 'var(--danger)';
+                const diemText = chuaThi ? 'Chưa thi' : sv.diem.toFixed(1);
+                const diemChuText = chuaThi ? '' : `<span class="badge bg-dark">${sv.diemChu}</span>`;
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td>${sv.stt}</td>
                     <td><strong>${sv.maSV}</strong></td>
                     <td style="text-align:left !important;">${sv.ho}</td>
                     <td style="text-align:left !important;">${sv.ten}</td>
-                    <td style="font-weight:700; color:${diemColor};">${sv.diem.toFixed(1)}</td>
-                    <td><span class="badge bg-dark">${sv.diemChu}</span></td>`;
+                    <td style="font-weight:700; color:${diemColor};">${diemText}</td>
+                    <td>${diemChuText}</td>`;
                 tbodyBangDiem.appendChild(row);
             });
         }

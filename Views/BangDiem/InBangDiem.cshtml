@@ -1,0 +1,34 @@
+@model DevExpress.XtraReports.Web.WebDocumentViewer.WebDocumentViewerModel
+@{
+    Layout = null;
+    var viewerRender = Html.DevExpress().WebDocumentViewer("DocumentViewer")
+        .Height("100%")
+        .ClientSideModelSettings(configure => {
+            configure.IncludeCldrData = false;
+            configure.IncludeCldrSupplemental = false;
+        })
+        .Bind(Model);
+}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>In Bảng Điểm - DevExpress</title>
+
+    <link href="~/css/dx-reporting-skeleton-screen.css" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/viewer.part.bundle.css" />
+    <link rel="stylesheet" href="~/css/dx.material.blue.light.bundle.css" />
+</head>
+<body style="margin: 0; padding: 0; height: 100vh; width: 100vw; overflow: hidden;">
+    <div style="width: 100%; height: 100%;">
+        @viewerRender.RenderHtml()
+    </div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/js/reporting.thirdparty.bundle.js"></script>
+    <script src="~/js/viewer.part.bundle.js"></script>
+    @viewerRender.RenderScripts()
+</body>
+</html>
+

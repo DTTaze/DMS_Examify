@@ -26,7 +26,7 @@ namespace DMS_Examify.Models
         public string MaSV { get; set; } = "";
         public string Ho { get; set; } = "";
         public string Ten { get; set; } = "";
-        public double Diem { get; set; }
+        public double? Diem { get; set; }
         public string DiemChu { get; set; } = "";
     }
 }
