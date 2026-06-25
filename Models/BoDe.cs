@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace DMS_Examify.Models
 {
-    public class BoDe
+    public class BoDe : IValidatableObject
     {
         public int CauHoi { get; set; }
 
@@ -38,5 +38,17 @@ namespace DMS_Examify.Models
         public string DapAn { get; set; } = ""; // A, B, C, or D
 
         public string MaGV { get; set; } = "";
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            var answers = new[] { DapAnA?.Trim(), DapAnB?.Trim(), DapAnC?.Trim(), DapAnD?.Trim() };
+            if (answers.Any(a => !string.IsNullOrEmpty(a)) && answers.Distinct().Count() < 4)
+            {
+                yield return new ValidationResult(
+                    "Các phương án trả lời (A, B, C, D) không được trùng nhau.",
+                    new[] { nameof(DapAnA), nameof(DapAnB), nameof(DapAnC), nameof(DapAnD) }
+                );
+            }
+        }
     }
 }

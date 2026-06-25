@@ -36,12 +36,6 @@
             </div>
 
             <nav class="sidebar-menu">
-                <!-- TỔNG QUAN — Tất cả vai trò -->
-                <div class="menu-label">Tổng quan</div>
-                <a asp-controller="Home" asp-action="Index"
-                   class="menu-item @(ViewContext.RouteData.Values["controller"]?.ToString() == "Home" ? "active" : "")">
-                    <i class="bi bi-grid-1x2-fill"></i> Dashboard
-                </a>
 
                 @if (isPGV)
                 {

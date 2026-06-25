@@ -256,7 +256,7 @@
     }
 
     function normalizeAnswerForDuplicate(value) {
-        return normalizeQuestionValue(value).replace(/\s+/g, " ").toLowerCase();
+        return normalizeQuestionValue(value).replace(/\s+/g, " ");
     }
 
     function getDuplicateAnswerLabels(formData) {
@@ -947,6 +947,15 @@
                 error = "Thiếu phương án trả lời";
             } else if (dapAnA.length > 200 || dapAnB.length > 200 || dapAnC.length > 200 || dapAnD.length > 200) {
                 error = "Phương án tối đa 200 ký tự";
+            } else if (
+                dapAnA.replace(/\s+/g, " ") === dapAnB.replace(/\s+/g, " ") ||
+                dapAnA.replace(/\s+/g, " ") === dapAnC.replace(/\s+/g, " ") ||
+                dapAnA.replace(/\s+/g, " ") === dapAnD.replace(/\s+/g, " ") ||
+                dapAnB.replace(/\s+/g, " ") === dapAnC.replace(/\s+/g, " ") ||
+                dapAnB.replace(/\s+/g, " ") === dapAnD.replace(/\s+/g, " ") ||
+                dapAnC.replace(/\s+/g, " ") === dapAnD.replace(/\s+/g, " ")
+            ) {
+                error = "Các phương án trả lời trùng nhau";
             } else if (dapAn === "") {
                 error = "Đáp án đúng trống";
             } else if (dapAn !== "A" && dapAn !== "B" && dapAn !== "C" && dapAn !== "D") {
