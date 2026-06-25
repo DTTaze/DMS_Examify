@@ -16,5 +16,6 @@ namespace DMS_Examify.Models
         [RegularExpression(@"^(0[35789]\d{8}|02\d{9})?$", ErrorMessage = "Số điện thoại không hợp lệ.")]
         public string SoDTLL { get; set; } = "";
         public string DiaChi { get; set; } = "";
+        public bool HasDependencies { get; set; }
     }
 }

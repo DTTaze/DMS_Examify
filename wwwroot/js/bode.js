@@ -24,6 +24,21 @@
             .replace(/'/g, "&#039;");
     }
 
+    function hasQuestionDependencies(row) {
+        return row?.dataset.hasDependencies === "true";
+    }
+
+    function getDeleteButtonHtml(hasDependencies) {
+        const disabledAttr = hasDependencies ? "disabled" : "";
+        const title = hasDependencies ? "Khong the xoa vi cau hoi da co lien ket" : "Xoa";
+        const textClass = hasDependencies ? "text-muted" : "text-danger";
+
+        return `
+            <button type="button" class="btn btn-link p-0 ${textClass} btn-delete" title="${title}" ${disabledAttr}>
+                <i class="bi bi-trash-fill"></i>
+            </button>`;
+    }
+
     // DOM Elements Cache
     const dom = {
         txtCauHoi: null,
@@ -431,7 +446,8 @@
             originalB: "",
             originalC: "",
             originalD: "",
-            originalDapan: ""
+            originalDapan: "",
+            hasDependencies: "false"
         });
 
         row.innerHTML = `
@@ -445,9 +461,7 @@
                     <button type="button" class="btn btn-link p-0 text-warning btn-edit" title="Sửa">
                         <i class="bi bi-pencil-fill"></i>
                     </button>
-                    <button type="button" class="btn btn-link p-0 text-danger btn-delete" title="Xóa">
-                        <i class="bi bi-trash-fill"></i>
-                    </button>
+                    ${getDeleteButtonHtml(false)}
                 </div>
             </td>
         `;
@@ -472,6 +486,7 @@
 
         const id = parseInt(selectedRow.dataset.id, 10);
         const isNew = !isNaN(id) && id < 0;
+        const rowHasDependencies = hasQuestionDependencies(selectedRow);
 
         pushState();
 
@@ -516,9 +531,7 @@
                     <button type="button" class="btn btn-link p-0 text-warning btn-edit" title="Sửa">
                         <i class="bi bi-pencil-fill"></i>
                     </button>
-                    <button type="button" class="btn btn-link p-0 text-danger btn-delete" title="Xóa">
-                        <i class="bi bi-trash-fill"></i>
-                    </button>
+                    ${getDeleteButtonHtml(rowHasDependencies)}
                 </div>
             </td>
         `;
@@ -557,6 +570,11 @@
 
     function deleteQuestion() {
         if (!selectedRow) return;
+
+        if (hasQuestionDependencies(selectedRow)) {
+            window.hienThongBao("Khong the xoa cau hoi nay vi da co du lieu lien ket.", "Thong bao");
+            return;
+        }
 
         const id = parseInt(selectedRow.dataset.id, 10);
         const maMH = selectedRow.dataset.mamh;
@@ -666,6 +684,7 @@
                     tr.dataset.c = ch.dapAnC;
                     tr.dataset.d = ch.dapAnD;
                     tr.dataset.dapan = ch.dapAn;
+                    tr.dataset.hasDependencies = ch.hasDependencies ? "true" : "false";
 
                     tr.dataset.originalMamh = ch.maMH;
                     tr.dataset.originalTrinhdo = ch.trinhDo;
@@ -685,7 +704,7 @@
                         <td class="text-center">
                             <div class="d-flex gap-2 justify-content-center">
                                 <button type="button" class="btn btn-link text-warning p-0 btn-edit" title="Hiệu chỉnh"><i class="bi bi-pencil-square fs-5"></i></button>
-                                <button type="button" class="btn btn-link text-danger p-0 btn-delete" title="Xóa"><i class="bi bi-trash fs-5"></i></button>
+                                ${getDeleteButtonHtml(ch.hasDependencies)}
                             </div>
                         </td>
                     `;
@@ -1125,7 +1144,8 @@
                 originalB: "",
                 originalC: "",
                 originalD: "",
-                originalDapan: ""
+                originalDapan: "",
+                hasDependencies: "false"
             });
 
             row.innerHTML = `
@@ -1139,9 +1159,7 @@
                         <button type="button" class="btn btn-link p-0 text-warning btn-edit" title="Sửa">
                             <i class="bi bi-pencil-fill"></i>
                         </button>
-                        <button type="button" class="btn btn-link p-0 text-danger btn-delete" title="Xóa">
-                            <i class="bi bi-trash-fill"></i>
-                        </button>
+                        ${getDeleteButtonHtml(false)}
                     </div>
                 </td>
             `;

@@ -39,6 +39,8 @@ namespace DMS_Examify.Models
 
         public string MaGV { get; set; } = "";
 
+        public bool HasDependencies { get; set; }
+
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
             var answers = new[] { DapAnA?.Trim(), DapAnB?.Trim(), DapAnC?.Trim(), DapAnD?.Trim() };

@@ -123,6 +123,10 @@ namespace DMS_Examify.Controllers
                 _boDeService.Delete(cauHoi, maMH, CurrentRole, CurrentTeacherId);
                 return Ok();
             }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message);
+            }
             catch (SqlException ex)
             {
                 return BadRequest(ex.Message);

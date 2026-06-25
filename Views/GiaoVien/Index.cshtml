@@ -112,7 +112,7 @@
                         {
                             <tr data-magv="@gv.MaGV" data-ho="@gv.Ho" data-ten="@gv.Ten" data-sdt="@gv.SoDTLL" data-diachi="@gv.DiaChi"
                                 data-original-ho="@gv.Ho" data-original-ten="@gv.Ten" data-original-sdt="@gv.SoDTLL" data-original-diachi="@gv.DiaChi"
-                                data-id="@gv.MaGV">
+                                data-id="@gv.MaGV" data-has-dependencies="@gv.HasDependencies.ToString().ToLowerInvariant()">
                                 <td><span class="badge bg-light text-secondary border border-light">@gv.MaGV</span></td>
                                 <td class="fw-semibold">@gv.Ho</td>
                                 <td class="fw-semibold">@gv.Ten</td>
@@ -121,7 +121,12 @@
                                 <td class="text-center">
                                     <div class="d-flex gap-2 justify-content-center">
                                         <button type="button" class="btn btn-link text-warning p-0 btn-edit" title="Hiệu chỉnh"><i class="bi bi-pencil-square fs-5"></i></button>
-                                        <button type="button" class="btn btn-link text-danger p-0 btn-delete" title="Xóa"><i class="bi bi-trash fs-5"></i></button>
+                                        <button type="button"
+                                                class="btn btn-link p-0 btn-delete @(gv.HasDependencies ? "text-muted" : "text-danger")"
+                                                title="@(gv.HasDependencies ? "Khong the xoa vi giao vien da co lien ket" : "Xoa")"
+                                                disabled="@gv.HasDependencies">
+                                            <i class="bi bi-trash fs-5"></i>
+                                        </button>
                                     </div>
                                 </td>
                             </tr>

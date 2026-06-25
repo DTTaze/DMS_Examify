@@ -185,12 +185,16 @@ namespace DMS_Examify.Services
             }
 
             using var conn = _connectionFactory.CreateConnection();
-            string sql = "SELECT 1 WHERE EXISTS (SELECT 1 FROM dbo.BANGDIEM WHERE MASV = @MaSV)";
+            const string sql = @"
+                SELECT 1 WHERE EXISTS (SELECT 1 FROM dbo.BANGDIEM WHERE MASV = @MaSV)
+                    OR EXISTS (SELECT 1 FROM dbo.BAITHI WHERE MASV = @MaSV)
+                    OR EXISTS (SELECT 1 FROM dbo.CT_BAITHI WHERE MASV = @MaSV)
+                    OR EXISTS (SELECT 1 FROM dbo.BAITHI_TEMP WHERE MASV = @MaSV)
+                    OR EXISTS (SELECT 1 FROM dbo.CT_BAITHI_TEMP WHERE MASV = @MaSV)";
             using var cmd = new SqlCommand(sql, conn);
             cmd.Parameters.Add("@MaSV", SqlDbType.NChar, 8).Value = maSV.Trim().ToUpperInvariant();
 
-            var result = cmd.ExecuteScalar();
-            return result != null && result != DBNull.Value;
+            return cmd.ExecuteScalar() != null;
         }
 
         private static SqlCommand CreateStoredProcedureCommand(string procedureName, SqlConnection connection)

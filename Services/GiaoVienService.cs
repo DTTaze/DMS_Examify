@@ -7,6 +7,7 @@ namespace DMS_Examify.Services
     public class GiaoVienService : IGiaoVienService
     {
         private const string DefaultStringValue = "";
+        private const string CannotDeleteTeacherWithDependenciesMessage = "Khong the xoa giang vien nay vi da co du lieu lien ket.";
 
         private readonly IDbConnectionFactory _connectionFactory;
 
@@ -40,7 +41,9 @@ namespace DMS_Examify.Services
             using var connection = _connectionFactory.CreateConnection();
             using var command = CreateStoredProcedureCommand(StoredProcedures.GetAll, connection);
 
-            return ReadTeachers(command);
+            var teachers = ReadTeachers(command);
+            SetTeacherDependencies(teachers);
+            return teachers;
         }
 
         public void Insert(GiaoVien giaoVien)
@@ -63,11 +66,23 @@ namespace DMS_Examify.Services
 
         public void Delete(string maGV)
         {
-            using var connection = _connectionFactory.CreateConnection();
-            using var command = CreateStoredProcedureCommand(StoredProcedures.Delete, connection);
+            if (HasDependencies(maGV))
+            {
+                throw new InvalidOperationException(CannotDeleteTeacherWithDependenciesMessage);
+            }
 
-            AddTeacherIdParameter(command, "@MaGV", maGV);
-            command.ExecuteNonQuery();
+            try
+            {
+                using var connection = _connectionFactory.CreateConnection();
+                using var command = CreateStoredProcedureCommand(StoredProcedures.Delete, connection);
+
+                AddTeacherIdParameter(command, "@MaGV", maGV);
+                command.ExecuteNonQuery();
+            }
+            catch (SqlException ex) when (ex.Number == 547)
+            {
+                throw new InvalidOperationException(CannotDeleteTeacherWithDependenciesMessage, ex);
+            }
         }
 
         public List<GiaoVien> Search(string? keyword)
@@ -77,7 +92,9 @@ namespace DMS_Examify.Services
 
             command.Parameters.Add("@Keyword", SqlDbType.NVarChar, 250).Value = GetDbValue(keyword);
 
-            return ReadTeachers(command);
+            var teachers = ReadTeachers(command);
+            SetTeacherDependencies(teachers);
+            return teachers;
         }
 
         public List<GiaoVienImportCheckResult> CheckImportDuplicates(List<GiaoVien> items)
@@ -135,23 +152,61 @@ namespace DMS_Examify.Services
 
         public bool CheckIsSoftDelete(string maGV)
         {
+            return HasDependencies(maGV);
+        }
+
+        private bool HasDependencies(string? maGV)
+        {
             if (string.IsNullOrWhiteSpace(maGV))
             {
                 return false;
             }
 
             using var connection = _connectionFactory.CreateConnection();
-            string sql = @"
-                SELECT 1 WHERE EXISTS (
-                    SELECT 1 FROM dbo.BODE WHERE MAGV = @MaGV
-                    UNION ALL
-                    SELECT 1 FROM dbo.GIAOVIEN_DANGKY WHERE MAGV = @MaGV
-                )";
+            const string sql = @"
+                SELECT 1 WHERE EXISTS (SELECT 1 FROM dbo.BODE WHERE MAGV = @MaGV)
+                    OR EXISTS (SELECT 1 FROM dbo.GIAOVIEN_DANGKY WHERE MAGV = @MaGV)";
             using var command = new SqlCommand(sql, connection);
-            command.Parameters.Add("@MaGV", SqlDbType.NChar, 8).Value = Trim(maGV);
+            command.Parameters.Add("@MaGV", SqlDbType.NChar, 8).Value = NormalizeTeacherId(maGV);
 
-            var result = command.ExecuteScalar();
-            return result != null && result != DBNull.Value;
+            return command.ExecuteScalar() != null;
+        }
+
+        private void SetTeacherDependencies(List<GiaoVien> teachers)
+        {
+            if (teachers.Count == 0)
+            {
+                return;
+            }
+
+            var parameterNames = teachers
+                .Select((_, index) => $"@MaGV{index}")
+                .ToArray();
+            var inClause = string.Join(", ", parameterNames);
+
+            using var connection = _connectionFactory.CreateConnection();
+            string sql = $@"
+                SELECT DISTINCT MAGV FROM dbo.BODE WHERE MAGV IN ({inClause})
+                UNION
+                SELECT DISTINCT MAGV FROM dbo.GIAOVIEN_DANGKY WHERE MAGV IN ({inClause})";
+            using var command = new SqlCommand(sql, connection);
+
+            for (int i = 0; i < teachers.Count; i++)
+            {
+                command.Parameters.Add(parameterNames[i], SqlDbType.NChar, 8).Value = NormalizeTeacherId(teachers[i].MaGV);
+            }
+
+            using var reader = command.ExecuteReader();
+            var dependencyIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            while (reader.Read())
+            {
+                dependencyIds.Add(NormalizeTeacherId(reader["MAGV"].ToString()));
+            }
+
+            foreach (var teacher in teachers)
+            {
+                teacher.HasDependencies = dependencyIds.Contains(NormalizeTeacherId(teacher.MaGV));
+            }
         }
 
         private bool ExistsMaGV(string? maGV)
@@ -234,7 +289,7 @@ namespace DMS_Examify.Services
 
         private static void AddTeacherIdParameter(SqlCommand command, string parameterName, string? value)
         {
-            command.Parameters.Add(parameterName, SqlDbType.NChar, 8).Value = Trim(value);
+            command.Parameters.Add(parameterName, SqlDbType.NChar, 8).Value = NormalizeTeacherId(value);
         }
 
         private static object GetDbValue(string? value)

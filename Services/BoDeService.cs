@@ -48,7 +48,9 @@ namespace DMS_Examify.Services
 
             command.Parameters.Add("@MAGV", SqlDbType.NChar, 8).Value = GetTeacherFilterValue(role, maGV);
 
-            return ReadQuestions(command);
+            var questions = ReadQuestions(command);
+            SetQuestionDependencies(questions);
+            return questions;
         }
 
         public int Insert(BoDe model, string maGV)
@@ -85,6 +87,11 @@ namespace DMS_Examify.Services
 
         public void Delete(int cauHoi, string maMH, string role, string maGV)
         {
+            if (HasQuestionDependencies(cauHoi))
+            {
+                throw new InvalidOperationException("Khong the xoa cau hoi nay vi da co du lieu lien ket.");
+            }
+
             using var connection = _connectionFactory.CreateConnection();
             using var command = CreateStoredProcedureCommand(StoredProcedures.Delete, connection);
 
@@ -102,6 +109,58 @@ namespace DMS_Examify.Services
             }
         }
 
+        private bool HasQuestionDependencies(int cauHoi)
+        {
+            using var connection = _connectionFactory.CreateConnection();
+            const string sql = @"
+                SELECT 1 WHERE EXISTS (SELECT 1 FROM dbo.CT_DETHI WHERE CAUHOI = @CauHoi)
+                    OR EXISTS (SELECT 1 FROM dbo.CT_BAITHI WHERE CAUHOI = @CauHoi)
+                    OR EXISTS (SELECT 1 FROM dbo.CT_BAITHI_TEMP WHERE CAUHOI = @CauHoi)";
+            using var command = new SqlCommand(sql, connection);
+            command.Parameters.Add("@CauHoi", SqlDbType.Int).Value = cauHoi;
+
+            return command.ExecuteScalar() != null;
+        }
+
+        private void SetQuestionDependencies(List<BoDe> questions)
+        {
+            if (questions.Count == 0)
+            {
+                return;
+            }
+
+            var parameterNames = questions
+                .Select((_, index) => $"@CauHoi{index}")
+                .ToArray();
+            var inClause = string.Join(", ", parameterNames);
+
+            using var connection = _connectionFactory.CreateConnection();
+            string sql = $@"
+                SELECT DISTINCT CAUHOI FROM dbo.CT_DETHI WHERE CAUHOI IN ({inClause})
+                UNION
+                SELECT DISTINCT CAUHOI FROM dbo.CT_BAITHI WHERE CAUHOI IN ({inClause})
+                UNION
+                SELECT DISTINCT CAUHOI FROM dbo.CT_BAITHI_TEMP WHERE CAUHOI IN ({inClause})";
+            using var command = new SqlCommand(sql, connection);
+
+            for (int i = 0; i < questions.Count; i++)
+            {
+                command.Parameters.Add(parameterNames[i], SqlDbType.Int).Value = questions[i].CauHoi;
+            }
+
+            using var reader = command.ExecuteReader();
+            var dependencyIds = new HashSet<int>();
+            while (reader.Read())
+            {
+                dependencyIds.Add(reader.GetInt32(0));
+            }
+
+            foreach (var question in questions)
+            {
+                question.HasDependencies = dependencyIds.Contains(question.CauHoi);
+            }
+        }
+
         public List<BoDe> Search(string? keyword, string role, string maGV)
         {
             using var connection = _connectionFactory.CreateConnection();
@@ -110,7 +169,9 @@ namespace DMS_Examify.Services
             command.Parameters.Add("@Keyword", SqlDbType.NVarChar, 250).Value = GetDbValue(keyword);
             command.Parameters.Add("@MAGV", SqlDbType.NChar, 8).Value = GetTeacherFilterValue(role, maGV);
 
-            return ReadQuestions(command);
+            var questions = ReadQuestions(command);
+            SetQuestionDependencies(questions);
+            return questions;
         }
 
         public int GetLatestCauHoi()

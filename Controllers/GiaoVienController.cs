@@ -97,6 +97,10 @@ namespace DMS_Examify.Controllers
             {
                 return BadRequest(ex.Message);
             }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message);
+            }
             catch (Exception ex)
             {
                 return LogAndReturnServerError(_logger, ex, $"Không thể xóa giáo viên {maGV}.");

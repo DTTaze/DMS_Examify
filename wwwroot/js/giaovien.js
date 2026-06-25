@@ -13,6 +13,21 @@
     let rowsPerPage = 10;
     let teacherDebounceTimer = null;
 
+    function hasTeacherDependencies(row) {
+        return row?.dataset.hasDependencies === "true";
+    }
+
+    function getDeleteButtonHtml(hasDependencies) {
+        const disabledAttr = hasDependencies ? "disabled" : "";
+        const title = hasDependencies ? "Khong the xoa vi giao vien da co lien ket" : "Xoa";
+        const textClass = hasDependencies ? "text-muted" : "text-danger";
+
+        return `
+            <button type="button" class="btn btn-link p-0 ${textClass} btn-delete" title="${title}" ${disabledAttr}>
+                <i class="bi bi-trash-fill"></i>
+            </button>`;
+    }
+
     // DOM Elements Cache
     const dom = {
         txtMaGV: null,
@@ -251,6 +266,7 @@
         row.dataset.originalSdt = "";
         row.dataset.originalDiachi = "";
         row.dataset.id = d.MaGV;
+        row.dataset.hasDependencies = "false";
 
         row.innerHTML = `
             <td>${d.MaGV}</td>
@@ -263,9 +279,7 @@
                     <button type="button" class="btn btn-link p-0 text-warning btn-edit" title="Sửa">
                         <i class="bi bi-pencil-fill"></i>
                     </button>
-                    <button type="button" class="btn btn-link p-0 text-danger btn-delete" title="Xóa">
-                        <i class="bi bi-trash-fill"></i>
-                    </button>
+                    ${getDeleteButtonHtml(false)}
                 </div>
             </td>
         `;
@@ -397,6 +411,11 @@
             fetch(`/GiaoVien/CheckDelete?maGV=${encodeURIComponent(id)}`)
                 .then(res => res.json())
                 .then(data => {
+                    if (data.isSoftDelete) {
+                        window.hienThongBao(`Khong the xoa giang vien <strong>"${id} - ${name}"</strong> vi da co du lieu lien ket.`, "Thong bao");
+                        return;
+                    }
+
                     const msg = data.isSoftDelete
                         ? `Giáo viên <strong>"${id} - ${name}"</strong> đã được liên kết trong hệ thống. Hệ thống sẽ <strong>XÓA MỀM</strong> (ngừng hoạt động) để bảo toàn lịch sử. Bạn có chắc chắn muốn xóa không?`
                         : `Giáo viên <strong>"${id} - ${name}"</strong> chưa có liên kết. Hệ thống sẽ <strong>XÓA CỨNG</strong> (xóa vĩnh viễn) khỏi cơ sở dữ liệu. Bạn có chắc chắn muốn xóa không?`;

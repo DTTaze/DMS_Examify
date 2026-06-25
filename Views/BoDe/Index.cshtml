@@ -155,7 +155,8 @@
                                 data-a="@ch.DapAnA" data-b="@ch.DapAnB" data-c="@ch.DapAnC" data-d="@ch.DapAnD" data-dapan="@ch.DapAn"
                                 data-original-mamh="@ch.MaMH" data-original-trinhdo="@ch.TrinhDo" data-original-noidung="@ch.NoiDung"
                                 data-original-a="@ch.DapAnA" data-original-b="@ch.DapAnB" data-original-c="@ch.DapAnC"
-                                data-original-d="@ch.DapAnD" data-original-dapan="@ch.DapAn">
+                                data-original-d="@ch.DapAnD" data-original-dapan="@ch.DapAn"
+                                data-has-dependencies="@ch.HasDependencies.ToString().ToLowerInvariant()">
                                 <td><span class="badge bg-light text-secondary border border-light">@ch.CauHoi</span></td>
                                 <td class="text-truncate fw-semibold" style="max-width: 250px;">@ch.NoiDung</td>
                                 <td>@ch.MaMH</td>
@@ -164,7 +165,12 @@
                                 <td class="text-center">
                                     <div class="d-flex gap-2 justify-content-center">
                                         <button type="button" class="btn btn-link text-warning p-0 btn-edit" title="Hiệu chỉnh"><i class="bi bi-pencil-square fs-5"></i></button>
-                                        <button type="button" class="btn btn-link text-danger p-0 btn-delete" title="Xóa"><i class="bi bi-trash fs-5"></i></button>
+                                        <button type="button"
+                                                class="btn btn-link p-0 btn-delete @(ch.HasDependencies ? "text-muted" : "text-danger")"
+                                                title="@(ch.HasDependencies ? "Khong the xoa vi cau hoi da co lien ket" : "Xoa")"
+                                                disabled="@ch.HasDependencies">
+                                            <i class="bi bi-trash fs-5"></i>
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
