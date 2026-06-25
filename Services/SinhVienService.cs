@@ -43,12 +43,12 @@ namespace DMS_Examify.Services
         {
             using var conn = _connectionFactory.CreateConnection();
             using var cmd = CreateStoredProcedureCommand(StoredProcedures.Insert, conn);
-            cmd.Parameters.Add("@MaSV", SqlDbType.NChar, 8).Value = sinhVien.MaSV;
-            cmd.Parameters.Add("@Ho", SqlDbType.NVarChar, 40).Value = sinhVien.Ho;
-            cmd.Parameters.Add("@Ten", SqlDbType.NVarChar, 10).Value = sinhVien.Ten;
+            cmd.Parameters.Add("@MaSV", SqlDbType.NChar, 8).Value = sinhVien.MaSV.Trim().ToUpperInvariant();
+            cmd.Parameters.Add("@Ho", SqlDbType.NVarChar, 40).Value = sinhVien.Ho.Trim();
+            cmd.Parameters.Add("@Ten", SqlDbType.NVarChar, 10).Value = sinhVien.Ten.Trim();
             cmd.Parameters.Add("@NgaySinh", SqlDbType.Date).Value = sinhVien.NgaySinh;
-            cmd.Parameters.Add("@DiaChi", SqlDbType.NVarChar, 100).Value = sinhVien.DiaChi;
-            cmd.Parameters.Add("@MaLop", SqlDbType.NChar, 8).Value = sinhVien.MaLop;
+            cmd.Parameters.Add("@DiaChi", SqlDbType.NVarChar, 100).Value = sinhVien.DiaChi.Trim();
+            cmd.Parameters.Add("@MaLop", SqlDbType.NChar, 8).Value = sinhVien.MaLop.Trim().ToUpperInvariant();
             cmd.Parameters.Add("@MatKhau", SqlDbType.NVarChar, 128).Value = sinhVien.MatKhau;
             cmd.ExecuteNonQuery();
         }
@@ -57,22 +57,29 @@ namespace DMS_Examify.Services
         {
             using var conn = _connectionFactory.CreateConnection();
             using var cmd = CreateStoredProcedureCommand(StoredProcedures.Update, conn);
-            cmd.Parameters.Add("@MaSV", SqlDbType.NChar, 8).Value = sinhVien.MaSV;
-            cmd.Parameters.Add("@Ho", SqlDbType.NVarChar, 40).Value = sinhVien.Ho;
-            cmd.Parameters.Add("@Ten", SqlDbType.NVarChar, 10).Value = sinhVien.Ten;
+            cmd.Parameters.Add("@MaSV", SqlDbType.NChar, 8).Value = sinhVien.MaSV.Trim().ToUpperInvariant();
+            cmd.Parameters.Add("@Ho", SqlDbType.NVarChar, 40).Value = sinhVien.Ho.Trim();
+            cmd.Parameters.Add("@Ten", SqlDbType.NVarChar, 10).Value = sinhVien.Ten.Trim();
             cmd.Parameters.Add("@NgaySinh", SqlDbType.Date).Value = sinhVien.NgaySinh;
-            cmd.Parameters.Add("@DiaChi", SqlDbType.NVarChar, 100).Value = sinhVien.DiaChi;
-            cmd.Parameters.Add("@MaLop", SqlDbType.NChar, 8).Value = sinhVien.MaLop;
+            cmd.Parameters.Add("@DiaChi", SqlDbType.NVarChar, 100).Value = sinhVien.DiaChi.Trim();
+            cmd.Parameters.Add("@MaLop", SqlDbType.NChar, 8).Value = sinhVien.MaLop.Trim().ToUpperInvariant();
             cmd.Parameters.Add("@MatKhau", SqlDbType.NVarChar, 128).Value = sinhVien.MatKhau;
             cmd.ExecuteNonQuery();
         }
 
         public void Delete(string maSV)
         {
-            using var conn = _connectionFactory.CreateConnection();
-            using var cmd = CreateStoredProcedureCommand(StoredProcedures.Delete, conn);
-            cmd.Parameters.Add("@MaSV", SqlDbType.NChar, 8).Value = maSV;
-            cmd.ExecuteNonQuery();
+            try
+            {
+                using var conn = _connectionFactory.CreateConnection();
+                using var cmd = CreateStoredProcedureCommand(StoredProcedures.Delete, conn);
+                cmd.Parameters.Add("@MaSV", SqlDbType.NChar, 8).Value = maSV.Trim().ToUpperInvariant();
+                cmd.ExecuteNonQuery();
+            }
+            catch (SqlException ex) when (ex.Number == 547)
+            {
+                throw new InvalidOperationException("Không thể xóa sinh viên vì đã có dữ liệu điểm thi hoặc bài làm liên quan.", ex);
+            }
         }
 
         public List<SinhVien> GetByLop(string maLop)
@@ -80,7 +87,7 @@ namespace DMS_Examify.Services
             var list = new List<SinhVien>();
             using var conn = _connectionFactory.CreateConnection();
             using var cmd = CreateStoredProcedureCommand(StoredProcedures.GetByLop, conn);
-            cmd.Parameters.Add("@MaLop", SqlDbType.NChar, 8).Value = maLop;
+            cmd.Parameters.Add("@MaLop", SqlDbType.NChar, 8).Value = maLop.Trim().ToUpperInvariant();
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
             {
@@ -114,9 +121,29 @@ namespace DMS_Examify.Services
             }
 
             var existingIds = GetExistingStudentIds();
+            var seenIdsInFile = new Dictionary<string, int>();
+
             return items.Select((item, index) =>
             {
                 var normalizedId = item.MaSV?.Trim().ToUpper() ?? string.Empty;
+                bool isEmptyId = string.IsNullOrWhiteSpace(normalizedId);
+
+                bool idDuplicateDB = !isEmptyId && existingIds.Contains(normalizedId);
+
+                bool idDuplicateFile = false;
+                int? idDuplicateFileWithRowIndex = null;
+                if (!isEmptyId)
+                {
+                    if (seenIdsInFile.TryGetValue(normalizedId, out int firstRowIndex))
+                    {
+                        idDuplicateFile = true;
+                        idDuplicateFileWithRowIndex = firstRowIndex;
+                    }
+                    else
+                    {
+                        seenIdsInFile.Add(normalizedId, index);
+                    }
+                }
 
                 return new SinhVienImportCheckResult
                 {
@@ -124,7 +151,9 @@ namespace DMS_Examify.Services
                     MaSV = item.MaSV?.Trim() ?? string.Empty,
                     Ho = item.Ho?.Trim() ?? string.Empty,
                     Ten = item.Ten?.Trim() ?? string.Empty,
-                    IdDuplicate = existingIds.Contains(normalizedId)
+                    IdDuplicateDB = idDuplicateDB,
+                    IdDuplicateFile = idDuplicateFile,
+                    IdDuplicateFileWithRowIndex = idDuplicateFileWithRowIndex
                 };
             }).ToList();
         }
@@ -145,7 +174,7 @@ namespace DMS_Examify.Services
             }
             using var conn = _connectionFactory.CreateConnection();
             using var cmd = CreateStoredProcedureCommand(StoredProcedures.ExistsMaSV, conn);
-            cmd.Parameters.Add("@MASV", SqlDbType.NChar, 8).Value = maSV.Trim();
+            cmd.Parameters.Add("@MASV", SqlDbType.NChar, 8).Value = maSV.Trim().ToUpperInvariant();
             return (int)cmd.ExecuteScalar() > 0;
         }
         public bool CheckHasDependencies(string maSV)
@@ -158,7 +187,7 @@ namespace DMS_Examify.Services
             using var conn = _connectionFactory.CreateConnection();
             string sql = "SELECT 1 WHERE EXISTS (SELECT 1 FROM dbo.BANGDIEM WHERE MASV = @MaSV)";
             using var cmd = new SqlCommand(sql, conn);
-            cmd.Parameters.Add("@MaSV", SqlDbType.NChar, 8).Value = maSV.Trim();
+            cmd.Parameters.Add("@MaSV", SqlDbType.NChar, 8).Value = maSV.Trim().ToUpperInvariant();
 
             var result = cmd.ExecuteScalar();
             return result != null && result != DBNull.Value;

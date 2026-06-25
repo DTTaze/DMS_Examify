@@ -14,18 +14,23 @@ namespace DMS_Examify.Models
         public string TrinhDo { get; set; } = "A"; // A, B, C
 
         [Required(ErrorMessage = "Nội dung câu hỏi không được để trống.")]
+        [StringLength(200, ErrorMessage = "Nội dung câu hỏi không được vượt quá 200 ký tự.")]
         public string NoiDung { get; set; } = "";
 
         [Required(ErrorMessage = "Đáp án A không được để trống.")]
+        [StringLength(50, ErrorMessage = "Đáp án A không được vượt quá 50 ký tự.")]
         public string DapAnA { get; set; } = "";
 
         [Required(ErrorMessage = "Đáp án B không được để trống.")]
+        [StringLength(50, ErrorMessage = "Đáp án B không được vượt quá 50 ký tự.")]
         public string DapAnB { get; set; } = "";
 
         [Required(ErrorMessage = "Đáp án C không được để trống.")]
+        [StringLength(50, ErrorMessage = "Đáp án C không được vượt quá 50 ký tự.")]
         public string DapAnC { get; set; } = "";
 
         [Required(ErrorMessage = "Đáp án D không được để trống.")]
+        [StringLength(50, ErrorMessage = "Đáp án D không được vượt quá 50 ký tự.")]
         public string DapAnD { get; set; } = "";
 
         [Required(ErrorMessage = "Đáp án đúng không được để trống.")]

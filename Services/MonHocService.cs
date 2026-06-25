@@ -56,10 +56,17 @@ namespace DMS_Examify.Services
 
         public void Delete(string maMH)
         {
-            using var conn = (SqlConnection)_connectionFactory.CreateConnection();
-            using var cmd = new SqlCommand("DELETE FROM [dbo].[MONHOC] WHERE [MaMH] = @MaMH", conn);
-            cmd.Parameters.Add("@MaMH", SqlDbType.NChar, 5).Value = NormalizeSubjectCode(maMH);
-            cmd.ExecuteNonQuery();
+            try
+            {
+                using var conn = (SqlConnection)_connectionFactory.CreateConnection();
+                using var cmd = new SqlCommand("DELETE FROM [dbo].[MONHOC] WHERE [MaMH] = @MaMH", conn);
+                cmd.Parameters.Add("@MaMH", SqlDbType.NChar, 5).Value = NormalizeSubjectCode(maMH);
+                cmd.ExecuteNonQuery();
+            }
+            catch (SqlException ex) when (ex.Number == 547)
+            {
+                throw new InvalidOperationException("Không thể xóa môn học vì đã có dữ liệu liên quan.", ex);
+            }
         }
 
 
@@ -83,71 +90,43 @@ namespace DMS_Examify.Services
         {
             if (string.IsNullOrWhiteSpace(maMH))
             {
-                return new SubjectDuplicateCheckResult(false, false);
+                return new SubjectDuplicateCheckResult(false);
             }
 
             using var conn = _connectionFactory.CreateConnection();
-            using var cmd = new SqlCommand("SELECT TrangThai FROM MONHOC WHERE MaMH = @MaMH", conn);
+            using var cmd = new SqlCommand("SELECT 1 WHERE EXISTS (SELECT 1 FROM dbo.MONHOC WHERE MaMH = @MaMH)", conn);
             cmd.Parameters.Add("@MaMH", SqlDbType.NChar, 5).Value = NormalizeSubjectCode(maMH);
 
-            using var reader = cmd.ExecuteReader();
-            if (reader.Read())
-            {
-                bool isActive = Convert.ToBoolean(reader["TrangThai"]);
-                return new SubjectDuplicateCheckResult(true, isActive);
-            }
-            return new SubjectDuplicateCheckResult(false, false);
+            return new SubjectDuplicateCheckResult(cmd.ExecuteScalar() != null);
         }
 
         public SubjectDuplicateCheckResult CheckTenMHDuplicate(string tenMH)
         {
             if (string.IsNullOrWhiteSpace(tenMH))
             {
-                return new SubjectDuplicateCheckResult(false, false);
+                return new SubjectDuplicateCheckResult(false);
             }
 
             using var conn = _connectionFactory.CreateConnection();
-            using var cmd = new SqlCommand("SELECT TrangThai FROM MONHOC WHERE TenMH = @TenMH", conn);
+            using var cmd = new SqlCommand("SELECT 1 WHERE EXISTS (SELECT 1 FROM dbo.MONHOC WHERE TenMH = @TenMH)", conn);
             cmd.Parameters.Add("@TenMH", SqlDbType.NVarChar, 40).Value = tenMH.Trim();
 
-            using var reader = cmd.ExecuteReader();
-            bool exists = false;
-            bool isActive = false;
-            while (reader.Read())
-            {
-                exists = true;
-                if (Convert.ToBoolean(reader["TrangThai"]))
-                {
-                    isActive = true;
-                }
-            }
-            return new SubjectDuplicateCheckResult(exists, isActive);
+            return new SubjectDuplicateCheckResult(cmd.ExecuteScalar() != null);
         }
 
         public SubjectDuplicateCheckResult CheckTenMHDuplicateExcludingMaMH(string tenMH, string maMH)
         {
             if (string.IsNullOrWhiteSpace(tenMH))
             {
-                return new SubjectDuplicateCheckResult(false, false);
+                return new SubjectDuplicateCheckResult(false);
             }
 
             using var conn = _connectionFactory.CreateConnection();
-            using var cmd = new SqlCommand("SELECT TrangThai FROM MONHOC WHERE TenMH = @TenMH AND MaMH <> @MaMH", conn);
+            using var cmd = new SqlCommand("SELECT 1 WHERE EXISTS (SELECT 1 FROM dbo.MONHOC WHERE TenMH = @TenMH AND MaMH <> @MaMH)", conn);
             cmd.Parameters.Add("@TenMH", SqlDbType.NVarChar, 40).Value = tenMH.Trim();
             cmd.Parameters.Add("@MaMH", SqlDbType.NChar, 5).Value = NormalizeSubjectCode(maMH);
 
-            using var reader = cmd.ExecuteReader();
-            bool exists = false;
-            bool isActive = false;
-            while (reader.Read())
-            {
-                exists = true;
-                if (Convert.ToBoolean(reader["TrangThai"]))
-                {
-                    isActive = true;
-                }
-            }
-            return new SubjectDuplicateCheckResult(exists, isActive);
+            return new SubjectDuplicateCheckResult(cmd.ExecuteScalar() != null);
         }
 
         public bool CheckHasDependencies(string maMH)
@@ -158,19 +137,14 @@ namespace DMS_Examify.Services
             }
 
             using var conn = _connectionFactory.CreateConnection();
-            string sql = @"
-                SELECT 1 WHERE EXISTS (
-                    SELECT 1 FROM dbo.BANGDIEM WHERE MAMH = @MaMH
-                    UNION ALL
-                    SELECT 1 FROM dbo.BODE WHERE MAMH = @MaMH
-                    UNION ALL
-                    SELECT 1 FROM dbo.GIAOVIEN_DANGKY WHERE MAMH = @MaMH
-                )";
+            const string sql = @"
+                SELECT 1 WHERE EXISTS (SELECT 1 FROM dbo.BANGDIEM WHERE MAMH = @MaMH)
+                    OR EXISTS (SELECT 1 FROM dbo.BODE WHERE MAMH = @MaMH)
+                    OR EXISTS (SELECT 1 FROM dbo.GIAOVIEN_DANGKY WHERE MAMH = @MaMH)";
             using var cmd = new SqlCommand(sql, conn);
             cmd.Parameters.Add("@MaMH", SqlDbType.NChar, 5).Value = NormalizeSubjectCode(maMH);
 
-            var result = cmd.ExecuteScalar();
-            return result != null && result != DBNull.Value;
+            return cmd.ExecuteScalar() != null;
         }
 
         public List<ImportValidationResultDto> ValidateImportDuplicates(List<MonHoc> items)
@@ -186,12 +160,15 @@ namespace DMS_Examify.Services
 
                 foreach (var item in items)
                 {
-                    if (!string.IsNullOrWhiteSpace(item.MaMH) || !string.IsNullOrWhiteSpace(item.TenMH))
+                    var code = item.MaMH?.Trim() ?? string.Empty;
+                    var name = item.TenMH?.Trim() ?? string.Empty;
+                    
+                    if (code.Length <= 5 && name.Length <= 40)
                     {
-                        dt.Rows.Add(
-                            item.MaMH?.Trim() ?? string.Empty,
-                            item.TenMH?.Trim() ?? string.Empty
-                        );
+                        if (!string.IsNullOrWhiteSpace(code) || !string.IsNullOrWhiteSpace(name))
+                        {
+                            dt.Rows.Add(code, name);
+                        }
                     }
                 }
 

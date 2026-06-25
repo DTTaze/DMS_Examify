@@ -53,6 +53,11 @@ namespace DMS_Examify.Services
 
         public int Insert(BoDe model, string maGV)
         {
+            if (IsQuestionContentDuplicate(model.NoiDung, 0))
+            {
+                throw new InvalidOperationException("Câu hỏi này đã tồn tại trong CSDL ngân hàng đề.");
+            }
+
             using var connection = _connectionFactory.CreateConnection();
             using var command = CreateStoredProcedureCommand(StoredProcedures.Insert, connection);
 
@@ -64,6 +69,11 @@ namespace DMS_Examify.Services
 
         public void Update(BoDe model, string role, string maGV)
         {
+            if (IsQuestionContentDuplicate(model.NoiDung, model.CauHoi))
+            {
+                throw new InvalidOperationException("Câu hỏi này đã tồn tại trong CSDL ngân hàng đề.");
+            }
+
             using var connection = _connectionFactory.CreateConnection();
             using var command = CreateStoredProcedureCommand(StoredProcedures.Update, connection);
 
@@ -81,7 +91,15 @@ namespace DMS_Examify.Services
             command.Parameters.Add("@CauHoi", SqlDbType.Int).Value = cauHoi;
             command.Parameters.Add("@MaMH", SqlDbType.NChar, 5).Value = Trim(maMH);
             command.Parameters.Add("@MAGV", SqlDbType.NChar, 8).Value = GetTeacherFilterValue(role, maGV);
-            command.ExecuteNonQuery();
+            
+            try
+            {
+                command.ExecuteNonQuery();
+            }
+            catch (SqlException ex) when (ex.Number == 547)
+            {
+                throw new InvalidOperationException("Không thể xóa câu hỏi này vì đã được sử dụng trong các đề thi hoặc bài làm của sinh viên.");
+            }
         }
 
         public List<BoDe> Search(string? keyword, string role, string maGV)
@@ -112,18 +130,58 @@ namespace DMS_Examify.Services
             }
 
             var subjectCodes = GetActiveSubjectCodes();
+            var existingContents = GetExistingQuestionContents();
 
             return items.Select((item, index) =>
             {
+                var trimmedNoiDung = Trim(item.NoiDung);
+                var hasDuplicate = existingContents.Contains(trimmedNoiDung);
+
                 return new BoDeImportCheckResult
                 {
                     Index = index,
                     MaMH = Trim(item.MaMH),
-                    NoiDung = Trim(item.NoiDung),
+                    NoiDung = trimmedNoiDung,
                     SubjectExists = subjectCodes.Contains(NormalizeCode(item.MaMH)),
-                    HasDuplicate = false
+                    HasDuplicate = hasDuplicate,
+                    DuplicateMessage = hasDuplicate ? "Câu hỏi đã tồn tại trong ngân hàng đề" : ""
                 };
             }).ToList();
+        }
+
+        public bool IsQuestionContentDuplicate(string noiDung, int excludeCauHoi)
+        {
+            var trimmedNoiDung = Trim(noiDung);
+            if (string.IsNullOrEmpty(trimmedNoiDung)) return false;
+
+            using var connection = _connectionFactory.CreateConnection();
+            using var command = new SqlCommand(
+                "SELECT COUNT(*) FROM dbo.BODE WHERE TRIM(NOIDUNG) = @NoiDung AND CAUHOI <> @CauHoi", 
+                connection);
+            command.Parameters.Add("@NoiDung", SqlDbType.NVarChar, 200).Value = trimmedNoiDung;
+            command.Parameters.Add("@CauHoi", SqlDbType.Int).Value = excludeCauHoi;
+
+            var count = Convert.ToInt32(command.ExecuteScalar());
+            return count > 0;
+        }
+
+        private HashSet<string> GetExistingQuestionContents()
+        {
+            using var connection = _connectionFactory.CreateConnection();
+            using var command = new SqlCommand("SELECT NOIDUNG FROM dbo.BODE", connection);
+            using var reader = command.ExecuteReader();
+
+            var contents = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            while (reader.Read())
+            {
+                var content = reader["NOIDUNG"]?.ToString()?.Trim();
+                if (!string.IsNullOrEmpty(content))
+                {
+                    contents.Add(content);
+                }
+            }
+
+            return contents;
         }
 
         private HashSet<string> GetActiveSubjectCodes()
@@ -186,13 +244,13 @@ namespace DMS_Examify.Services
         private static void AddQuestionParameters(SqlCommand command, BoDe question)
         {
             AddQuestionParametersWithoutAnswer(command, question);
-            command.Parameters.Add("@DapAn", SqlDbType.Char, 1).Value = Trim(question.DapAn);
+            command.Parameters.Add("@DapAn", SqlDbType.Char, 1).Value = Trim(question.DapAn).ToUpperInvariant();
         }
 
         private static void AddQuestionParametersWithoutAnswer(SqlCommand command, BoDe question)
         {
-            command.Parameters.Add("@MaMH", SqlDbType.NChar, 5).Value = Trim(question.MaMH);
-            command.Parameters.Add("@TrinhDo", SqlDbType.Char, 1).Value = Trim(question.TrinhDo);
+            command.Parameters.Add("@MaMH", SqlDbType.NChar, 5).Value = Trim(question.MaMH).ToUpperInvariant();
+            command.Parameters.Add("@TrinhDo", SqlDbType.Char, 1).Value = Trim(question.TrinhDo).ToUpperInvariant();
             command.Parameters.Add("@NoiDung", SqlDbType.NVarChar, 200).Value = Trim(question.NoiDung);
             command.Parameters.Add("@DapAnA", SqlDbType.NVarChar, 50).Value = Trim(question.DapAnA);
             command.Parameters.Add("@DapAnB", SqlDbType.NVarChar, 50).Value = Trim(question.DapAnB);

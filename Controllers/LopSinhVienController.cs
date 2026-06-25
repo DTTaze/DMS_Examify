@@ -83,6 +83,10 @@ namespace DMS_Examify.Controllers
                 _lopService.Delete(maLop);
                 return Ok();
             }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message);
+            }
             catch (Exception ex)
             {
                 return LogAndReturnServerError(_logger, ex, $"Không thể xóa lớp học {maLop}.");
@@ -175,6 +179,10 @@ namespace DMS_Examify.Controllers
             {
                 _sinhVienService.Delete(maSV);
                 return Ok();
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message);
             }
             catch (Exception ex)
             {

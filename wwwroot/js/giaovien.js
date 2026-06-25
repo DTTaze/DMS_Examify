@@ -696,6 +696,8 @@
     }
 
     let currentImportList = [];
+    let currentImportRows = [];
+    let importValidationTimer;
 
     function handleFileSelect(event) {
         AppCommon.readFirstExcelSheet(
@@ -711,6 +713,7 @@
         dom.importPreviewSection.style.display = "none";
         dom.btnConfirmImport.setAttribute("disabled", "true");
         currentImportList = [];
+        currentImportRows = [];
 
         const rows = rawData.filter(r => r.some(cell => cell.toString().trim() !== ""));
         if (rows.length === 0) {
@@ -747,17 +750,7 @@
             return;
         }
 
-        const processedRows = [];
-        const fileMaGVSet = new Set();
-
-        const currentTableIds = new Set();
-        dom.gvTable.querySelectorAll("tr").forEach(tr => {
-            if (!AppCommon.isPendingDelete(tr) && tr.dataset.magv) {
-                currentTableIds.add(tr.dataset.magv.trim().toUpperCase());
-            }
-        });
-
-        dataRows.forEach((row, idx) => {
+        currentImportRows = dataRows.map((row, idx) => {
             const maGV = row[0]?.toString().trim() ?? "";
             const ho = row[1]?.toString().trim() ?? "";
             const ten = row[2]?.toString().trim() ?? "";
@@ -765,7 +758,53 @@
             const diaChi = row[4]?.toString().trim() ?? "";
             const rowNum = idx + 2;
 
+            return {
+                index: idx,
+                rowNum: rowNum,
+                maGV: maGV,
+                ho: ho,
+                ten: ten,
+                soDTLL: soDTLL,
+                diaChi: diaChi,
+                error: ""
+            };
+        });
+
+        validateImportPreviewRows();
+    }
+
+    function validateImportPreviewRows() {
+        const processedRows = currentImportRows.map(row => ({ ...row, error: "" }));
+
+        const fileMaGVRows = new Map();
+        const pendingMaGVs = new Set(newItems.map(x => x.MaGV.trim().toUpperCase()));
+        const databaseMaGVs = new Set();
+        dom.gvTable.querySelectorAll("tr").forEach(tr => {
+            const magv = tr.dataset.magv;
+            if (magv) {
+                const magvUpper = magv.trim().toUpperCase();
+                if (!pendingMaGVs.has(magvUpper)) {
+                    databaseMaGVs.add(magvUpper);
+                }
+            }
+        });
+
+        processedRows.forEach(row => {
+            const maGV = row.maGV?.trim().toUpperCase() ?? "";
+            if (maGV !== "" && maGV.length <= 8) {
+                const rowNumbers = fileMaGVRows.get(maGV) ?? [];
+                rowNumbers.push(row.index + 1);
+                fileMaGVRows.set(maGV, rowNumbers);
+            }
+        });
+
+        processedRows.forEach(row => {
             let error = "";
+            const maGV = row.maGV?.trim() ?? "";
+            const ho = row.ho?.trim() ?? "";
+            const ten = row.ten?.trim() ?? "";
+            const soDTLL = row.soDTLL?.trim() ?? "";
+            const diaChi = row.diaChi?.trim() ?? "";
 
             if (maGV === "") {
                 error = "Mã GV trống";
@@ -786,32 +825,34 @@
             } else {
                 const idUpper = maGV.toUpperCase();
 
-                if (fileMaGVSet.has(idUpper)) {
-                    error = "Trùng mã GV trong file";
-                } else if (currentTableIds.has(idUpper)) {
-                    error = "Trùng mã GV trên lưới";
-                } else {
-                    fileMaGVSet.add(idUpper);
+                const duplicateCodeRows = fileMaGVRows.get(idUpper) ?? [];
+                if (duplicateCodeRows.length > 1) {
+                    const previewStt = row.index + 1;
+                    const otherRows = duplicateCodeRows.filter(stt => stt !== previewStt).join(", ");
+                    error = `STT ${previewStt} trùng mã GV với STT ${otherRows}`;
+                } else if (pendingMaGVs.has(idUpper)) {
+                    error = "Trùng mã GV với danh sách tạm thời";
+                } else if (databaseMaGVs.has(idUpper)) {
+                    error = "Trùng mã GV trong CSDL";
                 }
             }
 
-            processedRows.push({
-                index: idx,
-                rowNum: rowNum,
-                maGV: maGV,
-                ho: ho,
-                ten: ten,
-                soDTLL: soDTLL,
-                diaChi: diaChi,
-                error: error
-            });
+            row.maGV = maGV;
+            row.ho = ho;
+            row.ten = ten;
+            row.soDTLL = soDTLL;
+            row.diaChi = diaChi;
+            row.error = error;
         });
 
+        currentImportRows = processedRows;
         const candidates = processedRows.filter(r => r.error === "");
+
         if (candidates.length === 0) {
             renderPreview(processedRows);
             return;
         }
+
         fetch('/GiaoVien/CheckImport', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -823,9 +864,13 @@
         })
         .then(dbResults => {
             dbResults.forEach(res => {
-                const match = processedRows.find(p => p.index === res.index && p.error === "");
-                if (match && res.idDuplicate) {
-                    match.error = "Trùng mã GV trong CSDL";
+                const match = candidates.find(c => c.index === res.index);
+                if (match) {
+                    if (res.idDuplicateFile) {
+                        match.error = `Trùng mã GV với STT ${res.idDuplicateFileWithRowIndex + 1} trong file`;
+                    } else if (res.idDuplicateDB) {
+                        match.error = "Trùng mã GV trong CSDL";
+                    }
                 }
             });
             renderPreview(processedRows);
@@ -837,6 +882,19 @@
 
     function renderPreview(processedRows) {
         const tbody = dom.tblImportPreview.querySelector("tbody");
+
+        const activeEl = document.activeElement;
+        let activeIndex = null;
+        let activeField = null;
+        let selectionStart = null;
+        let selectionEnd = null;
+        if (activeEl && activeEl.classList.contains("import-edit-input")) {
+            activeIndex = Number(activeEl.dataset.importIndex);
+            activeField = activeEl.dataset.importField;
+            selectionStart = activeEl.selectionStart;
+            selectionEnd = activeEl.selectionEnd;
+        }
+
         tbody.innerHTML = "";
         dom.importPreviewSection.style.display = "block";
 
@@ -849,7 +907,7 @@
 
             let statusBadge = "";
             if (row.error) {
-                statusBadge = `<span class="badge bg-danger"><i class="bi bi-x-circle"></i> ${row.error}</span>`;
+                statusBadge = `<span class="badge bg-danger"><i class="bi bi-x-circle"></i> ${AppCommon.escapeHtml(row.error)}</span>`;
                 tr.className = "table-danger";
                 errorCount++;
             } else {
@@ -859,12 +917,66 @@
 
             tr.innerHTML = `
                 <td class="text-center">${stt}</td>
-                <td><strong>${row.maGV}</strong></td>
-                <td>${row.ho} ${row.ten}</td>
+                <td>
+                    <input type="text"
+                           class="form-control form-control-sm import-edit-input import-magv-input fw-semibold text-uppercase"
+                           value="${AppCommon.escapeHtml(row.maGV)}"
+                           maxlength="8"
+                           data-import-index="${row.index}"
+                           data-import-field="maGV" />
+                </td>
+                <td>
+                    <input type="text"
+                           class="form-control form-control-sm import-edit-input"
+                           value="${AppCommon.escapeHtml(row.ho)}"
+                           maxlength="50"
+                           placeholder="Họ"
+                           data-import-index="${row.index}"
+                           data-import-field="ho" />
+                </td>
+                <td>
+                    <input type="text"
+                           class="form-control form-control-sm import-edit-input"
+                           value="${AppCommon.escapeHtml(row.ten)}"
+                           maxlength="10"
+                           placeholder="Tên"
+                           data-import-index="${row.index}"
+                           data-import-field="ten" />
+                </td>
+                <td>
+                    <input type="text"
+                           class="form-control form-control-sm import-edit-input text-center"
+                           value="${AppCommon.escapeHtml(row.soDTLL)}"
+                           maxlength="15"
+                           placeholder="Số ĐT"
+                           data-import-index="${row.index}"
+                           data-import-field="soDTLL" />
+                </td>
+                <td>
+                    <input type="text"
+                           class="form-control form-control-sm import-edit-input"
+                           value="${AppCommon.escapeHtml(row.diaChi)}"
+                           maxlength="40"
+                           placeholder="Địa chỉ"
+                           data-import-index="${row.index}"
+                           data-import-field="diaChi" />
+                </td>
                 <td>${statusBadge}</td>
             `;
             tbody.appendChild(tr);
         });
+
+        bindImportPreviewInputs();
+
+        if (activeField !== null && activeIndex !== null) {
+            const newActiveEl = tbody.querySelector(`.import-edit-input[data-import-index="${activeIndex}"][data-import-field="${activeField}"]`);
+            if (newActiveEl) {
+                newActiveEl.focus();
+                try {
+                    newActiveEl.setSelectionRange(selectionStart, selectionEnd);
+                } catch (e) {}
+            }
+        }
 
         dom.importSummary.textContent = `Tổng: ${processedRows.length} | Hợp lệ: ${successCount} | Lỗi: ${errorCount}`;
         dom.importSummary.className = errorCount > 0 ? "badge bg-danger rounded-pill px-3 py-1.5" : "badge bg-success rounded-pill px-3 py-1.5";
@@ -880,7 +992,37 @@
             }));
         } else {
             dom.btnConfirmImport.setAttribute("disabled", "true");
+            currentImportList = [];
         }
+    }
+
+    function bindImportPreviewInputs() {
+        dom.tblImportPreview.querySelectorAll(".import-edit-input").forEach(input => {
+            input.addEventListener("input", event => {
+                const target = event.target;
+                const rowIndex = Number(target.dataset.importIndex);
+                const field = target.dataset.importField;
+                const row = currentImportRows.find(item => item.index === rowIndex);
+
+                if (!row) return;
+
+                if (field === "maGV") {
+                    target.value = target.value.trim().toUpperCase().slice(0, 8);
+                    row.maGV = target.value;
+                } else if (field === "ho") {
+                    row.ho = target.value;
+                } else if (field === "ten") {
+                    row.ten = target.value;
+                } else if (field === "soDTLL") {
+                    row.soDTLL = target.value;
+                } else if (field === "diaChi") {
+                    row.diaChi = target.value;
+                }
+
+                clearTimeout(importValidationTimer);
+                importValidationTimer = setTimeout(validateImportPreviewRows, 300);
+            });
+        });
     }
 
     function confirmImport() {

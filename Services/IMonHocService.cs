@@ -2,7 +2,7 @@ using DMS_Examify.Models;
 
 namespace DMS_Examify.Services
 {
-    public record SubjectDuplicateCheckResult(bool Exists, bool IsActive);
+    public record SubjectDuplicateCheckResult(bool Exists);
 
     public interface IMonHocService
     {

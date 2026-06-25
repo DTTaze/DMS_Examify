@@ -41,28 +41,28 @@
 
                 <div class="mb-3">
                     <label class="form-label fw-medium">Nội dung câu hỏi <span class="text-danger">*</span></label>
-                    <textarea id="txtNoiDung" class="form-control shadow-none" rows="3" placeholder="Nhập câu hỏi..."></textarea>
-
+                    <textarea id="txtNoiDung" class="form-control shadow-none" rows="3" placeholder="Nhập câu hỏi..." maxlength="200"></textarea>
+                    <div id="questionDuplicateFeedback" class="text-danger small fw-medium mt-1" style="display: none;"></div>
                 </div>
 
                 <div class="row mb-3">
                     <div class="col-md-6 mb-3 mb-md-0">
                         <label class="form-label fw-medium">Phương án A <span class="text-danger">*</span></label>
-                        <input id="txtA" class="form-control shadow-none" placeholder="Phương án A" />
+                        <input id="txtA" class="form-control shadow-none" placeholder="Phương án A" maxlength="50" />
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-medium">Phương án B <span class="text-danger">*</span></label>
-                        <input id="txtB" class="form-control shadow-none" placeholder="Phương án B" />
+                        <input id="txtB" class="form-control shadow-none" placeholder="Phương án B" maxlength="50" />
                     </div>
                 </div>
                 <div class="row mb-3">
                     <div class="col-md-6 mb-3 mb-md-0">
                         <label class="form-label fw-medium">Phương án C <span class="text-danger">*</span></label>
-                        <input id="txtC" class="form-control shadow-none" placeholder="Phương án C" />
+                        <input id="txtC" class="form-control shadow-none" placeholder="Phương án C" maxlength="50" />
                     </div>
                     <div class="col-md-6">
                         <label class="form-label fw-medium">Phương án D <span class="text-danger">*</span></label>
-                        <input id="txtD" class="form-control shadow-none" placeholder="Phương án D" />
+                        <input id="txtD" class="form-control shadow-none" placeholder="Phương án D" maxlength="50" />
                     </div>
                     <div class="col-12 mt-2">
                         <div id="answerDuplicateFeedback" class="text-danger small fw-medium" style="display: none;"></div>

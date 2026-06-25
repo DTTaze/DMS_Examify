@@ -42,6 +42,18 @@ namespace DMS_Examify.Controllers
 
             try
             {
+                var maCheck = _monHocService.CheckMaMHDuplicate(model.MaMH);
+                if (maCheck.Exists)
+                {
+                    return BadRequest("Mã môn học đã tồn tại trong CSDL.");
+                }
+
+                var tenCheck = _monHocService.CheckTenMHDuplicate(model.TenMH);
+                if (tenCheck.Exists)
+                {
+                    return BadRequest("Tên môn học đã tồn tại trong CSDL.");
+                }
+
                 _monHocService.Insert(model);
                 return Ok();
             }
@@ -61,6 +73,12 @@ namespace DMS_Examify.Controllers
 
             try
             {
+                var tenCheck = _monHocService.CheckTenMHDuplicateExcludingMaMH(model.TenMH, model.MaMH);
+                if (tenCheck.Exists)
+                {
+                    return BadRequest("Tên môn học đã tồn tại trong CSDL.");
+                }
+
                 _monHocService.Update(model);
                 return Ok();
             }
@@ -84,8 +102,13 @@ namespace DMS_Examify.Controllers
                 {
                     return BadRequest("Không thể xóa môn học vì đã có dữ liệu liên quan.");
                 }
+
                 _monHocService.Delete(maMH);
                 return Ok();
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message);
             }
             catch (Exception ex)
             {
@@ -126,9 +149,7 @@ namespace DMS_Examify.Controllers
                 return Json(new
                 {
                     maMHDuplicate = maCheck.Exists,
-                    maMHActive = maCheck.IsActive,
-                    tenMHDuplicate = tenCheck.Exists,
-                    tenMHActive = tenCheck.IsActive
+                    tenMHDuplicate = tenCheck.Exists
                 });
             }
             catch (Exception ex)
@@ -147,9 +168,7 @@ namespace DMS_Examify.Controllers
                 return Json(new
                 {
                     maMHDuplicate = false,
-                    maMHActive = false,
-                    tenMHDuplicate = tenCheck.Exists,
-                    tenMHActive = tenCheck.IsActive
+                    tenMHDuplicate = tenCheck.Exists
                 });
             }
             catch (Exception ex)

@@ -14,6 +14,16 @@
     let rowsPerPage = 10;
     let searchDebounceTimer = null;
 
+    function escapeHtml(str) {
+        if (str === null || str === undefined) return "";
+        return String(str)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
     // DOM Elements Cache
     const dom = {
         txtCauHoi: null,
@@ -426,10 +436,10 @@
 
         row.innerHTML = `
             <td>...</td>
-            <td class="text-truncate" style="max-width: 250px;">${d.NoiDung}</td>
-            <td>${d.MaMH}</td>
-            <td>${d.TrinhDo}</td>
-            <td class="text-center"><span class="badge bg-secondary">${d.DapAn}</span></td>
+            <td class="text-truncate" style="max-width: 250px;">${escapeHtml(d.NoiDung)}</td>
+            <td>${escapeHtml(d.MaMH)}</td>
+            <td>${escapeHtml(d.TrinhDo)}</td>
+            <td class="text-center"><span class="badge bg-secondary">${escapeHtml(d.DapAn)}</span></td>
             <td class="text-center">
                 <div class="d-flex gap-2 justify-content-center">
                     <button type="button" class="btn btn-link p-0 text-warning btn-edit" title="Sửa">
@@ -486,20 +496,20 @@
         selectedRow.innerHTML = `
             <td>${isNew ? "..." : id}</td>
             <td class="text-truncate ${(!isNew && isNoiDungChanged) ? 'cell-edited' : ''}" style="max-width: 250px;">
-                ${d.NoiDung}
-                ${(!isNew && isNoiDungChanged) ? `<div class="original-val text-muted small mt-1" style="font-size: 0.8rem; white-space: normal;">(Gốc: <span class="text-decoration-line-through">${oNoiDung}</span>)</div>` : ''}
+                ${escapeHtml(d.NoiDung)}
+                ${(!isNew && isNoiDungChanged) ? `<div class="original-val text-muted small mt-1" style="font-size: 0.8rem; white-space: normal;">(Gốc: <span class="text-decoration-line-through">${escapeHtml(oNoiDung)}</span>)</div>` : ''}
             </td>
             <td class="${(!isNew && isMaMHChanged) ? 'cell-edited' : ''}">
-                ${d.MaMH}
-                ${(!isNew && isMaMHChanged) ? `<div class="original-val text-muted small mt-1" style="font-size: 0.8rem;">(Gốc: <span class="text-decoration-line-through">${oMaMH}</span>)</div>` : ''}
+                ${escapeHtml(d.MaMH)}
+                ${(!isNew && isMaMHChanged) ? `<div class="original-val text-muted small mt-1" style="font-size: 0.8rem;">(Gốc: <span class="text-decoration-line-through">${escapeHtml(oMaMH)}</span>)</div>` : ''}
             </td>
             <td class="${(!isNew && isTrinhDoChanged) ? 'cell-edited' : ''}">
-                ${d.TrinhDo}
-                ${(!isNew && isTrinhDoChanged) ? `<div class="original-val text-muted small mt-1" style="font-size: 0.8rem;">(Gốc: <span class="text-decoration-line-through">${oTrinhDo}</span>)</div>` : ''}
+                ${escapeHtml(d.TrinhDo)}
+                ${(!isNew && isTrinhDoChanged) ? `<div class="original-val text-muted small mt-1" style="font-size: 0.8rem;">(Gốc: <span class="text-decoration-line-through">${escapeHtml(oTrinhDo)}</span>)</div>` : ''}
             </td>
             <td class="text-center ${(!isNew && isDapAnChanged) ? 'cell-edited' : ''}">
-                <span class="badge bg-secondary">${d.DapAn}</span>
-                ${(!isNew && isDapAnChanged) ? `<div class="original-val text-muted small mt-1" style="font-size: 0.8rem;">(Gốc: <span class="text-decoration-line-through">${oDapAn}</span>)</div>` : ''}
+                <span class="badge bg-secondary">${escapeHtml(d.DapAn)}</span>
+                ${(!isNew && isDapAnChanged) ? `<div class="original-val text-muted small mt-1" style="font-size: 0.8rem;">(Gốc: <span class="text-decoration-line-through">${escapeHtml(oDapAn)}</span>)</div>` : ''}
             </td>
             <td class="text-center">
                 <div class="d-flex gap-2 justify-content-center">
@@ -628,20 +638,67 @@
     }
 
     function executeQuestionSearch() {
-        const k = dom.txtSearch.value.toLowerCase().trim();
-        const rows = dom.tbl.querySelectorAll("tbody tr");
+        undoHistoryStack = [];
+        redoHistoryStack = [];
+        updateUndoRedoButtonStates();
 
-        rows.forEach(r => {
-            const text = r.innerText.toLowerCase();
-            if (text.includes(k)) {
-                r.classList.remove("search-hidden");
-            } else {
-                r.classList.add("search-hidden");
-            }
-        });
+        newItems = [];
+        updatedItems = [];
+        deletedItems = [];
+        updateSaveButtonState();
 
-        currentPage = 1;
-        updatePagination();
+        const k = dom.txtSearch.value.trim();
+
+        fetch(`/BoDe/Search?keyword=${encodeURIComponent(k)}`)
+            .then(res => res.json())
+            .then(questions => {
+                const tbody = dom.tbl.querySelector("tbody");
+                tbody.innerHTML = "";
+
+                questions.forEach(ch => {
+                    const tr = document.createElement("tr");
+                    tr.dataset.id = ch.cauHoi;
+                    tr.dataset.mamh = ch.maMH;
+                    tr.dataset.trinhdo = ch.trinhDo;
+                    tr.dataset.noidung = ch.noiDung;
+                    tr.dataset.a = ch.dapAnA;
+                    tr.dataset.b = ch.dapAnB;
+                    tr.dataset.c = ch.dapAnC;
+                    tr.dataset.d = ch.dapAnD;
+                    tr.dataset.dapan = ch.dapAn;
+
+                    tr.dataset.originalMamh = ch.maMH;
+                    tr.dataset.originalTrinhdo = ch.trinhDo;
+                    tr.dataset.originalNoidung = ch.noiDung;
+                    tr.dataset.originalA = ch.dapAnA;
+                    tr.dataset.originalB = ch.dapAnB;
+                    tr.dataset.originalC = ch.dapAnC;
+                    tr.dataset.originalD = ch.dapAnD;
+                    tr.dataset.originalDapan = ch.dapAn;
+
+                    tr.innerHTML = `
+                        <td><span class="badge bg-light text-secondary border border-light">${ch.cauHoi}</span></td>
+                        <td class="text-truncate fw-semibold" style="max-width: 250px;">${escapeHtml(ch.noiDung)}</td>
+                        <td>${escapeHtml(ch.maMH)}</td>
+                        <td>${escapeHtml(ch.trinhDo)}</td>
+                        <td class="text-center"><span class="badge bg-secondary">${escapeHtml(ch.dapAn)}</span></td>
+                        <td class="text-center">
+                            <div class="d-flex gap-2 justify-content-center">
+                                <button type="button" class="btn btn-link text-warning p-0 btn-edit" title="Hiệu chỉnh"><i class="bi bi-pencil-square fs-5"></i></button>
+                                <button type="button" class="btn btn-link text-danger p-0 btn-delete" title="Xóa"><i class="bi bi-trash fs-5"></i></button>
+                            </div>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+                bindRows();
+                currentPage = 1;
+                updateSTT();
+            })
+            .catch(err => {
+                console.error("Lỗi khi tìm kiếm câu hỏi:", err);
+            });
     }
 
     function validateQuestionInputs() {
@@ -665,9 +722,9 @@
         } else if (!d.DapAnA || !d.DapAnB || !d.DapAnC || !d.DapAnD) {
             valid = false;
             message = "Phương án trả lời A, B, C, D không được rỗng.";
-        } else if (d.DapAnA.length > 200 || d.DapAnB.length > 200 || d.DapAnC.length > 200 || d.DapAnD.length > 200) {
+        } else if (d.DapAnA.length > 50 || d.DapAnB.length > 50 || d.DapAnC.length > 50 || d.DapAnD.length > 50) {
             valid = false;
-            message = "Các phương án trả lời tối đa 200 ký tự.";
+            message = "Các phương án trả lời tối đa 50 ký tự.";
         } else if (duplicateAnswerLabels.length > 0) {
             valid = false;
             message = `Các phương án ${duplicateAnswerLabels.join(", ")} đang trùng nội dung. Vui lòng nhập 4 phương án khác nhau.`;
@@ -699,7 +756,7 @@
             dom.wrapThem.title = message;
             dom.wrapSua.title = message;
         }
-        checkDuplicateQuestions();
+        checkDuplicateQuestions(valid);
     }
 
     function updateSaveButtonState() {
@@ -951,12 +1008,13 @@
             processedRows.forEach((row, i) => {
                 if (row.error) return;
 
+                const normNoiDung = row.noiDung.trim().toLowerCase();
+
                 for (let j = 0; j < existingRows.length; j++) {
-                    const exNoiDung = existingRows[j].dataset.noidung || "";
+                    const exNoiDung = (existingRows[j].dataset.noidung || "").trim().toLowerCase();
                     const exId = existingRows[j].dataset.id;
-                    const similarity = SimilarityEngine.calculateSimilarity(row.noiDung, exNoiDung);
-                    if (similarity >= 0.8) {
-                        row.error = `Trùng câu hỏi ${exId > 0 ? exId : 'tạm thời'} (${Math.round(similarity * 100)}%)`;
+                    if (normNoiDung === exNoiDung) {
+                        row.error = `Trùng câu hỏi ${exId > 0 ? exId : 'tạm thời'} (100%)`;
                         return;
                     }
                 }
@@ -965,9 +1023,9 @@
                     const prevRow = processedRows[k];
                     if (prevRow.error) continue;
                     
-                    const similarity = SimilarityEngine.calculateSimilarity(row.noiDung, prevRow.noiDung);
-                    if (similarity >= 0.8) {
-                        row.error = `Trùng với dòng ${prevRow.rowNum} trong file (${Math.round(similarity * 100)}%)`;
+                    const prevNoiDung = prevRow.noiDung.trim().toLowerCase();
+                    if (normNoiDung === prevNoiDung) {
+                        row.error = `Trùng với dòng ${prevRow.rowNum} trong file (100%)`;
                         return;
                     }
                 }
@@ -1004,8 +1062,8 @@
 
             tr.innerHTML = `
                 <td class="text-center">${stt}</td>
-                <td><strong>${row.maMH} (Lvl ${row.trinhDo})</strong></td>
-                <td class="text-truncate" style="max-width: 250px;">${row.noiDung}</td>
+                <td><strong>${escapeHtml(row.maMH)} (Lvl ${escapeHtml(row.trinhDo)})</strong></td>
+                <td class="text-truncate" style="max-width: 250px;">${escapeHtml(row.noiDung)}</td>
                 <td>${statusBadge}</td>
             `;
             tbody.appendChild(tr);
@@ -1063,10 +1121,10 @@
 
             row.innerHTML = `
                 <td>...</td>
-                <td class="text-truncate" style="max-width: 250px;">${item.NoiDung}</td>
-                <td>${item.MaMH}</td>
-                <td>${item.TrinhDo}</td>
-                <td class="text-center"><span class="badge bg-secondary">${item.DapAn}</span></td>
+                <td class="text-truncate" style="max-width: 250px;">${escapeHtml(item.NoiDung)}</td>
+                <td>${escapeHtml(item.MaMH)}</td>
+                <td>${escapeHtml(item.TrinhDo)}</td>
+                <td class="text-center"><span class="badge bg-secondary">${escapeHtml(item.DapAn)}</span></td>
                 <td class="text-center">
                     <div class="d-flex gap-2 justify-content-center">
                         <button type="button" class="btn btn-link p-0 text-warning btn-edit" title="Sửa">
@@ -1098,8 +1156,107 @@
         updateSaveButtonState();
     }
 
-    function checkDuplicateQuestions() {
-        // Disabled per user request
+    function checkDuplicateQuestions(isFormValid) {
+        const feedbackDiv = AppCommon.byId("questionDuplicateFeedback");
+        if (!feedbackDiv) return;
+
+        const content = dom.txtNoiDung.value.trim().toLowerCase();
+        if (!content) {
+            feedbackDiv.style.display = "none";
+            feedbackDiv.textContent = "";
+            return;
+        }
+
+        const currentId = selectedRow ? parseInt(selectedRow.dataset.id, 10) : null;
+        
+        // 1. Check local grid rows (including hidden ones)
+        const existingRows = Array.from(dom.tbl.querySelectorAll("tbody tr"));
+        let isDuplicateLocal = false;
+        let duplicateId = null;
+
+        for (let row of existingRows) {
+            if (AppCommon.isPendingDelete(row)) continue;
+            
+            const rowId = parseInt(row.dataset.id, 10);
+            if (currentId !== null && rowId === currentId) continue;
+
+            const rowContent = (row.dataset.noidung || "").trim().toLowerCase();
+            if (content === rowContent) {
+                isDuplicateLocal = true;
+                duplicateId = rowId;
+                break;
+            }
+        }
+
+        if (isDuplicateLocal) {
+            feedbackDiv.textContent = `Câu hỏi này trùng 100% với câu hỏi ${duplicateId > 0 ? duplicateId : 'tạm thời'} trên lưới.`;
+            feedbackDiv.style.display = "block";
+            dom.btnThem.setAttribute("disabled", "true");
+            dom.btnSua.setAttribute("disabled", "true");
+            dom.wrapThem.title = "Câu hỏi trùng lặp trên lưới.";
+            dom.wrapSua.title = "Câu hỏi trùng lặp trên lưới.";
+            return;
+        }
+
+        if (!isFormValid) {
+            feedbackDiv.style.display = "none";
+            feedbackDiv.textContent = "";
+            return;
+        }
+
+        // 2. Check Database via API
+        const lastChecked = dom.txtNoiDung.dataset.lastCheckedValue || "";
+        const excludeId = currentId !== null && currentId > 0 ? currentId : 0;
+        
+        if (lastChecked === content + "_" + excludeId) {
+            const hasDup = dom.txtNoiDung.dataset.lastCheckResult === "true";
+            if (hasDup) {
+                feedbackDiv.textContent = "Câu hỏi này đã tồn tại trong CSDL ngân hàng đề.";
+                feedbackDiv.style.display = "block";
+                dom.btnThem.setAttribute("disabled", "true");
+                dom.btnSua.setAttribute("disabled", "true");
+                dom.wrapThem.title = "Câu hỏi đã tồn tại trong CSDL.";
+                dom.wrapSua.title = "Câu hỏi đã tồn tại trong CSDL.";
+            } else {
+                feedbackDiv.style.display = "none";
+                feedbackDiv.textContent = "";
+            }
+            return;
+        }
+
+        dom.txtNoiDung.dataset.lastCheckedValue = content + "_" + excludeId;
+
+        fetch(`/BoDe/CheckDuplicate?noiDung=${encodeURIComponent(dom.txtNoiDung.value.trim())}&excludeCauHoi=${excludeId}`)
+            .then(res => res.json())
+            .then(data => {
+                dom.txtNoiDung.dataset.lastCheckResult = data.hasDuplicate ? "true" : "false";
+                if (data.hasDuplicate) {
+                    feedbackDiv.textContent = "Câu hỏi này đã tồn tại trong CSDL ngân hàng đề.";
+                    feedbackDiv.style.display = "block";
+                    dom.btnThem.setAttribute("disabled", "true");
+                    dom.btnSua.setAttribute("disabled", "true");
+                    dom.wrapThem.title = "Câu hỏi đã tồn tại trong CSDL.";
+                    dom.wrapSua.title = "Câu hỏi đã tồn tại trong CSDL.";
+                } else {
+                    feedbackDiv.style.display = "none";
+                    feedbackDiv.textContent = "";
+                    const isEditing = selectedRow !== null;
+                    const d = getQuestionForm();
+                    if (isEditing) {
+                        if (hasQuestionFormChanges(selectedRow, d)) {
+                            dom.btnSua.removeAttribute("disabled");
+                            dom.wrapSua.removeAttribute("title");
+                        }
+                    } else {
+                        dom.btnThem.removeAttribute("disabled");
+                        dom.wrapThem.removeAttribute("title");
+                    }
+                }
+            })
+            .catch(() => {
+                feedbackDiv.style.display = "none";
+                feedbackDiv.textContent = "";
+            });
     }
 
     function navigateToQuestionRow(targetId) {
