@@ -98,6 +98,11 @@ BEGIN
 END
 GO
 
+GRANT EXECUTE ON [dbo].[SP_TAOTAIKHOAN] TO [PGV];
+
+PRINT N'OK: [dbo].[SP_TAOTAIKHOAN] đã sẵn sàng.';
+GO
+
 GRANT EXECUTE ON [dbo].[usp_MonHoc_Delete] TO [PGV];
 GO
 
@@ -1370,6 +1375,10 @@ GO
 PRINT N'OK: [dbo].[udf_DemSoCauTrongBoDe] đã sẵn sàng.';
 GO
 
+GRANT EXECUTE ON [dbo].[udf_DemSoCauTrongBoDe] TO [PGV];
+GRANT EXECUTE ON [dbo].[udf_DemSoCauTrongBoDe] TO [Giangvien];
+GO
+
 -- ============================================================
 -- Đăng Ký Thi / Đề Thi (GIAOVIEN_DANGKY)
 -- ============================================================
@@ -1427,6 +1436,10 @@ BEGIN
 
     RETURN @ThongBao;
 END
+GO
+
+GRANT EXECUTE ON [dbo].[udf_KiemTraDieuKienDangKy] TO [PGV];
+GRANT EXECUTE ON [dbo].[udf_KiemTraDieuKienDangKy] TO [Giangvien];
 GO
 
 PRINT N'OK: [dbo].[udf_KiemTraDieuKienDangKy] đã sẵn sàng.';
@@ -1487,6 +1500,10 @@ BEGIN
         END CATCH
     END
 END
+GO
+
+GRANT EXECUTE ON usp_ThucHienDangKyThi TO [PGV];
+GRANT EXECUTE ON usp_ThucHienDangKyThi TO [Giangvien];
 GO
 
 PRINT N'OK: usp_ThucHienDangKyThi đã sẵn sàng.';
@@ -2066,4 +2083,27 @@ GRANT EXECUTE ON dbo.usp_NopBaiThi TO [Sinhvien];
 GO
 
 PRINT N'OK: usp_NopBaiThi da san sang.';
+GO
+
+CREATE OR ALTER PROCEDURE [dbo].[usp_LayDanhSachQuyen_TaoTaiKhoan]
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT
+        name AS TenNhomQuyen
+    FROM
+        sysusers
+    WHERE
+        name IN ('PGV', 'Giangvien')
+    ORDER BY
+        name;
+END
+GO
+
+PRINT N'OK: usp_LayDanhSachQuyen_TaoTaiKhoan đã sẵn sàng.';
+GO
+
+GRANT EXECUTE ON [dbo].[usp_LayDanhSachQuyen_TaoTaiKhoan] TO [PGV];
+GRANT EXECUTE ON [dbo].[usp_LayDanhSachQuyen_TaoTaiKhoan] TO [Giangvien];
 GO

@@ -83,7 +83,6 @@ SELECT
 FROM [dbo].[BODE] b
 JOIN      [dbo].[MONHOC]   mh ON b.MAMH = mh.MAMH
 LEFT JOIN [dbo].[GIAOVIEN] gv ON b.MAGV = gv.MAGV
-WHERE b.TrangThai = 1;
 GO
 
 PRINT N'OK: Da tao View vw_BoDeCuaGiaoVien.';
