@@ -1,4 +1,4 @@
-﻿using DMS_Examify.Models;
+using DMS_Examify.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using System.Data;
@@ -9,43 +9,72 @@ namespace DMS_Examify.Controllers
     {
         private const string SessionKeyMaLop = "MaLop";
         private const string StudentRole = "Sinhvien";
+        private const string LecturerRole = "Giangvien";
+        private const string GvUserIdPrefix = "GV_";
 
         public IActionResult Index()
         {
-            if (!CheckRole("Sinhvien", "Giangvien")) return Denied();
+            if (!CheckRole(StudentRole, LecturerRole)) return Denied();
 
-            var maSV = HttpContext.Session.GetString("UserLogin") ?? "";
+            var isGV = IsLecturer;
+            var userLogin = HttpContext.Session.GetString("UserLogin") ?? "";
             var hoTen = HttpContext.Session.GetString("UserName") ?? "";
-            var maLop = HttpContext.Session.GetString(SessionKeyMaLop) ?? "";
-
-            var tenLop = LoadTenLop(maLop);
-            var danhSachMH = LoadDanhSachMonThi(maLop);
 
             var model = new ThiChonViewModel
             {
-                MaSV = maSV,
+                MaSV = userLogin,
                 HoTen = hoTen,
-                MaLop = maLop,
-                TenLop = tenLop,
-                DanhSachMH = danhSachMH
+                IsGiangVien = isGV
             };
 
+            if (isGV)
+            {
+                model.DanhSachLop = LoadDanhSachLopChoGV(userLogin);
+            }
+            else
+            {
+                var maLop = HttpContext.Session.GetString(SessionKeyMaLop) ?? "";
+                model.MaLop = maLop;
+                model.TenLop = LoadTenLop(maLop);
+                model.DanhSachMH = LoadDanhSachMonThi(maLop);
+            }
+
             return View(model);
+        }
+
+        [HttpGet]
+        public IActionResult LayDanhSachMonThiChoGV(string maLop)
+        {
+            if (!CheckRole(LecturerRole))
+                return Json(new { success = false, message = "Khong co quyen." });
+
+            if (string.IsNullOrWhiteSpace(maLop))
+                return Json(new { success = false, message = "Vui long chon lop." });
+
+            var userLogin = HttpContext.Session.GetString("UserLogin") ?? "";
+            var list = LoadDanhSachMonThiChoGV(userLogin, maLop);
+
+            return Json(new
+            {
+                success = true,
+                data = list.Select(m => new { maMH = m.MaMH.Trim(), tenMH = m.TenMH.Trim() })
+            });
         }
 
         [HttpPost]
         public IActionResult BatDauThi([FromBody] BatDauThiRequest request)
         {
-            if (!CheckRole(StudentRole))
-                return Json(new { success = false, message = "Chi sinh vien moi duoc bat dau thi." });
+            if (!CheckRole(StudentRole, LecturerRole))
+                return Json(new { success = false, message = "Khong co quyen bat dau thi." });
 
-            var maSV = HttpContext.Session.GetString("UserLogin") ?? "";
             if (!IsValidExamRequest(request.MaMH, request.Lan))
                 return Json(new { success = false, message = "Thong tin de thi khong hop le." });
 
             try
             {
-                var activeExam = LoadPhienThiDangMo(maSV);
+                var userId = GetExamUserId();
+
+                var activeExam = LoadPhienThiDangMo(userId);
                 if (activeExam.CoPhienThi)
                 {
                     var redirectUrl = Url.Action(nameof(LamBai), new { mamh = activeExam.MaMH, lan = activeExam.Lan }) ?? "";
@@ -61,12 +90,28 @@ namespace DMS_Examify.Controllers
                     });
                 }
 
-                var result = ExecuteExamProcedure("dbo.usp_BatDauThi", cmd =>
+                ExamProcedureResult result;
+
+                if (IsLecturer)
                 {
-                    AddNChar(cmd, "@MASV", maSV, 8);
-                    AddNChar(cmd, "@MAMH", request.MaMH, 5);
-                    cmd.Parameters.Add("@LAN", SqlDbType.SmallInt).Value = request.Lan;
-                });
+                    result = ExecuteExamProcedure("dbo.usp_BatDauThiThu", cmd =>
+                    {
+                        AddNChar(cmd, "@MAGV", CurrentTeacherId, 8);
+                        AddNChar(cmd, "@MAMH", request.MaMH, 5);
+                        AddNChar(cmd, "@MALOP", request.MaLop, 8);
+                        cmd.Parameters.Add("@LAN", SqlDbType.SmallInt).Value = request.Lan;
+                    });
+                }
+                else
+                {
+                    var maSV = HttpContext.Session.GetString("UserLogin") ?? "";
+                    result = ExecuteExamProcedure("dbo.usp_BatDauThi", cmd =>
+                    {
+                        AddNChar(cmd, "@MASV", maSV, 8);
+                        AddNChar(cmd, "@MAMH", request.MaMH, 5);
+                        cmd.Parameters.Add("@LAN", SqlDbType.SmallInt).Value = request.Lan;
+                    });
+                }
 
                 return Json(new
                 {
@@ -85,8 +130,8 @@ namespace DMS_Examify.Controllers
 
         public IActionResult LamBai(string mamh, int lan)
         {
-            if (!CheckRole(StudentRole)) return Denied();
-            ViewData["Title"] = "Lam bai thi";
+            if (!CheckRole(StudentRole, LecturerRole)) return Denied();
+            ViewData["Title"] = IsLecturer ? "Thi thu" : "Lam bai thi";
 
             if (!IsValidExamRequest(mamh, lan))
             {
@@ -94,10 +139,10 @@ namespace DMS_Examify.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            var maSV = HttpContext.Session.GetString("UserLogin") ?? "";
+            var userId = GetExamUserId();
             try
             {
-                var activeExam = LoadPhienThiDangMo(maSV);
+                var activeExam = LoadPhienThiDangMo(userId);
                 if (!activeExam.CoPhienThi)
                 {
                     TempData["ErrorMessage"] = "Khong tim thay phien thi dang mo. Hay bat dau thi tu man hinh chon de.";
@@ -110,15 +155,16 @@ namespace DMS_Examify.Controllers
                     return RedirectToAction(nameof(LamBai), new { mamh = activeExam.MaMH, lan = activeExam.Lan });
                 }
 
-                var model = LoadBaiThiDangLam(maSV, mamh, lan);
+                var model = LoadBaiThiDangLam(userId, mamh, lan);
                 if (model == null || model.DanhSachCauHoi.Count == 0)
                 {
                     TempData["ErrorMessage"] = "Khong tai duoc noi dung bai thi hoac da het thoi gian lam bai.";
                     return RedirectToAction(nameof(Index));
                 }
 
-                model.MaSV = maSV;
+                model.MaSV = userId;
                 model.HoTen = HttpContext.Session.GetString("UserName") ?? "";
+                model.IsThiThu = IsLecturer;
                 return View(model);
             }
             catch (Exception ex)
@@ -131,18 +177,18 @@ namespace DMS_Examify.Controllers
         [HttpPost]
         public IActionResult TraLoiCauHoi([FromBody] TraLoiCauHoiRequest request)
         {
-            if (!CheckRole(StudentRole))
+            if (!CheckRole(StudentRole, LecturerRole))
                 return Json(new { success = false, message = "Khong co quyen." });
 
             if (!IsValidExamRequest(request.MaMH, request.Lan) || !IsValidAnswer(request.CauTraLoi))
                 return Json(new { success = false, message = "Du lieu cau tra loi khong hop le." });
 
-            var maSV = HttpContext.Session.GetString("UserLogin") ?? "";
+            var userId = GetExamUserId();
             try
             {
                 var result = ExecuteExamProcedure("dbo.usp_TraLoiCauHoi", cmd =>
                 {
-                    AddNChar(cmd, "@MASV", maSV, 8);
+                    AddNChar(cmd, "@MASV", userId, 8);
                     AddNChar(cmd, "@MAMH", request.MaMH, 5);
                     cmd.Parameters.Add("@LAN", SqlDbType.SmallInt).Value = request.Lan;
                     cmd.Parameters.Add("@CAUHOI", SqlDbType.Int).Value = request.CauHoi;
@@ -160,21 +206,35 @@ namespace DMS_Examify.Controllers
         [HttpPost]
         public IActionResult NopBaiThi([FromBody] NopBaiThiRequest request)
         {
-            if (!CheckRole(StudentRole))
+            if (!CheckRole(StudentRole, LecturerRole))
                 return Json(new { success = false, message = "Khong co quyen." });
 
             if (!IsValidExamRequest(request.MaMH, request.Lan))
                 return Json(new { success = false, message = "Thong tin de thi khong hop le." });
 
-            var maSV = HttpContext.Session.GetString("UserLogin") ?? "";
             try
             {
-                var result = ExecuteExamProcedure("dbo.usp_NopBaiThi", cmd =>
+                ExamProcedureResult result;
+
+                if (IsLecturer)
                 {
-                    AddNChar(cmd, "@MASV", maSV, 8);
-                    AddNChar(cmd, "@MAMH", request.MaMH, 5);
-                    cmd.Parameters.Add("@LAN", SqlDbType.SmallInt).Value = request.Lan;
-                });
+                    result = ExecuteExamProcedure("dbo.usp_NopBaiThiThu", cmd =>
+                    {
+                        AddNChar(cmd, "@MAGV", CurrentTeacherId, 8);
+                        AddNChar(cmd, "@MAMH", request.MaMH, 5);
+                        cmd.Parameters.Add("@LAN", SqlDbType.SmallInt).Value = request.Lan;
+                    });
+                }
+                else
+                {
+                    var maSV = HttpContext.Session.GetString("UserLogin") ?? "";
+                    result = ExecuteExamProcedure("dbo.usp_NopBaiThi", cmd =>
+                    {
+                        AddNChar(cmd, "@MASV", maSV, 8);
+                        AddNChar(cmd, "@MAMH", request.MaMH, 5);
+                        cmd.Parameters.Add("@LAN", SqlDbType.SmallInt).Value = request.Lan;
+                    });
+                }
 
                 return Json(new
                 {
@@ -183,7 +243,8 @@ namespace DMS_Examify.Controllers
                     soCauDung = result.SoCauDung,
                     tongSoCau = result.TongSoCau,
                     diem = result.Diem,
-                    redirectUrl = result.IsSuccess
+                    isThiThu = IsLecturer,
+                    redirectUrl = result.IsSuccess && !IsLecturer
                         ? Url.Action("Index", "KetQua", new { mamh = request.MaMH, lan = request.Lan })
                         : null
                 });
@@ -193,6 +254,64 @@ namespace DMS_Examify.Controllers
                 return Json(new { success = false, message = "Loi he thong: " + ex.Message });
             }
         }
+
+        [HttpGet]
+        public IActionResult LayThongTinDeThi(string mamh, int lan, string? maLop = null)
+        {
+            if (!CheckRole(StudentRole, LecturerRole))
+                return Json(new { found = false, message = "Khong co quyen." });
+
+            var lopToQuery = IsLecturer
+                ? (maLop ?? "")
+                : (HttpContext.Session.GetString(SessionKeyMaLop) ?? "");
+
+            try
+            {
+                using var conn = new SqlConnection(ConnectionString);
+                conn.Open();
+
+                using var cmd = new SqlCommand("dbo.usp_LayThongTinDeThiChoSV", conn)
+                {
+                    CommandType = CommandType.StoredProcedure
+                };
+                AddNChar(cmd, "@MALOP", lopToQuery, 8);
+                AddNChar(cmd, "@MAMH", mamh, 5);
+                cmd.Parameters.Add("@LAN", SqlDbType.SmallInt).Value = lan;
+
+                using var reader = cmd.ExecuteReader();
+                if (reader.Read())
+                {
+                    return Json(new
+                    {
+                        found = true,
+                        soCauThi = Convert.ToInt32(reader["SOCAUTHI"]),
+                        thoiGian = Convert.ToInt32(reader["THOIGIAN"]),
+                        trinhDo = reader["TRINHDO"].ToString()?.Trim() ?? ""
+                    });
+                }
+
+                return Json(new { found = false, message = "Khong tim thay de thi cho lan thi nay." });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { found = false, message = ex.Message });
+            }
+        }
+
+        private string GetExamUserId()
+        {
+            if (IsLecturer)
+            {
+                var magv = CurrentTeacherId.Trim();
+                var suffix = magv.Length > 5 ? magv.Substring(magv.Length - 5) : magv;
+                return GvUserIdPrefix + suffix;
+            }
+
+            return HttpContext.Session.GetString("UserLogin") ?? "";
+        }
+
+        private bool IsLecturer =>
+            string.Equals(CurrentRole, LecturerRole, StringComparison.OrdinalIgnoreCase);
 
         private string LoadTenLop(string maLop)
         {
@@ -238,48 +357,62 @@ namespace DMS_Examify.Controllers
             return list;
         }
 
-        [HttpGet]
-        public IActionResult LayThongTinDeThi(string mamh, int lan)
+        private List<Lop> LoadDanhSachLopChoGV(string maGV)
         {
-            if (!CheckRole("Sinhvien", "Giangvien"))
-                return Json(new { found = false, message = "Khong co quyen." });
+            var list = new List<Lop>();
+            if (string.IsNullOrWhiteSpace(maGV)) return list;
 
-            var maLop = HttpContext.Session.GetString(SessionKeyMaLop) ?? "";
+            using var conn = new SqlConnection(ConnectionString);
+            conn.Open();
 
-            try
+            using var cmd = new SqlCommand("dbo.usp_LayDanhSachLopChoGV", conn)
             {
-                using var conn = new SqlConnection(ConnectionString);
-                conn.Open();
+                CommandType = CommandType.StoredProcedure
+            };
+            AddNChar(cmd, "@MAGV", maGV, 8);
 
-                using var cmd = new SqlCommand("dbo.usp_LayThongTinDeThiChoSV", conn)
-                {
-                    CommandType = CommandType.StoredProcedure
-                };
-                AddNChar(cmd, "@MALOP", maLop, 8);
-                AddNChar(cmd, "@MAMH", mamh, 5);
-                cmd.Parameters.Add("@LAN", SqlDbType.SmallInt).Value = lan;
-
-                using var reader = cmd.ExecuteReader();
-                if (reader.Read())
-                {
-                    return Json(new
-                    {
-                        found = true,
-                        soCauThi = Convert.ToInt32(reader["SOCAUTHI"]),
-                        thoiGian = Convert.ToInt32(reader["THOIGIAN"]),
-                        trinhDo = reader["TRINHDO"].ToString()?.Trim() ?? ""
-                    });
-                }
-
-                return Json(new { found = false, message = "Khong tim thay de thi cho lan thi nay." });
-            }
-            catch (Exception ex)
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
             {
-                return Json(new { found = false, message = ex.Message });
+                list.Add(new Lop
+                {
+                    MaLop = reader["MALOP"].ToString()?.Trim() ?? "",
+                    TenLop = reader["TENLOP"].ToString()?.Trim() ?? ""
+                });
             }
+
+            return list;
         }
 
-        private ThiLamBaiViewModel? LoadBaiThiDangLam(string maSV, string maMH, int lan)
+        private List<MonHoc> LoadDanhSachMonThiChoGV(string maGV, string maLop)
+        {
+            var list = new List<MonHoc>();
+            if (string.IsNullOrWhiteSpace(maGV) || string.IsNullOrWhiteSpace(maLop)) return list;
+
+            using var conn = new SqlConnection(ConnectionString);
+            conn.Open();
+
+            using var cmd = new SqlCommand("dbo.usp_LayDanhSachMonThiChoGV", conn)
+            {
+                CommandType = CommandType.StoredProcedure
+            };
+            AddNChar(cmd, "@MAGV", maGV, 8);
+            AddNChar(cmd, "@MALOP", maLop, 8);
+
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                list.Add(new MonHoc
+                {
+                    MaMH = reader["MAMH"].ToString()?.Trim() ?? "",
+                    TenMH = reader["TENMH"].ToString()?.Trim() ?? ""
+                });
+            }
+
+            return list;
+        }
+
+        private ThiLamBaiViewModel? LoadBaiThiDangLam(string userId, string maMH, int lan)
         {
             using var conn = new SqlConnection(ConnectionString);
             conn.Open();
@@ -288,7 +421,7 @@ namespace DMS_Examify.Controllers
             {
                 CommandType = CommandType.StoredProcedure
             };
-            AddNChar(cmd, "@MASV", maSV, 8);
+            AddNChar(cmd, "@MASV", userId, 8);
             AddNChar(cmd, "@MAMH", maMH, 5);
             cmd.Parameters.Add("@LAN", SqlDbType.SmallInt).Value = lan;
 
@@ -323,7 +456,7 @@ namespace DMS_Examify.Controllers
             return model;
         }
 
-        private ActiveExamInfo LoadPhienThiDangMo(string maSV)
+        private ActiveExamInfo LoadPhienThiDangMo(string userId)
         {
             using var conn = new SqlConnection(ConnectionString);
             conn.Open();
@@ -332,7 +465,7 @@ namespace DMS_Examify.Controllers
             {
                 CommandType = CommandType.StoredProcedure
             };
-            AddNChar(cmd, "@MASV", maSV, 8);
+            AddNChar(cmd, "@MASV", userId, 8);
 
             using var reader = cmd.ExecuteReader();
             do

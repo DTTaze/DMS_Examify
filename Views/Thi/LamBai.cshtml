@@ -1,9 +1,9 @@
 @model DMS_Examify.Models.ThiLamBaiViewModel
 @{
-    ViewData["Title"] = "Làm bài thi";
+    ViewData["Title"] = Model.IsThiThu ? "Thi thử" : "Làm bài thi";
 }
 
-<div class="exam-container" data-mamh="@Model.MaMH" data-lan="@Model.Lan">
+<div class="exam-container" data-mamh="@Model.MaMH" data-lan="@Model.Lan" data-is-thithu="@Model.IsThiThu.ToString().ToLower()">
     <!-- Header thi -->
     <div class="row g-3 mb-4 align-items-center animate-in">
         <div class="col-md-4">
@@ -12,6 +12,10 @@
             <div style="font-size:12px; color:var(--text-muted);">
                 @Model.HoTen • Lần @Model.Lan •
                 <span class="badge badge-level-@Model.TrinhDo.ToLower()">Trình độ @Model.TrinhDo</span>
+                @if (Model.IsThiThu)
+                {
+                    <span class="badge bg-warning text-dark ms-1">Thi thử</span>
+                }
             </div>
         </div>
         <div class="col-md-4 text-center">
@@ -21,10 +25,18 @@
         </div>
         <div class="col-md-4 text-end">
             <button class="btn btn-danger" style="padding:10px 28px; font-weight:600;" onclick="nopBai()">
-                <i class="bi bi-send me-1"></i> Nộp bài
+                <i class="bi bi-send me-1"></i> @(Model.IsThiThu ? "Kết thúc thi thử" : "Nộp bài")
             </button>
         </div>
     </div>
+
+    @if (Model.IsThiThu)
+    {
+        <div class="alert alert-warning border-0 mb-3" style="background: rgba(255,193,7,0.12); font-size: 13px;">
+            <i class="bi bi-mortarboard me-1"></i>
+            <strong>Chế độ thi thử</strong> — Kết quả chấm điểm nhưng không ghi vào bảng điểm.
+        </div>
+    }
 
     <!-- Progress dots -->
     <div class="exam-progress mb-4 animate-in animate-in-delay-1">
@@ -83,7 +95,7 @@
                 else
                 {
                     <button class="btn btn-danger" onclick="nopBai()">
-                        <i class="bi bi-send"></i> Nộp bài
+                        <i class="bi bi-send"></i> @(Model.IsThiThu ? "Kết thúc thi thử" : "Nộp bài")
                     </button>
                 }
             </div>
@@ -97,19 +109,39 @@
         <div class="modal-content" style="border-radius:20px; border:none;">
             <div class="modal-body">
                 <div class="score-display">
-                    <div style="font-size:48px; margin-bottom:16px;">🎉</div>
+                    <div style="font-size:48px; margin-bottom:16px;">
+                        @(Model.IsThiThu ? "📝" : "🎉")
+                    </div>
                     <div class="score-value" id="scoreValue">0</div>
                     <div class="score-label">điểm</div>
+                    @if (Model.IsThiThu)
+                    {
+                        <div style="margin-top:8px; font-size:13px; color:var(--warning); font-weight:600;">
+                            <i class="bi bi-mortarboard me-1"></i>Kết quả thi thử — Không ghi điểm
+                        </div>
+                    }
                     <div style="margin-top:12px; color:var(--text-secondary);">
                         Số câu đúng: <strong id="correctCount">0</strong> / <span id="totalCount">@Model.DanhSachCauHoi.Count</span>
                     </div>
                     <div style="margin-top:24px;">
-                        <a asp-controller="KetQua" asp-action="Index" class="btn btn-primary" style="padding:10px 32px;">
-                            <i class="bi bi-eye me-1"></i> Xem chi tiết
-                        </a>
-                        <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary ms-2" style="padding:10px 32px;">
-                            Về trang chủ
-                        </a>
+                        @if (Model.IsThiThu)
+                        {
+                            <a asp-controller="Thi" asp-action="Index" class="btn btn-primary" style="padding:10px 32px;">
+                                <i class="bi bi-arrow-repeat me-1"></i> Thi thử lại
+                            </a>
+                            <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary ms-2" style="padding:10px 32px;">
+                                Về trang chủ
+                            </a>
+                        }
+                        else
+                        {
+                            <a asp-controller="KetQua" asp-action="Index" class="btn btn-primary" style="padding:10px 32px;">
+                                <i class="bi bi-eye me-1"></i> Xem chi tiết
+                            </a>
+                            <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary ms-2" style="padding:10px 32px;">
+                                Về trang chủ
+                            </a>
+                        }
                     </div>
                 </div>
             </div>
@@ -123,6 +155,7 @@
             const container = document.querySelector('.exam-container');
             const maMH = container.dataset.mamh;
             const lan = Number(container.dataset.lan);
+            const isThiThu = container.dataset.isThithu === 'true';
             const totalQuestions = @Model.DanhSachCauHoi.Count;
 
             let currentQuestion = 1;
@@ -173,7 +206,7 @@
                         cauHoi: Number(cauHoi),
                         cauTraLoi: answer
                     })
-                }).catch(() => { /* silent - SV vẫn tiếp tục làm bài */ });
+                }).catch(() => { /* silent - tiep tuc lam bai */ });
             };
 
             // --- Chuyển câu hỏi ---

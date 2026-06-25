@@ -1,14 +1,20 @@
 @model DMS_Examify.Models.ThiChonViewModel
 @{
-    ViewData["Title"] = "Thi trắc nghiệm";
-    ViewData["Subtitle"] = "Chọn thông tin và bắt đầu thi";
+    ViewData["Title"] = Model.IsGiangVien ? "Thi thử" : "Thi trắc nghiệm";
+    ViewData["Subtitle"] = Model.IsGiangVien ? "Giảng viên thi thử — không ghi điểm" : "Chọn thông tin và bắt đầu thi";
 }
 
 <div class="row justify-content-center">
     <div class="col-md-7 animate-in">
         <div class="card">
-            <div class="card-header">
+            <div class="card-header d-flex align-items-center justify-content-between">
                 <span><i class="bi bi-pencil-square me-2"></i>Thông tin thi</span>
+                @if (Model.IsGiangVien)
+                {
+                    <span class="badge bg-warning text-dark" style="font-size: 13px; padding: 6px 14px;">
+                        <i class="bi bi-mortarboard me-1"></i>Thi thử
+                    </span>
+                }
             </div>
             <div class="card-body">
                 @if (TempData["ErrorMessage"] != null)
@@ -17,50 +23,36 @@
                         <i class="bi bi-exclamation-triangle me-2"></i>@TempData["ErrorMessage"]
                     </div>
                 }
-                <!-- Thông tin SV (tự động) -->
-                <div class="alert alert-info mb-4">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <strong>Mã lớp:</strong> @Model.MaLop
-                        </div>
-                        <div class="col-md-6">
-                            <strong>Tên lớp:</strong> @Model.TenLop
-                        </div>
-                        <div class="col-md-6 mt-1">
-                            <strong>Mã SV:</strong> @Model.MaSV
-                        </div>
-                        <div class="col-md-6 mt-1">
-                            <strong>Họ tên:</strong> @Model.HoTen
-                        </div>
-                    </div>
-                </div>
 
-                @if (!Model.DanhSachMH.Any())
+                @if (Model.IsGiangVien)
                 {
-                    <div class="alert alert-warning text-center">
-                        <i class="bi bi-exclamation-triangle me-2"></i>
-                        Hiện chưa có đề thi nào được đăng ký cho lớp của bạn.
+                    <div class="alert alert-warning border-0 mb-4" style="background: rgba(255,193,7,0.12);">
+                        <i class="bi bi-info-circle me-1"></i>
+                        <strong>Chế độ thi thử:</strong> Kết quả sẽ được chấm điểm nhưng <strong>không ghi vào bảng điểm</strong>.
+                        Bạn có thể thi thử nhiều lần.
                     </div>
-                }
-                else
-                {
-                    <!-- Chọn môn thi -->
+
+                    <!-- GV chọn lớp -->
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
-                            <label class="form-label">Môn học</label>
-                            <select class="form-select" id="selMonThi">
-                                <option value="">-- Chọn môn --</option>
-                                @foreach (var mh in Model.DanhSachMH)
+                            <label class="form-label">Lớp</label>
+                            <select class="form-select" id="selLopGV">
+                                <option value="">-- Chọn lớp --</option>
+                                @foreach (var lop in Model.DanhSachLop)
                                 {
-                                    <option value="@mh.MaMH">@mh.TenMH</option>
+                                    <option value="@lop.MaLop.Trim()">@lop.MaLop.Trim() - @lop.TenLop</option>
                                 }
                             </select>
                         </div>
-                        <div class="col-md-3">
-                            <label class="form-label">Ngày thi</label>
-                            <input type="date" class="form-control" id="txtNgayThi" value="@DateTime.Now.ToString("yyyy-MM-dd")" />
+                        <div class="col-md-6">
+                            <label class="form-label">Môn học</label>
+                            <select class="form-select" id="selMonThi" disabled>
+                                <option value="">-- Chọn lớp trước --</option>
+                            </select>
                         </div>
-                        <div class="col-md-3">
+                    </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
                             <label class="form-label">Lần thi</label>
                             <select class="form-select" id="selLanThiSV">
                                 <option value="1">Lần 1</option>
@@ -68,7 +60,65 @@
                             </select>
                         </div>
                     </div>
+                }
+                else
+                {
+                    <!-- Thông tin SV (tự động) -->
+                    <div class="alert alert-info mb-4">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <strong>Mã lớp:</strong> @Model.MaLop
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Tên lớp:</strong> @Model.TenLop
+                            </div>
+                            <div class="col-md-6 mt-1">
+                                <strong>Mã SV:</strong> @Model.MaSV
+                            </div>
+                            <div class="col-md-6 mt-1">
+                                <strong>Họ tên:</strong> @Model.HoTen
+                            </div>
+                        </div>
+                    </div>
 
+                    @if (!Model.DanhSachMH.Any())
+                    {
+                        <div class="alert alert-warning text-center">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            Hiện chưa có đề thi nào được đăng ký cho lớp của bạn.
+                        </div>
+                    }
+                    else
+                    {
+                        <!-- Chọn môn thi -->
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Môn học</label>
+                                <select class="form-select" id="selMonThi">
+                                    <option value="">-- Chọn môn --</option>
+                                    @foreach (var mh in Model.DanhSachMH)
+                                    {
+                                        <option value="@mh.MaMH">@mh.TenMH</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Ngày thi</label>
+                                <input type="date" class="form-control" id="txtNgayThi" value="@DateTime.Now.ToString("yyyy-MM-dd")" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Lần thi</label>
+                                <select class="form-select" id="selLanThiSV">
+                                    <option value="1">Lần 1</option>
+                                    <option value="2">Lần 2</option>
+                                </select>
+                            </div>
+                        </div>
+                    }
+                }
+
+                @if (Model.IsGiangVien || Model.DanhSachMH.Any())
+                {
                     <!-- Thông tin tự động lọc -->
                     <div class="card mb-4" id="examInfoCard" style="background:#f8fafc; border:1px dashed var(--border-color); display:none;">
                         <div class="card-body">
@@ -90,14 +140,15 @@
                     </div>
 
                     <div class="alert alert-secondary text-center mb-4" id="noExamInfo">
-                        <i class="bi bi-info-circle me-1"></i>Chọn môn học và lần thi để xem thông tin đề thi.
+                        <i class="bi bi-info-circle me-1"></i>
+                        @(Model.IsGiangVien ? "Chọn lớp, môn học và lần thi để xem thông tin đề thi." : "Chọn môn học và lần thi để xem thông tin đề thi.")
                     </div>
 
                     <!-- Nút bắt đầu -->
                     <div class="text-center">
                         <button type="button" class="btn btn-primary" id="btnBatDauThi" disabled
                                 style="padding:14px 48px; font-size:16px; font-weight:600; border-radius:12px;">
-                            <i class="bi bi-play-fill me-2"></i>Bắt đầu thi
+                            <i class="bi bi-play-fill me-2"></i>@(Model.IsGiangVien ? "Bắt đầu thi thử" : "Bắt đầu thi")
                         </button>
                     </div>
                 }
@@ -109,26 +160,72 @@
 @section Scripts {
     <script>
         (function () {
+            const isGV = @(Model.IsGiangVien ? "true" : "false");
             const selMon = document.getElementById('selMonThi');
             const selLan = document.getElementById('selLanThiSV');
             const examInfoCard = document.getElementById('examInfoCard');
             const noExamInfo = document.getElementById('noExamInfo');
             const btnBatDau = document.getElementById('btnBatDauThi');
+            const selLopGV = document.getElementById('selLopGV');
 
-            if (!selMon) return;
+            if (!btnBatDau) return;
+
+            // GV: khi chon lop -> load danh sach mon
+            if (isGV && selLopGV) {
+                selLopGV.addEventListener('change', function () {
+                    const maLop = this.value;
+                    resetExamInfo();
+                    selMon.innerHTML = '<option value="">-- Đang tải... --</option>';
+                    selMon.disabled = true;
+
+                    if (!maLop) {
+                        selMon.innerHTML = '<option value="">-- Chọn lớp trước --</option>';
+                        return;
+                    }
+
+                    fetch(`/Thi/LayDanhSachMonThiChoGV?maLop=${encodeURIComponent(maLop)}`)
+                        .then(r => r.json())
+                        .then(data => {
+                            selMon.innerHTML = '<option value="">-- Chọn môn --</option>';
+                            if (data.success && data.data) {
+                                data.data.forEach(m => {
+                                    const opt = document.createElement('option');
+                                    opt.value = m.maMH;
+                                    opt.textContent = m.tenMH;
+                                    selMon.appendChild(opt);
+                                });
+                            }
+                            selMon.disabled = false;
+                        })
+                        .catch(() => {
+                            selMon.innerHTML = '<option value="">-- Lỗi tải dữ liệu --</option>';
+                            selMon.disabled = false;
+                        });
+                });
+            }
+
+            function resetExamInfo() {
+                if (examInfoCard) examInfoCard.style.display = 'none';
+                if (noExamInfo) noExamInfo.style.display = '';
+                if (btnBatDau) btnBatDau.disabled = true;
+            }
 
             function loadExamInfo() {
-                const mamh = selMon.value;
-                const lan = selLan.value;
+                const mamh = selMon ? selMon.value : '';
+                const lan = selLan ? selLan.value : '1';
+                const maLop = isGV && selLopGV ? selLopGV.value : '';
 
                 if (!mamh) {
-                    examInfoCard.style.display = 'none';
-                    noExamInfo.style.display = '';
-                    btnBatDau.disabled = true;
+                    resetExamInfo();
                     return;
                 }
 
-                fetch(`/Thi/LayThongTinDeThi?mamh=${encodeURIComponent(mamh)}&lan=${lan}`)
+                let url = `/Thi/LayThongTinDeThi?mamh=${encodeURIComponent(mamh)}&lan=${lan}`;
+                if (isGV && maLop) {
+                    url += `&maLop=${encodeURIComponent(maLop)}`;
+                }
+
+                fetch(url)
                     .then(r => r.json())
                     .then(data => {
                         if (data.found) {
@@ -150,19 +247,20 @@
                         }
                     })
                     .catch(() => {
-                        examInfoCard.style.display = 'none';
-                        noExamInfo.style.display = '';
-                        btnBatDau.disabled = true;
+                        resetExamInfo();
                     });
             }
 
-            selMon.addEventListener('change', loadExamInfo);
-            selLan.addEventListener('change', loadExamInfo);
+            if (selMon) selMon.addEventListener('change', loadExamInfo);
+            if (selLan) selLan.addEventListener('change', loadExamInfo);
 
             btnBatDau.addEventListener('click', function () {
-                const mamh = selMon.value;
-                const lan = Number(selLan.value);
+                const mamh = selMon ? selMon.value : '';
+                const lan = Number(selLan ? selLan.value : 1);
+                const maLop = isGV && selLopGV ? selLopGV.value : '';
+
                 if (!mamh) return;
+                if (isGV && !maLop) return;
 
                 btnBatDau.disabled = true;
                 btnBatDau.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Đang khởi tạo...';
@@ -170,7 +268,7 @@
                 fetch('/Thi/BatDauThi', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ maMH: mamh, lan })
+                    body: JSON.stringify({ maMH: mamh, lan, maLop })
                 })
                     .then(r => r.json())
                     .then(data => {
@@ -182,13 +280,17 @@
                         noExamInfo.innerHTML = '<i class="bi bi-exclamation-circle me-1"></i>' + (data.message || 'Không thể bắt đầu thi.');
                         noExamInfo.style.display = '';
                         btnBatDau.disabled = false;
-                        btnBatDau.innerHTML = '<i class="bi bi-play-fill me-2"></i>Bắt đầu thi';
+                        btnBatDau.innerHTML = isGV
+                            ? '<i class="bi bi-play-fill me-2"></i>Bắt đầu thi thử'
+                            : '<i class="bi bi-play-fill me-2"></i>Bắt đầu thi';
                     })
                     .catch(() => {
                         noExamInfo.innerHTML = '<i class="bi bi-exclamation-circle me-1"></i>Không thể kết nối server.';
                         noExamInfo.style.display = '';
                         btnBatDau.disabled = false;
-                        btnBatDau.innerHTML = '<i class="bi bi-play-fill me-2"></i>Bắt đầu thi';
+                        btnBatDau.innerHTML = isGV
+                            ? '<i class="bi bi-play-fill me-2"></i>Bắt đầu thi thử'
+                            : '<i class="bi bi-play-fill me-2"></i>Bắt đầu thi';
                     });
             });
         })();

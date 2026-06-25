@@ -2736,3 +2736,260 @@ GO
 
 PRINT N'OK: usp_LayKetQuaSVTheoDeThi da san sang.';
 GO
+
+-- ============================================================
+-- THI THU CHO GIANG VIEN
+-- GV duoc thi thu nhung khong ghi diem vao BANGDIEM.
+-- Su dung bang tam BAITHI_TEMP / CT_BAITHI_TEMP voi MASV = 'GV_' + MAGV
+-- de phan biet voi phien thi cua sinh vien.
+-- ============================================================
+
+-- ------------------------------------------------------------
+-- usp_LayDanhSachLopChoGV
+-- Load danh sach lop ma GV da dang ky thi (de GV chon lop thi thu).
+-- ------------------------------------------------------------
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_LayDanhSachLopChoGV
+    @MAGV NCHAR(8)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT DISTINCT gvdk.MALOP, l.TENLOP
+    FROM dbo.GIAOVIEN_DANGKY gvdk
+    JOIN dbo.LOP l ON gvdk.MALOP = l.MALOP
+    WHERE gvdk.MAGV = @MAGV
+    ORDER BY gvdk.MALOP;
+END
+GO
+
+GRANT EXECUTE ON dbo.usp_LayDanhSachLopChoGV TO [Giangvien];
+GO
+
+PRINT N'OK: usp_LayDanhSachLopChoGV da san sang.';
+GO
+
+-- ------------------------------------------------------------
+-- usp_LayDanhSachMonThiChoGV
+-- Load danh sach mon thi cho 1 lop cu the ma GV da dang ky.
+-- ------------------------------------------------------------
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_LayDanhSachMonThiChoGV
+    @MAGV  NCHAR(8),
+    @MALOP NCHAR(8)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT DISTINCT gvdk.MAMH, mh.TENMH
+    FROM dbo.GIAOVIEN_DANGKY gvdk
+    JOIN dbo.MONHOC mh ON gvdk.MAMH = mh.MAMH
+    WHERE gvdk.MAGV = @MAGV AND gvdk.MALOP = @MALOP
+    ORDER BY gvdk.MAMH;
+END
+GO
+
+GRANT EXECUTE ON dbo.usp_LayDanhSachMonThiChoGV TO [Giangvien];
+GO
+
+PRINT N'OK: usp_LayDanhSachMonThiChoGV da san sang.';
+GO
+
+-- ------------------------------------------------------------
+-- usp_BatDauThiThu
+-- Tao phien thi thu cho GV. Dung CT_DETHI giong SV.
+-- Luu vao BAITHI_TEMP voi MASV = 'GV_' + MAGV (prefix phan biet).
+-- Cho phep thi thu nhieu lan (xoa phien cu truoc khi tao moi).
+-- ------------------------------------------------------------
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_BatDauThiThu
+    @MAGV  NCHAR(8),
+    @MAMH  NCHAR(5),
+    @MALOP NCHAR(8),
+    @LAN   SMALLINT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @USERID   NCHAR(8);
+    DECLARE @TRINHDO  CHAR(1);
+    DECLARE @SOCAUTHI INT;
+    DECLARE @THOIGIAN INT;
+
+    -- Tao userId cho GV: lay 5 ky tu cuoi cua MAGV, them prefix 'GV_'
+    SET @USERID = 'GV_' + RIGHT(RTRIM(@MAGV), 5);
+
+    -- Lay thong tin de thi
+    SELECT @TRINHDO = TRINHDO, @SOCAUTHI = SOCAUTHI, @THOIGIAN = THOIGIAN
+    FROM dbo.GIAOVIEN_DANGKY
+    WHERE MAMH = @MAMH AND MALOP = @MALOP AND LAN = @LAN;
+
+    IF @TRINHDO IS NULL
+    BEGIN
+        SELECT CAST(0 AS BIT) AS IsSuccess, N'Khong tim thay de thi cho lan thi nay.' AS ThongBao;
+        RETURN;
+    END
+
+    -- Xoa phien thi thu cu neu con ton tai (GV duoc thi thu nhieu lan)
+    DELETE FROM dbo.CT_BAITHI_TEMP WHERE MASV = @USERID AND MAMH = @MAMH AND LAN = @LAN;
+    DELETE FROM dbo.BAITHI_TEMP WHERE MASV = @USERID AND MAMH = @MAMH AND LAN = @LAN;
+
+    -- Lay danh sach cau hoi da sinh san trong CT_DETHI
+    DECLARE @CauHoiRaw TABLE (CAUHOI INT);
+
+    INSERT INTO @CauHoiRaw (CAUHOI)
+    SELECT CAUHOI
+    FROM dbo.CT_DETHI
+    WHERE MAMH = @MAMH AND MALOP = @MALOP AND LAN = @LAN;
+
+    -- Kiem tra du cau hoi
+    IF (SELECT COUNT(*) FROM @CauHoiRaw) < @SOCAUTHI
+    BEGIN
+        SELECT CAST(0 AS BIT) AS IsSuccess, N'Khong du cau hoi trong bo de.' AS ThongBao;
+        RETURN;
+    END
+
+    -- Gan STT xao tron thu tu
+    DECLARE @CauHoiFinal TABLE (CAUHOI INT, STT INT);
+    INSERT INTO @CauHoiFinal (CAUHOI, STT)
+    SELECT CAUHOI, ROW_NUMBER() OVER (ORDER BY NEWID())
+    FROM @CauHoiRaw;
+
+    -- Tao phien thi thu trong bang tam
+    BEGIN TRY
+        BEGIN TRAN;
+
+        INSERT INTO dbo.BAITHI_TEMP (MASV, MAMH, LAN, MALOP, THOIDIEMBATDAU, THOIGIANCONLAI, LANCAPNHATCUOI)
+        VALUES (@USERID, @MAMH, @LAN, @MALOP, GETDATE(), @THOIGIAN * 60, GETDATE());
+
+        INSERT INTO dbo.CT_BAITHI_TEMP (MASV, MAMH, LAN, CAUHOI, STT, CAUTRALOI)
+        SELECT @USERID, @MAMH, @LAN, CAUHOI, STT, NULL
+        FROM @CauHoiFinal;
+
+        COMMIT TRAN;
+
+        SELECT CAST(1 AS BIT) AS IsSuccess, N'Bat dau thi thu thanh cong.' AS ThongBao;
+    END TRY
+    BEGIN CATCH
+        ROLLBACK TRAN;
+        SELECT CAST(0 AS BIT) AS IsSuccess,
+               N'Loi khi bat dau thi thu: ' + ERROR_MESSAGE() AS ThongBao;
+    END CATCH
+END
+GO
+
+GRANT EXECUTE ON dbo.usp_BatDauThiThu TO [Giangvien];
+GO
+
+PRINT N'OK: usp_BatDauThiThu da san sang.';
+GO
+
+-- ------------------------------------------------------------
+-- usp_NopBaiThiThu
+-- Nop bai thi thu cho GV: cham diem, tra ket qua,
+-- KHONG ghi BANGDIEM, KHONG ghi BAITHI/CT_BAITHI,
+-- xoa bang tam sau khi cham.
+-- ------------------------------------------------------------
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_NopBaiThiThu
+    @MAGV NCHAR(8),
+    @MAMH NCHAR(5),
+    @LAN  SMALLINT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @USERID NCHAR(8);
+    SET @USERID = 'GV_' + RIGHT(RTRIM(@MAGV), 5);
+
+    -- Kiem tra phien thi thu ton tai
+    IF NOT EXISTS (SELECT 1 FROM dbo.BAITHI_TEMP WHERE MASV = @USERID AND MAMH = @MAMH AND LAN = @LAN)
+    BEGIN
+        SELECT CAST(0 AS BIT) AS IsSuccess, N'Khong tim thay phien thi thu de nop.' AS ThongBao,
+               CAST(0 AS INT) AS SoCauDung, CAST(0 AS INT) AS TongSoCau, CAST(0.0 AS FLOAT) AS Diem;
+        RETURN;
+    END
+
+    -- Cham diem
+    DECLARE @SoCauDung INT;
+    DECLARE @TongSoCau INT;
+    DECLARE @Diem FLOAT;
+
+    SELECT @TongSoCau = COUNT(*),
+           @SoCauDung = SUM(CASE
+               WHEN ct.CAUTRALOI IS NOT NULL AND ct.CAUTRALOI = bd.DAP_AN
+               THEN 1 ELSE 0 END)
+    FROM dbo.CT_BAITHI_TEMP ct
+    JOIN dbo.BODE bd ON ct.CAUHOI = bd.CAUHOI
+    WHERE ct.MASV = @USERID AND ct.MAMH = @MAMH AND ct.LAN = @LAN;
+
+    SET @Diem = CASE
+        WHEN @TongSoCau = 0 THEN 0.0
+        ELSE ROUND(CAST(@SoCauDung AS FLOAT) / @TongSoCau * 10, 1)
+    END;
+
+    -- Xoa du lieu thi thu trong bang tam (KHONG ghi BANGDIEM)
+    BEGIN TRY
+        BEGIN TRAN;
+
+        DELETE FROM dbo.CT_BAITHI_TEMP
+        WHERE MASV = @USERID AND MAMH = @MAMH AND LAN = @LAN;
+
+        DELETE FROM dbo.BAITHI_TEMP
+        WHERE MASV = @USERID AND MAMH = @MAMH AND LAN = @LAN;
+
+        COMMIT TRAN;
+
+        SELECT CAST(1 AS BIT) AS IsSuccess,
+               N'Ket thuc thi thu thanh cong!' AS ThongBao,
+               @SoCauDung AS SoCauDung,
+               @TongSoCau AS TongSoCau,
+               @Diem AS Diem;
+    END TRY
+    BEGIN CATCH
+        ROLLBACK TRAN;
+        SELECT CAST(0 AS BIT) AS IsSuccess,
+               N'Loi khi nop bai thi thu: ' + ERROR_MESSAGE() AS ThongBao,
+               CAST(0 AS INT) AS SoCauDung,
+               CAST(0 AS INT) AS TongSoCau,
+               CAST(0.0 AS FLOAT) AS Diem;
+    END CATCH
+END
+GO
+
+GRANT EXECUTE ON dbo.usp_NopBaiThiThu TO [Giangvien];
+GO
+
+PRINT N'OK: usp_NopBaiThiThu da san sang.';
+GO
+
+-- ------------------------------------------------------------
+-- GRANT quyen cho Giangvien tren cac SP thi hien co
+-- (GV can dung chung usp_KiemTraPhienThi, usp_LayBaiThiDangLam,
+--  usp_TraLoiCauHoi, usp_LayThongTinDeThiChoSV)
+-- ------------------------------------------------------------
+GRANT EXECUTE ON dbo.usp_KiemTraPhienThi TO [Giangvien];
+GRANT EXECUTE ON dbo.usp_LayBaiThiDangLam TO [Giangvien];
+GRANT EXECUTE ON dbo.usp_TraLoiCauHoi TO [Giangvien];
+GRANT EXECUTE ON dbo.usp_LayThongTinDeThiChoSV TO [Giangvien];
+GRANT EXECUTE ON dbo.usp_LayTenLopByMaLop TO [Giangvien];
+GO
+
+PRINT N'OK: GRANT quyen thi thu cho Giangvien da hoan tat.';
+GO

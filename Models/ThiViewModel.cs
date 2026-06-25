@@ -1,4 +1,4 @@
-﻿namespace DMS_Examify.Models
+namespace DMS_Examify.Models
 {
     // Chá»n thÃ´ng tin thi
     public class ThiChonViewModel
@@ -14,7 +14,9 @@
         public int SoCauThi { get; set; }
         public int ThoiGian { get; set; }
         public string TrinhDo { get; set; } = "";
+        public bool IsGiangVien { get; set; }
         public List<MonHoc> DanhSachMH { get; set; } = new();
+        public List<Lop> DanhSachLop { get; set; } = new();
     }
 
     // LÃ m bÃ i thi
@@ -25,10 +27,11 @@
         public string MaMH { get; set; } = "";
         public string TenMH { get; set; } = "";
         public int Lan { get; set; }
-        public int ThoiGian { get; set; } // phÃºt
+        public int ThoiGian { get; set; }
         public int ThoiGianConLaiGiay { get; set; }
         public string TrinhDo { get; set; } = "";
         public DateTime NgayThi { get; set; }
+        public bool IsThiThu { get; set; }
         public List<CauHoiThi> DanhSachCauHoi { get; set; } = new();
     }
 
@@ -64,6 +67,7 @@
     {
         public string MaMH { get; set; } = "";
         public int Lan { get; set; }
+        public string MaLop { get; set; } = "";
     }
 
     public class TraLoiCauHoiRequest

@@ -38,7 +38,8 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON [BODE] TO [Giangvien];
 GRANT SELECT, INSERT, UPDATE, DELETE ON [Giaovien_Dangky] TO [Giangvien];
 GRANT SELECT, INSERT, UPDATE, DELETE ON [CT_DETHI] TO [Giangvien];
 GRANT SELECT ON [CT_BAITHI] TO [Giangvien];
-GRANT SELECT ON [CT_BAITHI_TEMP] TO [Giangvien];
+GRANT SELECT, INSERT, UPDATE, DELETE ON [BAITHI_TEMP] TO [Giangvien];
+GRANT SELECT, INSERT, UPDATE, DELETE ON [CT_BAITHI_TEMP] TO [Giangvien];
 
 -- 2. Chi duoc quyen Xem (Doc) tren cac bang danh muc va ket qua
 GRANT SELECT ON [Lop] TO [Giangvien];
