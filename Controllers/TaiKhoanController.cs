@@ -128,6 +128,47 @@ namespace DMS_Examify.Controllers
             }
         }
 
+        [HttpGet]
+        public IActionResult SearchGiaoVien(string keyword)
+        {
+            if (!CheckRole("PGV"))
+                return Json(new { success = false, message = "Không có quyền." });
+
+            if (string.IsNullOrWhiteSpace(keyword))
+                return Json(new { success = true, data = new List<object>() });
+
+            try
+            {
+                var results = new List<object>();
+                using var conn = new SqlConnection(ConnectionString);
+                conn.Open();
+
+                using var cmd = new SqlCommand("usp_TimKiemGiaoVienTheoTen", conn)
+                {
+                    CommandType = CommandType.StoredProcedure
+                };
+                cmd.Parameters.Add("@KEYWORD", SqlDbType.NVarChar, 50).Value = keyword.Trim();
+
+                using var reader = cmd.ExecuteReader();
+                while (reader.Read())
+                {
+                    var ho = reader["HO"]?.ToString()?.Trim() ?? "";
+                    var ten = reader["TEN"]?.ToString()?.Trim() ?? "";
+                    results.Add(new
+                    {
+                        magv = reader["MAGV"]?.ToString()?.Trim() ?? "",
+                        fullName = $"{ho} {ten}".Trim()
+                    });
+                }
+
+                return Json(new { success = true, data = results });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = "Lỗi: " + ex.Message });
+            }
+        }
+
         [HttpPost]
         [ValidateAntiForgeryToken]
         public IActionResult Create(TaoTaiKhoanViewModel model)
@@ -210,6 +251,46 @@ namespace DMS_Examify.Controllers
             }
 
             return RedirectToAction("Index");
+        }
+
+        [HttpPost]
+        public IActionResult Delete([FromBody] XoaTaiKhoanRequest request)
+        {
+            if (!CheckRole("PGV"))
+                return Json(new { success = false, message = "Không có quyền." });
+
+            if (string.IsNullOrWhiteSpace(request?.Username))
+                return Json(new { success = false, message = "Tên user không được để trống." });
+
+            try
+            {
+                using var conn = new SqlConnection(ConnectionString);
+                using var cmd = new SqlCommand("SP_XOATAIKHOAN", conn)
+                {
+                    CommandType = CommandType.StoredProcedure
+                };
+                cmd.Parameters.AddWithValue("@USERNAME", request.Username.Trim());
+
+                var returnParam = cmd.Parameters.Add("@ReturnVal", SqlDbType.Int);
+                returnParam.Direction = ParameterDirection.ReturnValue;
+
+                conn.Open();
+                cmd.ExecuteNonQuery();
+
+                int result = (int)returnParam.Value;
+
+                return result == 0
+                    ? Json(new { success = true, message = "Đã xóa tài khoản thành công." })
+                    : Json(new { success = false, message = $"Xóa thất bại (mã lỗi: {result})." });
+            }
+            catch (SqlException ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = "Lỗi hệ thống: " + ex.Message });
+            }
         }
     }
 }

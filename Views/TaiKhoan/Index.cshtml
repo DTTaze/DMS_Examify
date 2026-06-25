@@ -33,16 +33,23 @@
                 <form asp-action="Create" asp-controller="TaiKhoan" method="post">
                     <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
-                    <div class="mb-3">
-                        <label for="MaGV" class="form-label">Mã Giáo Viên / PGV (MAGV)</label>
-                        <input type="text" name="MaGV" id="MaGV" class="form-control" placeholder="VD: GV001"
-                            required />
+                    <div class="mb-3" style="position:relative;">
+                        <label for="SearchGV" class="form-label">Họ tên Giáo viên</label>
+                        <input type="text" id="SearchGV" class="form-control" placeholder="Gõ tên giáo viên để tìm..."
+                            autocomplete="off" required />
+                        <div id="gvSuggestions" class="list-group shadow-sm"
+                             style="position:absolute; z-index:1050; width:100%; max-height:220px; overflow-y:auto; display:none;">
+                        </div>
                     </div>
 
                     <div class="mb-3">
                         <div id="gvError" class="text-danger fw-bold mb-1" style="display:none; font-size:13px;"></div>
-                        <label for="FullName" class="form-label">Họ tên Giáo viên</label>
-                        <input type="text" id="FullName" class="form-control bg-light" placeholder="Họ tên sẽ tự động hiển thị" readonly />
+                        <label for="MaGV" class="form-label">Mã Giáo Viên / PGV (MAGV)</label>
+                        <input type="text" name="MaGV" id="MaGV" class="form-control" placeholder="Tự động điền hoặc nhập tay"
+                            required />
+                        <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">
+                            <i class="bi bi-info-circle"></i> Mã GV sẽ tự động điền khi chọn tên, nhưng bạn vẫn có thể sửa.
+                        </div>
                     </div>
 
                     <div class="mb-3">
@@ -85,6 +92,30 @@
             </div>
         </div>
 
+        <!-- Card xóa tài khoản -->
+        <div class="card mt-4">
+            <div class="card-header" style="background:var(--danger-bg, #fef2f2);">
+                <span><i class="bi bi-person-x me-2 text-danger"></i>Xóa tài khoản</span>
+            </div>
+            <div class="card-body">
+                <div id="deleteResult" style="display:none;" class="alert mb-3"></div>
+                <div class="mb-3" style="position:relative;">
+                    <label for="DeleteSearchGV" class="form-label">Tìm giáo viên cần xóa</label>
+                    <input type="text" id="DeleteSearchGV" class="form-control" placeholder="Gõ tên giáo viên để tìm..."
+                        autocomplete="off" />
+                    <div id="deleteSuggestions" class="list-group shadow-sm"
+                         style="position:absolute; z-index:1050; width:100%; max-height:220px; overflow-y:auto; display:none;">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="DeleteUsername" class="form-label">Username (DB user) cần xóa</label>
+                    <input type="text" id="DeleteUsername" class="form-control" placeholder="Tự động điền hoặc nhập tay" />
+                </div>
+                <button type="button" class="btn btn-danger w-100" id="btnXoaTaiKhoan" style="padding:10px;">
+                    <i class="bi bi-trash me-1"></i> Xóa tài khoản
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- Bảng phân quyền -->
@@ -168,38 +199,221 @@
     </div>
 </div>
 
+<!-- Modal xác nhận xóa -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header" style="background:#fef2f2;">
+                <h5 class="modal-title text-danger"><i class="bi bi-exclamation-triangle me-2"></i>Xác nhận xóa</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Bạn có chắc chắn muốn xóa tài khoản <strong id="deleteTargetName"></strong>?</p>
+                <p class="text-muted" style="font-size:13px;">Thao tác này sẽ xóa hoàn toàn database user và login khỏi SQL Server. Không thể hoàn tác.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-danger" id="btnConfirmDelete">
+                    <i class="bi bi-trash me-1"></i>Xóa
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <script>
         $(document).ready(function () {
-            let timeout = null;
-            $('#MaGV').on('input', function () {
-                clearTimeout(timeout);
-                var magv = $(this).val().trim();
-                
-                // Reset thông tin
-                $('#FullName').val('');
-                $('#gvError').hide().text('');
+            let searchTimeout = null;
+            const searchInput = $('#SearchGV');
+            const suggestionsBox = $('#gvSuggestions');
+            const maGVInput = $('#MaGV');
+            const errorBox = $('#gvError');
 
-                if (magv.length === 0) return;
+            // Tìm kiếm GV theo tên khi gõ
+            searchInput.on('input', function () {
+                clearTimeout(searchTimeout);
+                const keyword = $(this).val().trim();
 
-                // Chờ người dùng gõ xong 500ms thì mới gọi API
-                timeout = setTimeout(function () {
+                errorBox.hide().text('');
+                suggestionsBox.hide().empty();
+
+                if (keyword.length < 1) return;
+
+                searchTimeout = setTimeout(function () {
                     $.ajax({
-                        url: '@Url.Action("GetGiaoVienInfo", "TaiKhoan")',
+                        url: '@Url.Action("SearchGiaoVien", "TaiKhoan")',
                         type: 'GET',
-                        data: { magv: magv },
+                        data: { keyword: keyword },
                         success: function (res) {
-                            if (res.success) {
-                                $('#FullName').val(res.fullName);
-                            } else {
-                                $('#gvError').text(res.message).show();
+                            suggestionsBox.empty();
+                            if (!res.success || !res.data || res.data.length === 0) {
+                                suggestionsBox.append(
+                                    '<div class="list-group-item text-muted" style="font-size:13px;">' +
+                                    '<i class="bi bi-search me-1"></i>Không tìm thấy giáo viên nào</div>'
+                                );
+                                suggestionsBox.show();
+                                return;
                             }
+
+                            res.data.forEach(function (gv) {
+                                suggestionsBox.append(
+                                    '<button type="button" class="list-group-item list-group-item-action" ' +
+                                    'data-magv="' + gv.magv + '" data-name="' + gv.fullName + '" ' +
+                                    'style="font-size:13px; padding:8px 12px;">' +
+                                    '<strong>' + gv.fullName + '</strong>' +
+                                    '<span class="text-muted ms-2" style="font-size:11px;">(' + gv.magv + ')</span>' +
+                                    '</button>'
+                                );
+                            });
+                            suggestionsBox.show();
                         },
-                        error: function (xhr) {
-                            $('#gvError').text('Lỗi kết nối hoặc lỗi server.').show();
+                        error: function () {
+                            errorBox.text('Lỗi kết nối server.').show();
                         }
                     });
-                }, 500);
+                }, 400);
+            });
+
+            // Chọn GV từ danh sách gợi ý
+            suggestionsBox.on('click', '.list-group-item-action', function () {
+                const magv = $(this).data('magv');
+                const name = $(this).data('name');
+
+                searchInput.val(name);
+                maGVInput.val(magv);
+                suggestionsBox.hide().empty();
+                errorBox.hide().text('');
+            });
+
+            // Ẩn suggestions khi click ra ngoài
+            $(document).on('click', function (e) {
+                if (!$(e.target).closest('#SearchGV, #gvSuggestions').length) {
+                    suggestionsBox.hide();
+                }
+                if (!$(e.target).closest('#DeleteSearchGV, #deleteSuggestions').length) {
+                    $('#deleteSuggestions').hide();
+                }
+            });
+
+            // Hiển thị lại suggestions khi focus vào ô tìm kiếm
+            searchInput.on('focus', function () {
+                if (suggestionsBox.children().length > 0) {
+                    suggestionsBox.show();
+                }
+            });
+
+            // ========================
+            //  XÓA TÀI KHOẢN
+            // ========================
+            let deleteTimeout = null;
+            const deleteSearchInput = $('#DeleteSearchGV');
+            const deleteSugBox = $('#deleteSuggestions');
+            const deleteUsernameInput = $('#DeleteUsername');
+            const deleteResultBox = $('#deleteResult');
+
+            // Autocomplete tìm GV cho phần xóa
+            deleteSearchInput.on('input', function () {
+                clearTimeout(deleteTimeout);
+                const keyword = $(this).val().trim();
+
+                deleteSugBox.hide().empty();
+                if (keyword.length < 1) return;
+
+                deleteTimeout = setTimeout(function () {
+                    $.ajax({
+                        url: '@Url.Action("SearchGiaoVien", "TaiKhoan")',
+                        type: 'GET',
+                        data: { keyword: keyword },
+                        success: function (res) {
+                            deleteSugBox.empty();
+                            if (!res.success || !res.data || res.data.length === 0) {
+                                deleteSugBox.append(
+                                    '<div class="list-group-item text-muted" style="font-size:13px;">' +
+                                    '<i class="bi bi-search me-1"></i>Không tìm thấy</div>'
+                                );
+                                deleteSugBox.show();
+                                return;
+                            }
+                            res.data.forEach(function (gv) {
+                                deleteSugBox.append(
+                                    '<button type="button" class="list-group-item list-group-item-action" ' +
+                                    'data-magv="' + gv.magv + '" data-name="' + gv.fullName + '" ' +
+                                    'style="font-size:13px; padding:8px 12px;">' +
+                                    '<strong>' + gv.fullName + '</strong>' +
+                                    '<span class="text-muted ms-2" style="font-size:11px;">(' + gv.magv + ')</span>' +
+                                    '</button>'
+                                );
+                            });
+                            deleteSugBox.show();
+                        }
+                    });
+                }, 400);
+            });
+
+            deleteSugBox.on('click', '.list-group-item-action', function () {
+                deleteSearchInput.val($(this).data('name'));
+                deleteUsernameInput.val($(this).data('magv'));
+                deleteSugBox.hide().empty();
+            });
+
+            deleteSearchInput.on('focus', function () {
+                if (deleteSugBox.children().length > 0) deleteSugBox.show();
+            });
+
+            // Mở modal xác nhận xóa
+            $('#btnXoaTaiKhoan').on('click', function () {
+                const username = deleteUsernameInput.val().trim();
+                if (!username) {
+                    deleteResultBox.removeClass('alert-success alert-danger')
+                        .addClass('alert-warning')
+                        .html('<i class="bi bi-exclamation-triangle me-1"></i>Vui lòng nhập username cần xóa.')
+                        .show();
+                    return;
+                }
+                deleteResultBox.hide();
+                $('#deleteTargetName').text(username);
+                new bootstrap.Modal('#deleteConfirmModal').show();
+            });
+
+            // Xác nhận xóa
+            $('#btnConfirmDelete').on('click', function () {
+                const username = deleteUsernameInput.val().trim();
+                const btn = $(this);
+                btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span>Đang xóa...');
+
+                $.ajax({
+                    url: '@Url.Action("Delete", "TaiKhoan")',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ username: username }),
+                    success: function (res) {
+                        bootstrap.Modal.getInstance('#deleteConfirmModal').hide();
+                        btn.prop('disabled', false).html('<i class="bi bi-trash me-1"></i>Xóa');
+
+                        if (res.success) {
+                            deleteResultBox.removeClass('alert-warning alert-danger')
+                                .addClass('alert-success')
+                                .html('<i class="bi bi-check-circle me-1"></i>' + res.message)
+                                .show();
+                            deleteSearchInput.val('');
+                            deleteUsernameInput.val('');
+                        } else {
+                            deleteResultBox.removeClass('alert-warning alert-success')
+                                .addClass('alert-danger')
+                                .html('<i class="bi bi-exclamation-circle me-1"></i>' + res.message)
+                                .show();
+                        }
+                    },
+                    error: function () {
+                        bootstrap.Modal.getInstance('#deleteConfirmModal').hide();
+                        btn.prop('disabled', false).html('<i class="bi bi-trash me-1"></i>Xóa');
+                        deleteResultBox.removeClass('alert-warning alert-success')
+                            .addClass('alert-danger')
+                            .html('<i class="bi bi-exclamation-circle me-1"></i>Lỗi kết nối server.')
+                            .show();
+                    }
+                });
             });
         });
     </script>

@@ -231,6 +231,78 @@ GRANT EXECUTE ON [dbo].[SP_TAOTAIKHOAN] TO [PGV];
 PRINT N'OK: [dbo].[SP_TAOTAIKHOAN] đã sẵn sàng.';
 GO
 
+-- ============================================================
+-- SP_XOATAIKHOAN
+-- Xoa tai khoan: drop role member, drop db user, drop login.
+-- Nguoc lai voi SP_TAOTAIKHOAN.
+-- ============================================================
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE [dbo].[SP_XOATAIKHOAN]
+    @USERNAME VARCHAR(50)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @LGNAME VARCHAR(50);
+    DECLARE @ret INT;
+
+    SET @USERNAME = LTRIM(RTRIM(@USERNAME));
+
+    -- Kiểm tra database user và lấy login tương ứng
+    SELECT @LGNAME = L.name
+    FROM sys.sysusers U
+    INNER JOIN master.dbo.syslogins L ON U.sid = L.sid
+    WHERE U.name = @USERNAME
+      AND U.islogin = 1;
+
+    IF @LGNAME IS NULL
+    BEGIN
+        RAISERROR(N'Không tìm thấy database user hoặc login tương ứng.', 16, 1);
+        RETURN 1;
+    END
+
+    BEGIN TRY
+        -- Xóa user trong database
+        EXEC @ret = sp_dropuser @USERNAME;
+
+        IF @ret <> 0
+        BEGIN
+            RAISERROR(N'Xóa database user thất bại.', 16, 1);
+            RETURN 2;
+        END
+
+        -- Xóa login trên server
+        EXEC @ret = sp_droplogin @LGNAME;
+
+        IF @ret <> 0
+        BEGIN
+            RAISERROR(N'Xóa server login thất bại.', 16, 1);
+            RETURN 3;
+        END
+
+        RETURN 0;
+    END TRY
+    BEGIN CATCH
+        DECLARE @ErrorMessage NVARCHAR(4000);
+
+        SET @ErrorMessage = N'Xóa tài khoản thất bại. Chi tiết: ' + ERROR_MESSAGE();
+
+        RAISERROR(@ErrorMessage, 16, 1);
+        RETURN 4;
+    END CATCH
+END
+GO
+
+GRANT EXECUTE ON [dbo].[SP_XOATAIKHOAN] TO [PGV];
+GO
+
+PRINT N'OK: [dbo].[SP_XOATAIKHOAN] đã sẵn sàng.';
+GO
+
 GRANT EXECUTE ON [dbo].[usp_MonHoc_Delete] TO [PGV];
 GO
 
@@ -855,6 +927,39 @@ GRANT EXECUTE ON dbo.usp_LayThongTinGiaoVienTheoMa TO [Giangvien];
 GO
 
 PRINT N'OK: [dbo].[usp_LayThongTinGiaoVienTheoMa] đã sẵn sàng.';
+GO
+
+-- ============================================================
+-- usp_TimKiemGiaoVienTheoTen
+-- Tim kiem giao vien theo tu khoa ho ten (LIKE).
+-- Tra ve toi da 10 ket qua cho autocomplete.
+-- ============================================================
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE OR ALTER PROCEDURE dbo.usp_TimKiemGiaoVienTheoTen
+    @KEYWORD NVARCHAR(50)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT TOP 10
+        MAGV,
+        HO,
+        TEN
+    FROM dbo.GIAOVIEN
+    WHERE HO + ' ' + TEN LIKE N'%' + @KEYWORD + N'%'
+       OR TEN + ' ' + HO LIKE N'%' + @KEYWORD + N'%'
+    ORDER BY TEN, HO;
+END
+GO
+
+GRANT EXECUTE ON dbo.usp_TimKiemGiaoVienTheoTen TO [PGV];
+GO
+
+PRINT N'OK: usp_TimKiemGiaoVienTheoTen da san sang.';
 GO
 
 -- ============================================================

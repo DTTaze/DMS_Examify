@@ -17,4 +17,9 @@ namespace DMS_Examify.Models
         [Required(ErrorMessage = "Vui lòng chọn nhóm quyền")]
         public string Role { get; set; }
     }
+
+    public class XoaTaiKhoanRequest
+    {
+        public string Username { get; set; } = "";
+    }
 }
