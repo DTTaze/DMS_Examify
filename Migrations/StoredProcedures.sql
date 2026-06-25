@@ -1727,8 +1727,53 @@ BEGIN
 
         BEGIN TRY
             BEGIN TRAN;
+                -- 1. Lưu thông tin đăng ký thi
                 INSERT INTO GiaoVien_DangKy (MAGV, MALOP, MAMH, TRINHDO, NGAYTHI, LAN, SOCAUTHI, THOIGIAN)
                 VALUES (@MAGV, @MALOP, @MAMH, @TRINHDO, ISNULL(@NGAYTHI, GETDATE()), @LAN, @SOCAUTHI, @THOIGIAN);
+
+                -- 2. Tự động bốc đề theo tỷ lệ trình độ và lưu vào CT_DETHI
+                DECLARE @CauHoiRaw TABLE (CAUHOI INT);
+                
+                IF @TRINHDO = 'C'
+                BEGIN
+                    INSERT INTO @CauHoiRaw (CAUHOI)
+                    SELECT TOP (@SOCAUTHI) CAUHOI
+                    FROM dbo.BODE
+                    WHERE MAMH = @MAMH AND TRINHDO = 'C'
+                    ORDER BY NEWID();
+                END
+                ELSE
+                BEGIN
+                    -- Bốc câu trình độ gốc tối đa có thể (up to @SOCAUTHI)
+                    INSERT INTO @CauHoiRaw (CAUHOI)
+                    SELECT TOP (@SOCAUTHI) CAUHOI
+                    FROM dbo.BODE
+                    WHERE MAMH = @MAMH AND TRINHDO = @TRINHDO
+                    ORDER BY NEWID();
+
+                    -- Nếu chưa đủ, bốc thêm từ trình độ thấp hơn để bù
+                    DECLARE @InsertedCount INT;
+                    SELECT @InsertedCount = COUNT(*) FROM @CauHoiRaw;
+
+                    IF @InsertedCount < @SOCAUTHI
+                    BEGIN
+                        DECLARE @TrinhDoThap CHAR(1) = CASE WHEN @TRINHDO = 'A' THEN 'B' ELSE 'C' END;
+                        DECLARE @SoCauCanBu INT = @SOCAUTHI - @InsertedCount;
+
+                        INSERT INTO @CauHoiRaw (CAUHOI)
+                        SELECT TOP (@SoCauCanBu) CAUHOI
+                        FROM dbo.BODE
+                        WHERE MAMH = @MAMH AND TRINHDO = @TrinhDoThap
+                          AND CAUHOI NOT IN (SELECT CAUHOI FROM @CauHoiRaw)
+                        ORDER BY NEWID();
+                    END
+                END
+
+                -- Lưu các câu hỏi đã chọn vào bảng CT_DETHI
+                INSERT INTO dbo.CT_DETHI (MAMH, MALOP, LAN, CAUHOI)
+                SELECT @MAMH, @MALOP, @LAN, CAUHOI
+                FROM @CauHoiRaw;
+
             COMMIT TRAN;
 
             SET @Message = N'Them de thi thanh cong';
@@ -1750,6 +1795,183 @@ GRANT EXECUTE ON usp_ThucHienDangKyThi TO [Giangvien];
 GO
 
 PRINT N'OK: usp_ThucHienDangKyThi đã sẵn sàng.';
+GO
+
+-- ------------------------------------------------------------
+-- usp_GiaoVienDangKy_Update
+-- Cập nhật thông tin đăng ký thi và tái tạo danh sách câu hỏi trong CT_DETHI
+-- ------------------------------------------------------------
+CREATE OR ALTER PROCEDURE dbo.usp_GiaoVienDangKy_Update
+    @MAGV     NCHAR(8),
+    @MALOP    NCHAR(8),
+    @MAMH     CHAR(5),
+    @TRINHDO  CHAR(1),
+    @LAN      SMALLINT,
+    @SOCAUTHI SMALLINT,
+    @THOIGIAN SMALLINT,
+    @NGAYTHI  DATETIME
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @Message NVARCHAR(255);
+
+    -- Kiểm tra xem đã có sinh viên nào thi hoặc đang thi môn này chưa
+    IF EXISTS (
+        SELECT 1 FROM dbo.BAITHI
+        WHERE MAMH = @MAMH AND MALOP = @MALOP AND LAN = @LAN
+    ) OR EXISTS (
+        SELECT 1 FROM dbo.BAITHI_TEMP
+        WHERE MAMH = @MAMH AND MALOP = @MALOP AND LAN = @LAN
+    )
+    BEGIN
+        SET @Message = N'Không thể chỉnh sửa đăng ký thi vì đã có sinh viên làm bài.';
+        SELECT CAST(0 AS BIT) AS IsSuccess, @Message AS ThongBao;
+        RETURN;
+    END
+
+    SET @Message = dbo.udf_KiemTraDieuKienDangKy(@MAMH, @TRINHDO, @SOCAUTHI);
+    IF @Message <> ''
+    BEGIN
+        SELECT CAST(0 AS BIT) AS IsSuccess, @Message AS ThongBao;
+        RETURN;
+    END
+
+    BEGIN TRY
+        BEGIN TRAN;
+            -- 1. Cập nhật bảng GIAOVIEN_DANGKY
+            UPDATE dbo.GIAOVIEN_DANGKY
+            SET MAGV = @MAGV,
+                TRINHDO = @TRINHDO,
+                SOCAUTHI = @SOCAUTHI,
+                THOIGIAN = @THOIGIAN,
+                NGAYTHI = ISNULL(@NGAYTHI, GETDATE())
+            WHERE MAMH = @MAMH AND MALOP = @MALOP AND LAN = @LAN;
+
+            -- 2. Xóa chi tiết đề cũ
+            DELETE FROM dbo.CT_DETHI
+            WHERE MAMH = @MAMH AND MALOP = @MALOP AND LAN = @LAN;
+
+            -- 3. Tạo lại bộ đề trong CT_DETHI
+            DECLARE @CauHoiRaw TABLE (CAUHOI INT);
+
+            IF @TRINHDO = 'C'
+            BEGIN
+                INSERT INTO @CauHoiRaw (CAUHOI)
+                SELECT TOP (@SOCAUTHI) CAUHOI
+                FROM dbo.BODE
+                WHERE MAMH = @MAMH AND TRINHDO = 'C'
+                ORDER BY NEWID();
+            END
+            ELSE
+            BEGIN
+                -- Bốc câu trình độ gốc tối đa có thể (up to @SOCAUTHI)
+                INSERT INTO @CauHoiRaw (CAUHOI)
+                SELECT TOP (@SOCAUTHI) CAUHOI
+                FROM dbo.BODE
+                WHERE MAMH = @MAMH AND TRINHDO = @TRINHDO
+                ORDER BY NEWID();
+
+                -- Nếu chưa đủ, bốc thêm từ trình độ thấp hơn để bù
+                DECLARE @InsertedCount INT;
+                SELECT @InsertedCount = COUNT(*) FROM @CauHoiRaw;
+
+                IF @InsertedCount < @SOCAUTHI
+                BEGIN
+                    DECLARE @TrinhDoThap CHAR(1) = CASE WHEN @TRINHDO = 'A' THEN 'B' ELSE 'C' END;
+                    DECLARE @SoCauCanBu INT = @SOCAUTHI - @InsertedCount;
+
+                    INSERT INTO @CauHoiRaw (CAUHOI)
+                    SELECT TOP (@SoCauCanBu) CAUHOI
+                    FROM dbo.BODE
+                    WHERE MAMH = @MAMH AND TRINHDO = @TrinhDoThap
+                      AND CAUHOI NOT IN (SELECT CAUHOI FROM @CauHoiRaw)
+                    ORDER BY NEWID();
+                END
+            END
+
+            INSERT INTO dbo.CT_DETHI (MAMH, MALOP, LAN, CAUHOI)
+            SELECT @MAMH, @MALOP, @LAN, CAUHOI
+            FROM @CauHoiRaw;
+
+        COMMIT TRAN;
+
+        SET @Message = N'Cập nhật đăng ký thi thành công';
+        SELECT CAST(1 AS BIT) AS IsSuccess, @Message AS ThongBao;
+        RETURN;
+    END TRY
+    BEGIN CATCH
+        ROLLBACK TRAN;
+        SET @Message = N'Cập nhật đăng ký thi thất bại: ' + ERROR_MESSAGE();
+        SELECT CAST(0 AS BIT) AS IsSuccess, @Message AS ThongBao;
+        RETURN;
+    END CATCH
+END
+GO
+
+GRANT EXECUTE ON usp_GiaoVienDangKy_Update TO [PGV];
+GRANT EXECUTE ON usp_GiaoVienDangKy_Update TO [Giangvien];
+GO
+
+PRINT N'OK: usp_GiaoVienDangKy_Update đã sẵn sàng.';
+GO
+
+-- ------------------------------------------------------------
+-- usp_GiaoVienDangKy_Delete
+-- Xóa đăng ký thi và xóa chi tiết đề thi tương ứng trong CT_DETHI
+-- ------------------------------------------------------------
+CREATE OR ALTER PROCEDURE dbo.usp_GiaoVienDangKy_Delete
+    @MAMH  NCHAR(5),
+    @MALOP NCHAR(8),
+    @LAN   SMALLINT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @Message NVARCHAR(255);
+
+    -- Kiểm tra xem đã có sinh viên nào thi hoặc đang thi môn này chưa
+    IF EXISTS (
+        SELECT 1 FROM dbo.BAITHI
+        WHERE MAMH = @MAMH AND MALOP = @MALOP AND LAN = @LAN
+    ) OR EXISTS (
+        SELECT 1 FROM dbo.BAITHI_TEMP
+        WHERE MAMH = @MAMH AND MALOP = @MALOP AND LAN = @LAN
+    )
+    BEGIN
+        SET @Message = N'Không thể xóa đăng ký thi vì đã có sinh viên làm bài.';
+        SELECT CAST(0 AS BIT) AS IsSuccess, @Message AS ThongBao;
+        RETURN;
+    END
+
+    BEGIN TRY
+        BEGIN TRAN;
+            -- Xóa chi tiết đề thi trước
+            DELETE FROM dbo.CT_DETHI
+            WHERE MAMH = @MAMH AND MALOP = @MALOP AND LAN = @LAN;
+
+            -- Xóa đăng ký thi
+            DELETE FROM dbo.GIAOVIEN_DANGKY
+            WHERE MAMH = @MAMH AND MALOP = @MALOP AND LAN = @LAN;
+
+        COMMIT TRAN;
+
+        SET @Message = N'Xóa đăng ký thi thành công';
+        SELECT CAST(1 AS BIT) AS IsSuccess, @Message AS ThongBao;
+        RETURN;
+    END TRY
+    BEGIN CATCH
+        ROLLBACK TRAN;
+        SET @Message = N'Xóa đăng ký thi thất bại: ' + ERROR_MESSAGE();
+        SELECT CAST(0 AS BIT) AS IsSuccess, @Message AS ThongBao;
+        RETURN;
+    END CATCH
+END
+GO
+
+GRANT EXECUTE ON usp_GiaoVienDangKy_Delete TO [PGV];
+GRANT EXECUTE ON usp_GiaoVienDangKy_Delete TO [Giangvien];
+GO
+
+PRINT N'OK: usp_GiaoVienDangKy_Delete đã sẵn sàng.';
 GO
 
 SET ANSI_NULLS ON
@@ -1969,41 +2191,13 @@ BEGIN
         RETURN;
     END
 
-    -- Random cau hoi (thu thap CAUHOI truoc, gan STT lien tuc sau)
+    -- Lấy danh sách câu hỏi đã được sinh sẵn cho đề thi của lớp này trong CT_DETHI
     DECLARE @CauHoiRaw TABLE (CAUHOI INT);
-    DECLARE @SoCauTrinhDoCao INT;
-    DECLARE @SoCauTrinhDoThap INT;
 
-    IF @TRINHDO = 'C'
-    BEGIN
-        INSERT INTO @CauHoiRaw (CAUHOI)
-        SELECT TOP (@SOCAUTHI) CAUHOI
-        FROM dbo.BODE
-        WHERE MAMH = @MAMH AND TRINHDO = 'C'
-        ORDER BY NEWID();
-    END
-    ELSE
-    BEGIN
-        SET @SoCauTrinhDoCao = CEILING(@SOCAUTHI * 0.7);
-        SET @SoCauTrinhDoThap = @SOCAUTHI - @SoCauTrinhDoCao;
-
-        -- Lay cau trinh do goc
-        INSERT INTO @CauHoiRaw (CAUHOI)
-        SELECT TOP (@SoCauTrinhDoCao) CAUHOI
-        FROM dbo.BODE
-        WHERE MAMH = @MAMH AND TRINHDO = @TRINHDO
-        ORDER BY NEWID();
-
-        -- Lay cau trinh do thap hon de bu
-        DECLARE @TrinhDoThap CHAR(1) = CASE WHEN @TRINHDO = 'A' THEN 'B' ELSE 'C' END;
-
-        INSERT INTO @CauHoiRaw (CAUHOI)
-        SELECT TOP (@SoCauTrinhDoThap) CAUHOI
-        FROM dbo.BODE
-        WHERE MAMH = @MAMH AND TRINHDO = @TrinhDoThap
-          AND CAUHOI NOT IN (SELECT CAUHOI FROM @CauHoiRaw)
-        ORDER BY NEWID();
-    END
+    INSERT INTO @CauHoiRaw (CAUHOI)
+    SELECT CAUHOI
+    FROM dbo.CT_DETHI
+    WHERE MAMH = @MAMH AND MALOP = @MALOP AND LAN = @LAN;
 
     -- Kiem tra du cau hoi
     IF (SELECT COUNT(*) FROM @CauHoiRaw) < @SOCAUTHI
@@ -2012,7 +2206,7 @@ BEGIN
         RETURN;
     END
 
-    -- Gan STT lien tuc 1..N (xao tron thu tu)
+    -- Gan STT lien tuc 1..N (xao tron thu tu rieng cho moi sinh vien)
     DECLARE @CauHoiFinal TABLE (CAUHOI INT, STT INT);
     INSERT INTO @CauHoiFinal (CAUHOI, STT)
     SELECT CAUHOI, ROW_NUMBER() OVER (ORDER BY NEWID())
