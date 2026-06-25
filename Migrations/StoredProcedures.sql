@@ -1705,6 +1705,16 @@ BEGIN
     END
     ELSE
     BEGIN
+        IF @LAN = 2 AND NOT EXISTS (
+            SELECT 1 FROM dbo.GIAOVIEN_DANGKY
+            WHERE MALOP = @MALOP AND MAMH = @MAMH AND LAN = 1
+        )
+        BEGIN
+            SET @Message = N'Không thể đăng ký thi lần 2 nếu chưa đăng ký thi lần 1.';
+            SELECT CAST(0 AS BIT) AS IsSuccess, @Message AS ThongBao;
+            RETURN;
+        END
+
         IF EXISTS (
             SELECT 1 FROM dbo.GIAOVIEN_DANGKY
             WHERE MALOP = @MALOP AND MAMH = @MAMH AND LAN = @LAN
