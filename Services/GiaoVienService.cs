@@ -88,14 +88,40 @@ namespace DMS_Examify.Services
             }
 
             var existingIds = GetExistingGiaoVienIds();
+            var seenIdsInFile = new Dictionary<string, int>();
 
-            return items.Select((item, index) => new GiaoVienImportCheckResult
+            return items.Select((item, index) =>
             {
-                Index = index,
-                MaGV = Trim(item.MaGV),
-                Ho = Trim(item.Ho),
-                Ten = Trim(item.Ten),
-                IdDuplicate = existingIds.Contains(NormalizeTeacherId(item.MaGV))
+                var normalizedId = NormalizeTeacherId(item.MaGV);
+                bool isEmptyId = string.IsNullOrWhiteSpace(normalizedId);
+
+                bool idDuplicateDB = !isEmptyId && existingIds.Contains(normalizedId);
+
+                bool idDuplicateFile = false;
+                int? idDuplicateFileWithRowIndex = null;
+                if (!isEmptyId)
+                {
+                    if (seenIdsInFile.TryGetValue(normalizedId, out int firstRowIndex))
+                    {
+                        idDuplicateFile = true;
+                        idDuplicateFileWithRowIndex = firstRowIndex;
+                    }
+                    else
+                    {
+                        seenIdsInFile.Add(normalizedId, index);
+                    }
+                }
+
+                return new GiaoVienImportCheckResult
+                {
+                    Index = index,
+                    MaGV = Trim(item.MaGV),
+                    Ho = Trim(item.Ho),
+                    Ten = Trim(item.Ten),
+                    IdDuplicateDB = idDuplicateDB,
+                    IdDuplicateFile = idDuplicateFile,
+                    IdDuplicateFileWithRowIndex = idDuplicateFileWithRowIndex
+                };
             }).ToList();
         }
 

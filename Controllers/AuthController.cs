@@ -38,7 +38,7 @@ namespace DMS_Examify.Controllers
         [HttpPost]
         public IActionResult Login(LoginViewModel model)
         {
-            if (string.IsNullOrEmpty(model.Login) || string.IsNullOrEmpty(model.Password))
+            if (!ModelState.IsValid)
             {
                 return View(model);
             }

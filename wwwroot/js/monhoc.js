@@ -534,22 +534,32 @@
             
             const existingMaMH = row.dataset.mamh.trim().toUpperCase();
             const existingTenMH = row.dataset.tenmh.trim().toLowerCase();
+            const rowId = parseInt(row.dataset.id, 10);
+            const isPendingNew = !isNaN(rowId) && rowId < 0;
 
             if (AppCommon.isPendingDelete(row)) {
                 continue;
             }
             
             if (subjectCode !== "" && existingMaMH === subjectCode) {
-                dom.errMaMH.textContent = "Mã môn học này đã tồn tại trên danh sách tạm thời.";
+                dom.errMaMH.textContent = isPendingNew
+                    ? "Mã môn học này đã tồn tại trên danh sách tạm thời."
+                    : "Mã môn học này đã tồn tại trong CSDL.";
                 dom.txtMaMH.classList.add("is-invalid");
                 isLocalDuplicate = true;
-                localDuplicateReasonMa = "Mã môn học bị trùng lặp trên lưới danh sách tạm thời.";
+                localDuplicateReasonMa = isPendingNew
+                    ? "Mã môn học bị trùng lặp trên danh sách tạm thời."
+                    : "Mã môn học đã tồn tại trong CSDL.";
             }
             if (subjectName !== "" && existingTenMH === subjectName.toLowerCase()) {
-                dom.errTenMH.textContent = "Tên môn học này đã tồn tại trên danh sách tạm thời.";
+                dom.errTenMH.textContent = isPendingNew
+                    ? "Tên môn học này đã tồn tại trên danh sách tạm thời."
+                    : "Tên môn học này đã tồn tại trong CSDL.";
                 dom.txtTenMH.classList.add("is-invalid");
                 isLocalDuplicate = true;
-                localDuplicateReasonTen = "Tên môn học bị trùng lặp trên lưới danh sách tạm thời.";
+                localDuplicateReasonTen = isPendingNew
+                    ? "Tên môn học bị trùng lặp trên danh sách tạm thời."
+                    : "Tên môn học đã tồn tại trong CSDL.";
             }
         }
         
@@ -598,18 +608,13 @@
                     let dbReasonTen = "";
                     
                     if (isEditing === false && subjectCode !== "" && duplicateStatus.maMHDuplicate) {
-                        if (duplicateStatus.maMHActive) {
-                            dbDuplicate = true;
-                            dom.txtMaMH.classList.add("is-invalid");
-                            dom.errMaMH.textContent = "Mã môn học này đã tồn tại trong CSDL.";
-                            dbReasonMa = "Mã môn học đã tồn tại trong CSDL.";
-                        } else {
-                            dom.txtMaMH.classList.add("is-invalid");
-                            dom.errMaMH.textContent = "Mã môn học đã bị xóa mềm trước đó. Hệ thống sẽ tự khôi phục khi Ghi.";
-                        }
+                        dbDuplicate = true;
+                        dom.txtMaMH.classList.add("is-invalid");
+                        dom.errMaMH.textContent = "Mã môn học này đã tồn tại trong CSDL.";
+                        dbReasonMa = "Mã môn học đã tồn tại trong CSDL.";
                     }
                     
-                    if (subjectName !== "" && duplicateStatus.tenMHDuplicate && duplicateStatus.tenMHActive) {
+                    if (subjectName !== "" && duplicateStatus.tenMHDuplicate) {
                         dbDuplicate = true;
                         dom.txtTenMH.classList.add("is-invalid");
                         dom.errTenMH.textContent = "Tên môn học này đã tồn tại trong CSDL.";
@@ -884,16 +889,43 @@
 
     function validateImportPreviewRows() {
         const processedRows = currentImportRows.map(row => ({ ...row, error: "" }));
-        const fileMaMHSet = new Set();
-        const fileTenMHSet = new Set();
+        const fileMaMHRows = new Map();
+        const fileTenMHRows = new Map();
 
-        const currentTableCodes = new Set();
-        const currentTableNames = new Set();
+        const databaseCodes = new Set();
+        const databaseNames = new Set();
+        const pendingCodes = new Set();
+        const pendingNames = new Set();
         dom.tbl.querySelectorAll("tbody tr").forEach(tr => {
             const mamh = tr.dataset.mamh;
             const tenmh = tr.dataset.tenmh;
-            if (mamh) currentTableCodes.add(mamh.trim().toUpperCase());
-            if (tenmh) currentTableNames.add(tenmh.trim().toLowerCase());
+            const rowId = parseInt(tr.dataset.id, 10);
+            const isPendingNew = !isNaN(rowId) && rowId < 0;
+
+            if (isPendingNew) {
+                if (mamh) pendingCodes.add(mamh.trim().toUpperCase());
+                if (tenmh) pendingNames.add(tenmh.trim().toLowerCase());
+            } else {
+                if (mamh) databaseCodes.add(mamh.trim().toUpperCase());
+                if (tenmh) databaseNames.add(tenmh.trim().toLowerCase());
+            }
+        });
+
+        processedRows.forEach(row => {
+            const maMH = normalizeSubjectCode(row.maMH);
+            const tenMH = row.tenMH.trim();
+            if (maMH !== "" && maMH.length <= 5) {
+                const codeUpper = maMH.toUpperCase();
+                const rowNumbers = fileMaMHRows.get(codeUpper) ?? [];
+                rowNumbers.push(row.index + 1);
+                fileMaMHRows.set(codeUpper, rowNumbers);
+            }
+            if (tenMH !== "" && tenMH.length <= 40) {
+                const nameLower = tenMH.toLowerCase();
+                const rowNumbers = fileTenMHRows.get(nameLower) ?? [];
+                rowNumbers.push(row.index + 1);
+                fileTenMHRows.set(nameLower, rowNumbers);
+            }
         });
 
         processedRows.forEach(row => {
@@ -912,18 +944,25 @@
             } else {
                 const codeUpper = maMH.toUpperCase();
                 const nameLower = tenMH.toLowerCase();
+                const duplicateCodeRows = fileMaMHRows.get(codeUpper) ?? [];
+                const duplicateNameRows = fileTenMHRows.get(nameLower) ?? [];
 
-                if (fileMaMHSet.has(codeUpper)) {
-                    error = "Trùng Mã MH trong file";
-                } else if (fileTenMHSet.has(nameLower)) {
-                    error = "Trùng Tên MH trong file";
-                } else if (currentTableCodes.has(codeUpper)) {
-                    error = "Trùng Mã MH với danh sách trên lưới";
-                } else if (currentTableNames.has(nameLower)) {
-                    error = "Trùng Tên MH với danh sách trên lưới";
-                } else {
-                    fileMaMHSet.add(codeUpper);
-                    fileTenMHSet.add(nameLower);
+                if (duplicateCodeRows.length > 1) {
+                    const previewStt = row.index + 1;
+                    const otherRows = duplicateCodeRows.filter(stt => stt !== previewStt).join(", ");
+                    error = `STT ${previewStt} trùng Mã MH với STT ${otherRows}`;
+                } else if (duplicateNameRows.length > 1) {
+                    const previewStt = row.index + 1;
+                    const otherRows = duplicateNameRows.filter(stt => stt !== previewStt).join(", ");
+                    error = `STT ${previewStt} trùng Tên MH với STT ${otherRows}`;
+                } else if (databaseCodes.has(codeUpper)) {
+                    error = "Trùng Mã môn học trong CSDL";
+                } else if (databaseNames.has(nameLower)) {
+                    error = "Trùng Tên môn học trong CSDL";
+                } else if (pendingCodes.has(codeUpper)) {
+                    error = "Trùng Mã MH với danh sách tạm thời";
+                } else if (pendingNames.has(nameLower)) {
+                    error = "Trùng Tên MH với danh sách tạm thời";
                 }
             }
 

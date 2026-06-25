@@ -111,17 +111,24 @@
         dom.currentLop = AppCommon.byId("currentLop");
         dom.txtSearchSV = AppCommon.byId("txtSearchSV");
         dom.txtMaSV = AppCommon.byId("txtMaSV");
+        if (dom.txtMaSV) {
+            dom.txtMaSV.maxLength = 8;
+        }
         dom.txtHo = AppCommon.byId("txtHo");
+        if (dom.txtHo) {
+            dom.txtHo.maxLength = 40;
+        }
         dom.txtTen = AppCommon.byId("txtTen");
+        if (dom.txtTen) {
+            dom.txtTen.maxLength = 10;
+        }
         dom.txtNgaySinh = AppCommon.byId("txtNgaySinh");
         dom.txtDiaChi = AppCommon.byId("txtDiaChi");
-        dom.txtMatKhau = AppCommon.byId("txtMatKhau");
         dom.errMaSV = AppCommon.byId("errMaSV");
         dom.errHo = AppCommon.byId("errHo");
         dom.errTen = AppCommon.byId("errTen");
         dom.errNgaySinh = AppCommon.byId("errNgaySinh");
         dom.errDiaChi = AppCommon.byId("errDiaChi");
-        dom.errMatKhau = AppCommon.byId("errMatKhau");
         dom.btnThemSV = AppCommon.byId("btnThemSV");
         dom.btnSuaSV = AppCommon.byId("btnSuaSV");
         dom.wrapThemSV = AppCommon.byId("wrapThemSV");
@@ -142,7 +149,7 @@
         dom.importSummary = AppCommon.byId("importSummary");
 
         // Event listeners
-        ["txtMaSV", "txtHo", "txtTen", "txtDiaChi", "txtMatKhau"]
+        ["txtMaSV", "txtHo", "txtTen", "txtDiaChi"]
             .forEach(id => {
                 const element = AppCommon.byId(id);
                 if (element) element.addEventListener("input", validateStudentInputs);
@@ -618,17 +625,27 @@
             const existingTenLop = li.dataset.tenlop.trim().toLowerCase();
 
             if (maLop !== "" && existingMaLop === maLop) {
-                dom.errMaLop.textContent = "Mã lớp này đã tồn tại trên danh sách tạm thời.";
+                const isPendingNew = li.dataset.changeState === "new";
+                dom.errMaLop.textContent = isPendingNew
+                    ? "Mã lớp này đã tồn tại trên danh sách tạm thời."
+                    : "Mã lớp này đã tồn tại trong cơ sở dữ liệu.";
                 dom.txtMaLop.classList.add("is-invalid");
                 isLocalDuplicate = true;
-                localReasonMa = "Mã lớp bị trùng lặp trên danh sách tạm thời.";
+                localReasonMa = isPendingNew
+                    ? "Mã lớp bị trùng lặp trên danh sách tạm thời."
+                    : "Mã lớp đã tồn tại trong cơ sở dữ liệu.";
             }
 
             if (tenLop !== "" && existingTenLop === tenLop.toLowerCase()) {
-                dom.errTenLop.textContent = "Tên lớp này đã tồn tại trên danh sách tạm thời.";
+                const isPendingNew = li.dataset.changeState === "new";
+                dom.errTenLop.textContent = isPendingNew
+                    ? "Tên lớp này đã tồn tại trên danh sách tạm thời."
+                    : "Tên lớp này đã tồn tại trong cơ sở dữ liệu.";
                 dom.txtTenLop.classList.add("is-invalid");
                 isLocalDuplicate = true;
-                localReasonTen = "Tên lớp bị trùng lặp trên danh sách tạm thời.";
+                localReasonTen = isPendingNew
+                    ? "Tên lớp bị trùng lặp trên danh sách tạm thời."
+                    : "Tên lớp đã tồn tại trong cơ sở dữ liệu.";
             }
         }
 
@@ -666,29 +683,29 @@
                     if (!isEditing && maLop !== "" && status.maLopDuplicate) {
                         dbDuplicate = true;
                         dom.txtMaLop.classList.add("is-invalid");
-                        dom.errMaLop.textContent = "Mã lớp này đã tồn tại trong CSDL.";
-                        dbReasonMa = "Mã lớp đã tồn tại trong CSDL.";
+                        dom.errMaLop.textContent = "Mã lớp này đã tồn tại trong cơ sở dữ liệu.";
+                        dbReasonMa = "Mã lớp đã tồn tại trong cơ sở dữ liệu.";
                     }
 
                     if (tenLop !== "" && status.tenLopDuplicate) {
                         dbDuplicate = true;
                         dom.txtTenLop.classList.add("is-invalid");
-                        dom.errTenLop.textContent = "Tên lớp này đã tồn tại trong CSDL.";
-                        dbReasonTen = "Tên lớp đã tồn tại trong CSDL.";
+                        dom.errTenLop.textContent = "Tên lớp này đã tồn tại trong cơ sở dữ liệu.";
+                        dbReasonTen = "Tên lớp đã tồn tại trong cơ sở dữ liệu.";
                     }
 
                     let reasonThem = "";
                     if (isEditing) {
                         reasonThem = "Đang ở chế độ hiệu chỉnh (Phục hồi để thêm mới)";
                     } else if (dbDuplicate) {
-                        reasonThem = dbReasonMa || dbReasonTen || "Trùng lặp trong CSDL.";
+                        reasonThem = dbReasonMa || dbReasonTen || "Trùng lặp trong cơ sở dữ liệu.";
                     }
 
                     let reasonSua = "";
                     if (!isEditing) {
                         reasonSua = "Vui lòng chọn lớp trong danh sách để hiệu chỉnh";
                     } else if (dbDuplicate) {
-                        reasonSua = dbReasonTen || "Tên lớp đã tồn tại trong CSDL.";
+                        reasonSua = dbReasonTen || "Tên lớp đã tồn tại trong cơ sở dữ liệu.";
                     }
 
                     if (dbDuplicate) {
@@ -782,7 +799,7 @@
             Ten: dom.txtTen.value.trim(),
             NgaySinh: dom.txtNgaySinh.value,
             DiaChi: dom.txtDiaChi.value.trim(),
-            MatKhau: dom.txtMatKhau.value,
+            MatKhau: selectedRow ? (selectedRow.dataset.matkhau || "1") : "1",
             MaLop: selectedLop
         };
     }
@@ -793,7 +810,6 @@
         dom.txtTen.value = row.dataset.ten;
         dom.txtNgaySinh.value = row.dataset.ngaysinh;
         dom.txtDiaChi.value = row.dataset.diachi;
-        dom.txtMatKhau.value = row.dataset.matkhau || "";
         dom.txtMaSV.disabled = true;
         validateStudentInputs();
     }
@@ -804,12 +820,11 @@
         dom.txtTen.value = "";
         dom.txtNgaySinh.value = "";
         dom.txtDiaChi.value = "";
-        dom.txtMatKhau.value = "";
         dom.txtMaSV.disabled = false;
-        const fields = ["txtMaSV", "txtHo", "txtTen", "txtNgaySinh", "txtDiaChi", "txtMatKhau"];
+        const fields = ["txtMaSV", "txtHo", "txtTen", "txtNgaySinh", "txtDiaChi"];
         fields.forEach(f => dom[f]?.classList.remove("is-invalid"));
         
-        const errors = ["errMaSV", "errHo", "errTen", "errNgaySinh", "errDiaChi", "errMatKhau"];
+        const errors = ["errMaSV", "errHo", "errTen", "errNgaySinh", "errDiaChi"];
         errors.forEach(e => {
             const errEl = dom[e] || AppCommon.byId(e);
             if (errEl) errEl.textContent = "";
@@ -1125,14 +1140,12 @@
         dom.errTen.textContent = "";
         dom.errNgaySinh.textContent = "";
         dom.errDiaChi.textContent = "";
-        dom.errMatKhau.textContent = "";
 
         dom.txtMaSV.classList.remove("is-invalid");
         dom.txtHo.classList.remove("is-invalid");
         dom.txtTen.classList.remove("is-invalid");
         dom.txtNgaySinh.classList.remove("is-invalid");
         dom.txtDiaChi.classList.remove("is-invalid");
-        dom.txtMatKhau.classList.remove("is-invalid");
 
         if (!selectedLop) {
             updateStudentButtonStates(
@@ -1168,8 +1181,8 @@
         }
         if (!d.Ho) {
             hasClientError = true;
-        } else if (d.Ho.length > 50) {
-            dom.errHo.textContent = "Họ tối đa 50 ký tự.";
+        } else if (d.Ho.length > 40) {
+            dom.errHo.textContent = "Họ tối đa 40 ký tự.";
             dom.txtHo.classList.add("is-invalid");
             hasClientError = true;
         }
@@ -1199,13 +1212,7 @@
             dom.txtDiaChi.classList.add("is-invalid");
             hasClientError = true;
         }
-        if (!d.MatKhau) {
-            hasClientError = true;
-        } else if (d.MatKhau.length > 20) {
-            dom.errMatKhau.textContent = "Mật khẩu tối đa 20 ký tự.";
-            dom.txtMatKhau.classList.add("is-invalid");
-            hasClientError = true;
-        }
+
 
         if (hasClientError) {
             const reasonThem = isEditing ? "Đang ở chế độ hiệu chỉnh (Reset để thêm mới)" : "Thông tin sinh viên nhập không hợp lệ.";
@@ -1363,7 +1370,7 @@
 
     function exportExcel() {
         if (!selectedLop) return;
-        const rows = [["Mã SV", "Họ", "Tên", "Ngày sinh", "Địa chỉ", "Mật khẩu"]];
+        const rows = [["Mã SV", "Họ", "Tên", "Ngày sinh", "Địa chỉ"]];
         
         dom.svTable.querySelectorAll("tr").forEach(tr => {
             rows.push([
@@ -1371,13 +1378,12 @@
                 tr.dataset.ho,
                 tr.dataset.ten,
                 tr.dataset.ngaysinh,
-                tr.dataset.diachi,
-                tr.dataset.matkhau
+                tr.dataset.diachi
             ]);
         });
 
         const ws = XLSX.utils.aoa_to_sheet(rows);
-        ws['!cols'] = [{ wch: 15 }, { wch: 20 }, { wch: 10 }, { wch: 15 }, { wch: 30 }, { wch: 15 }];
+        ws['!cols'] = [{ wch: 15 }, { wch: 20 }, { wch: 10 }, { wch: 15 }, { wch: 30 }];
 
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "SinhVien_" + selectedLop);
@@ -1386,12 +1392,12 @@
 
     function downloadTemplate() {
         const rows = [
-            ["Mã SV", "Họ", "Tên", "Ngày sinh", "Địa chỉ", "Mật khẩu"],
-            ["SV001", "Nguyễn Văn", "An", "2005-04-15", "120 Lê Lợi, Đà Nẵng", "password123"],
-            ["SV002", "Lê Thị", "Bình", "2005-09-20", "45 Nguyễn Văn Cừ, Huế", "pass456"]
+            ["Mã SV", "Họ", "Tên", "Ngày sinh", "Địa chỉ"],
+            ["SV001", "Nguyễn Văn", "An", "2005-04-15", "120 Lê Lợi, Đà Nẵng"],
+            ["SV002", "Lê Thị", "Bình", "2005-09-20", "45 Nguyễn Văn Cừ, Huế"]
         ];
         const ws = XLSX.utils.aoa_to_sheet(rows);
-        ws['!cols'] = [{ wch: 15 }, { wch: 20 }, { wch: 10 }, { wch: 15 }, { wch: 30 }, { wch: 15 }];
+        ws['!cols'] = [{ wch: 15 }, { wch: 20 }, { wch: 10 }, { wch: 15 }, { wch: 30 }];
 
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Template_SinhVien");
@@ -1408,6 +1414,8 @@
     }
 
     let currentImportList = [];
+    let currentImportRows = [];
+    let importValidationTimer;
 
     function handleFileSelect(event) {
         AppCommon.readFirstExcelSheet(
@@ -1423,6 +1431,7 @@
         dom.importPreviewSection.style.display = "none";
         dom.btnConfirmImport.setAttribute("disabled", "true");
         currentImportList = [];
+        currentImportRows = [];
 
         const rows = rawData.filter(r => r.some(cell => cell.toString().trim() !== ""));
         if (rows.length === 0) {
@@ -1431,8 +1440,8 @@
         }
 
         const headerRow = rows[0];
-        if (headerRow.length < 6) {
-            window.showImportFileError("Cấu trúc cột không hợp lệ. File Excel phải có 6 cột: Mã SV, Họ, Tên, Ngày sinh, Địa chỉ, Mật khẩu.");
+        if (headerRow.length < 5) {
+            window.showImportFileError("Cấu trúc cột không hợp lệ. File Excel phải có 5 cột: Mã SV, Họ, Tên, Ngày sinh, Địa chỉ.");
             return;
         }
 
@@ -1441,16 +1450,14 @@
         const col3 = AppCommon.normalizeHeader(headerRow[2]);
         const col4 = AppCommon.normalizeHeader(headerRow[3]);
         const col5 = AppCommon.normalizeHeader(headerRow[4]);
-        const col6 = AppCommon.normalizeHeader(headerRow[5]);
 
         const validCol1 = (col1 === "ma sv" || col1 === "masv");
         const validCol2 = (col2 === "ho");
         const validCol3 = (col3 === "ten");
         const validCol4 = (col4 === "ngay sinh" || col4 === "ngaysinh");
         const validCol5 = (col5 === "dia chi" || col5 === "diachi");
-        const validCol6 = (col6 === "mat khau" || col6 === "matkhau");
 
-        if (!validCol1 || !validCol2 || !validCol3 || !validCol4 || !validCol5 || !validCol6) {
+        if (!validCol1 || !validCol2 || !validCol3 || !validCol4 || !validCol5) {
             window.showImportFileError("Cấu trúc cột không hợp lệ. Vui lòng tải file mẫu để kiểm tra thứ tự cột.");
             return;
         }
@@ -1461,26 +1468,70 @@
             return;
         }
 
-        const processedRows = [];
-        const fileMaSVSet = new Set();
-
-        const currentTableIds = new Set();
-        dom.svTable.querySelectorAll("tr").forEach(tr => {
-            if (tr.dataset.masv) {
-                currentTableIds.add(tr.dataset.masv.trim().toUpperCase());
-            }
-        });
-
-        dataRows.forEach((row, idx) => {
+        currentImportRows = dataRows.map((row, idx) => {
             const maSV = row[0]?.toString().trim() ?? "";
             const ho = row[1]?.toString().trim() ?? "";
             const ten = row[2]?.toString().trim() ?? "";
             let ngaySinh = row[3]?.toString().trim() ?? "";
             const diaChi = row[4]?.toString().trim() ?? "";
-            const matKhau = row[5]?.toString().trim() ?? "";
+            const matKhau = "1";
             const rowNum = idx + 2;
 
+            if (ngaySinh !== "" && !isNaN(ngaySinh)) {
+                const excelDate = new Date((parseInt(ngaySinh, 10) - 25569) * 86400 * 1000);
+                if (!isNaN(excelDate.getTime())) {
+                    ngaySinh = excelDate.toISOString().slice(0, 10);
+                }
+            }
+
+            return {
+                index: idx,
+                rowNum: rowNum,
+                maSV: maSV,
+                ho: ho,
+                ten: ten,
+                ngaySinh: ngaySinh,
+                diaChi: diaChi,
+                matKhau: matKhau,
+                error: ""
+            };
+        });
+
+        validateImportPreviewRows();
+    }
+
+    function validateImportPreviewRows() {
+        const processedRows = currentImportRows.map(row => ({ ...row, error: "" }));
+
+        const fileMaSVRows = new Map();
+        const pendingMaSVs = new Set(newItems.map(x => x.MaSV.trim().toUpperCase()));
+        const databaseMaSVs = new Set();
+        dom.svTable.querySelectorAll("tr").forEach(tr => {
+            const masv = tr.dataset.masv;
+            if (masv) {
+                const masvUpper = masv.trim().toUpperCase();
+                if (!pendingMaSVs.has(masvUpper)) {
+                    databaseMaSVs.add(masvUpper);
+                }
+            }
+        });
+
+        processedRows.forEach(row => {
+            const maSV = row.maSV?.trim().toUpperCase() ?? "";
+            if (maSV !== "" && maSV.length <= 8) {
+                const rowNumbers = fileMaSVRows.get(maSV) ?? [];
+                rowNumbers.push(row.index + 1);
+                fileMaSVRows.set(maSV, rowNumbers);
+            }
+        });
+
+        processedRows.forEach(row => {
             let error = "";
+            const maSV = row.maSV?.trim() ?? "";
+            const ho = row.ho?.trim() ?? "";
+            const ten = row.ten?.trim() ?? "";
+            let ngaySinh = row.ngaySinh?.trim() ?? "";
+            const diaChi = row.diaChi?.trim() ?? "";
 
             if (maSV === "") {
                 error = "Mã SV trống";
@@ -1490,21 +1541,23 @@
                 error = "Tên trống";
             } else if (maSV.length > 8) {
                 error = "Mã SV tối đa 8 ký tự";
-            } else if (ho.length > 50) {
-                error = "Họ tối đa 50 ký tự";
+            } else if (ho.length > 40) {
+                error = "Họ tối đa 40 ký tự";
             } else if (ten.length > 10) {
                 error = "Tên tối đa 10 ký tự";
             } else if (diaChi.length > 40) {
                 error = "Địa chỉ tối đa 40 ký tự";
-            } else if (matKhau.length > 20) {
-                error = "Mật khẩu tối đa 20 ký tự";
             } else {
                 const idUpper = maSV.toUpperCase();
 
                 if (ngaySinh !== "") {
-                    if (!isNaN(ngaySinh)) {
+                    if (!isNaN(ngaySinh) && ngaySinh.trim() !== "") {
                         const excelDate = new Date((parseInt(ngaySinh, 10) - 25569) * 86400 * 1000);
-                        ngaySinh = excelDate.toISOString().slice(0, 10);
+                        if (!isNaN(excelDate.getTime())) {
+                            ngaySinh = excelDate.toISOString().slice(0, 10);
+                        } else {
+                            error = "Ngày sinh sai định dạng (YYYY-MM-DD)";
+                        }
                     } else {
                         const d = new Date(ngaySinh);
                         if (isNaN(d.getTime())) {
@@ -1516,34 +1569,35 @@
                 }
 
                 if (error === "") {
-                    if (fileMaSVSet.has(idUpper)) {
-                        error = "Trùng mã SV trong file";
-                    } else if (currentTableIds.has(idUpper)) {
-                        error = "Trùng mã SV trên lưới";
-                    } else {
-                        fileMaSVSet.add(idUpper);
+                    const duplicateCodeRows = fileMaSVRows.get(idUpper) ?? [];
+                    if (duplicateCodeRows.length > 1) {
+                        const previewStt = row.index + 1;
+                        const otherRows = duplicateCodeRows.filter(stt => stt !== previewStt).join(", ");
+                        error = `STT ${previewStt} trùng mã SV với STT ${otherRows}`;
+                    } else if (pendingMaSVs.has(idUpper)) {
+                        error = "Trùng mã SV với danh sách tạm thời";
+                    } else if (databaseMaSVs.has(idUpper)) {
+                        error = "Trùng mã SV trong CSDL";
                     }
                 }
             }
 
-            processedRows.push({
-                index: idx,
-                rowNum: rowNum,
-                maSV: maSV,
-                ho: ho,
-                ten: ten,
-                ngaySinh: ngaySinh,
-                diaChi: diaChi,
-                matKhau: matKhau,
-                error: error
-            });
+            row.maSV = maSV;
+            row.ho = ho;
+            row.ten = ten;
+            row.ngaySinh = ngaySinh;
+            row.diaChi = diaChi;
+            row.error = error;
         });
 
+        currentImportRows = processedRows;
         const candidates = processedRows.filter(r => r.error === "");
+
         if (candidates.length === 0) {
             renderPreview(processedRows);
             return;
         }
+
         fetch('/LopSinhVien/CheckStudentImport', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1555,9 +1609,13 @@
         })
         .then(dbResults => {
             dbResults.forEach(res => {
-                const match = processedRows.find(p => p.index === res.index && p.error === "");
-                if (match && res.idDuplicate) {
-                    match.error = "Trùng mã SV trong CSDL";
+                const match = candidates.find(c => c.index === res.index);
+                if (match) {
+                    if (res.idDuplicateFile) {
+                        match.error = `Trùng mã SV với STT ${res.idDuplicateFileWithRowIndex + 1} trong file`;
+                    } else if (res.idDuplicateDB) {
+                        match.error = "Trùng mã SV trong CSDL";
+                    }
                 }
             });
             renderPreview(processedRows);
@@ -1569,6 +1627,19 @@
 
     function renderPreview(processedRows) {
         const tbody = dom.tblImportPreview.querySelector("tbody");
+        
+        const activeEl = document.activeElement;
+        let activeIndex = null;
+        let activeField = null;
+        let selectionStart = null;
+        let selectionEnd = null;
+        if (activeEl && activeEl.classList.contains("import-edit-input")) {
+            activeIndex = Number(activeEl.dataset.importIndex);
+            activeField = activeEl.dataset.importField;
+            selectionStart = activeEl.selectionStart;
+            selectionEnd = activeEl.selectionEnd;
+        }
+
         tbody.innerHTML = "";
         dom.importPreviewSection.style.display = "block";
 
@@ -1581,7 +1652,7 @@
 
             let statusBadge = "";
             if (row.error) {
-                statusBadge = `<span class="badge bg-danger"><i class="bi bi-x-circle"></i> ${row.error}</span>`;
+                statusBadge = `<span class="badge bg-danger"><i class="bi bi-x-circle"></i> ${AppCommon.escapeHtml(row.error)}</span>`;
                 tr.className = "table-danger";
                 errorCount++;
             } else {
@@ -1591,12 +1662,65 @@
 
             tr.innerHTML = `
                 <td class="text-center">${stt}</td>
-                <td><strong>${row.maSV}</strong></td>
-                <td>${row.ho} ${row.ten}</td>
+                <td>
+                    <input type="text"
+                           class="form-control form-control-sm import-edit-input import-masv-input fw-semibold text-uppercase"
+                           value="${AppCommon.escapeHtml(row.maSV)}"
+                           maxlength="8"
+                           data-import-index="${row.index}"
+                           data-import-field="maSV" />
+                </td>
+                <td>
+                    <input type="text"
+                           class="form-control form-control-sm import-edit-input"
+                           value="${AppCommon.escapeHtml(row.ho)}"
+                           maxlength="40"
+                           placeholder="Họ"
+                           data-import-index="${row.index}"
+                           data-import-field="ho" />
+                </td>
+                <td>
+                    <input type="text"
+                           class="form-control form-control-sm import-edit-input"
+                           value="${AppCommon.escapeHtml(row.ten)}"
+                           maxlength="10"
+                           placeholder="Tên"
+                           data-import-index="${row.index}"
+                           data-import-field="ten" />
+                </td>
+                <td>
+                    <input type="text"
+                           class="form-control form-control-sm import-edit-input text-center"
+                           value="${AppCommon.escapeHtml(row.ngaySinh)}"
+                           placeholder="YYYY-MM-DD"
+                           data-import-index="${row.index}"
+                           data-import-field="ngaySinh" />
+                </td>
+                <td>
+                    <input type="text"
+                           class="form-control form-control-sm import-edit-input"
+                           value="${AppCommon.escapeHtml(row.diaChi)}"
+                           maxlength="40"
+                           placeholder="Địa chỉ"
+                           data-import-index="${row.index}"
+                           data-import-field="diaChi" />
+                </td>
                 <td>${statusBadge}</td>
             `;
             tbody.appendChild(tr);
         });
+
+        bindImportPreviewInputs();
+
+        if (activeField !== null && activeIndex !== null) {
+            const newActiveEl = tbody.querySelector(`.import-edit-input[data-import-index="${activeIndex}"][data-import-field="${activeField}"]`);
+            if (newActiveEl) {
+                newActiveEl.focus();
+                try {
+                    newActiveEl.setSelectionRange(selectionStart, selectionEnd);
+                } catch (e) {}
+            }
+        }
 
         dom.importSummary.textContent = `Tổng: ${processedRows.length} | Hợp lệ: ${successCount} | Lỗi: ${errorCount}`;
         dom.importSummary.className = errorCount > 0 ? "badge bg-danger rounded-pill px-3 py-1.5" : "badge bg-success rounded-pill px-3 py-1.5";
@@ -1613,7 +1737,37 @@
             }));
         } else {
             dom.btnConfirmImport.setAttribute("disabled", "true");
+            currentImportList = [];
         }
+    }
+
+    function bindImportPreviewInputs() {
+        dom.tblImportPreview.querySelectorAll(".import-edit-input").forEach(input => {
+            input.addEventListener("input", event => {
+                const target = event.target;
+                const rowIndex = Number(target.dataset.importIndex);
+                const field = target.dataset.importField;
+                const row = currentImportRows.find(item => item.index === rowIndex);
+
+                if (!row) return;
+
+                if (field === "maSV") {
+                    target.value = target.value.trim().toUpperCase().slice(0, 8);
+                    row.maSV = target.value;
+                } else if (field === "ho") {
+                    row.ho = target.value;
+                } else if (field === "ten") {
+                    row.ten = target.value;
+                } else if (field === "ngaySinh") {
+                    row.ngaySinh = target.value;
+                } else if (field === "diaChi") {
+                    row.diaChi = target.value;
+                }
+
+                clearTimeout(importValidationTimer);
+                importValidationTimer = setTimeout(validateImportPreviewRows, 300);
+            });
+        });
     }
 
     function confirmImport() {

@@ -114,9 +114,29 @@ namespace DMS_Examify.Services
             }
 
             var existingIds = GetExistingStudentIds();
+            var seenIdsInFile = new Dictionary<string, int>();
+
             return items.Select((item, index) =>
             {
                 var normalizedId = item.MaSV?.Trim().ToUpper() ?? string.Empty;
+                bool isEmptyId = string.IsNullOrWhiteSpace(normalizedId);
+
+                bool idDuplicateDB = !isEmptyId && existingIds.Contains(normalizedId);
+
+                bool idDuplicateFile = false;
+                int? idDuplicateFileWithRowIndex = null;
+                if (!isEmptyId)
+                {
+                    if (seenIdsInFile.TryGetValue(normalizedId, out int firstRowIndex))
+                    {
+                        idDuplicateFile = true;
+                        idDuplicateFileWithRowIndex = firstRowIndex;
+                    }
+                    else
+                    {
+                        seenIdsInFile.Add(normalizedId, index);
+                    }
+                }
 
                 return new SinhVienImportCheckResult
                 {
@@ -124,7 +144,9 @@ namespace DMS_Examify.Services
                     MaSV = item.MaSV?.Trim() ?? string.Empty,
                     Ho = item.Ho?.Trim() ?? string.Empty,
                     Ten = item.Ten?.Trim() ?? string.Empty,
-                    IdDuplicate = existingIds.Contains(normalizedId)
+                    IdDuplicateDB = idDuplicateDB,
+                    IdDuplicateFile = idDuplicateFile,
+                    IdDuplicateFileWithRowIndex = idDuplicateFileWithRowIndex
                 };
             }).ToList();
         }

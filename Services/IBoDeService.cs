@@ -11,5 +11,6 @@ namespace DMS_Examify.Services
         List<BoDe> Search(string? keyword, string role, string maGV);
         int GetLatestCauHoi();
         List<BoDeImportCheckResult> CheckImportSubjects(List<BoDe> items);
+        bool IsQuestionContentDuplicate(string noiDung, int excludeCauHoi);
     }
 }

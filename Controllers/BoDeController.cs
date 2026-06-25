@@ -43,7 +43,15 @@ namespace DMS_Examify.Controllers
         [HttpPost]
         public IActionResult Insert([FromBody] BoDe? model)
         {
-            if (model == null || !ModelState.IsValid)
+            if (model == null)
+            {
+                return BadRequest(InvalidQuestionMessage);
+            }
+
+            model.TrinhDo = model.TrinhDo?.Trim().ToUpperInvariant() ?? "A";
+            model.DapAn = model.DapAn?.Trim().ToUpperInvariant() ?? "";
+
+            if (!ModelState.IsValid)
             {
                 return BadRequest(InvalidQuestionMessage);
             }
@@ -70,7 +78,15 @@ namespace DMS_Examify.Controllers
         [HttpPost]
         public IActionResult Update([FromBody] BoDe? model)
         {
-            if (model == null || model.CauHoi <= 0 || !ModelState.IsValid)
+            if (model == null || model.CauHoi <= 0)
+            {
+                return BadRequest(InvalidQuestionMessage);
+            }
+
+            model.TrinhDo = model.TrinhDo?.Trim().ToUpperInvariant() ?? "A";
+            model.DapAn = model.DapAn?.Trim().ToUpperInvariant() ?? "";
+
+            if (!ModelState.IsValid)
             {
                 return BadRequest(InvalidQuestionMessage);
             }
@@ -159,7 +175,19 @@ namespace DMS_Examify.Controllers
             }
         }
 
-
+        [HttpGet]
+        public IActionResult CheckDuplicate(string noiDung, int? excludeCauHoi)
+        {
+            try
+            {
+                var isDup = _boDeService.IsQuestionContentDuplicate(noiDung, excludeCauHoi ?? 0);
+                return Json(new { hasDuplicate = isDup });
+            }
+            catch (Exception ex)
+            {
+                return LogAndReturnServerError(_logger, ex, "Lỗi hệ thống khi kiểm tra trùng câu hỏi.");
+            }
+        }
     }
 }
 

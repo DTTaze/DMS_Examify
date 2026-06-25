@@ -146,35 +146,30 @@
                 <div class="row mb-3">
                     <div class="col-md-4">
                         <label class="form-label fw-medium">Mã sinh viên <span class="text-danger">*</span></label>
-                        <input id="txtMaSV" class="form-control text-uppercase shadow-none" placeholder="Nhập mã SV..." />
+                        <input id="txtMaSV" class="form-control text-uppercase shadow-none" placeholder="Nhập mã SV..." maxlength="8" />
                         <span id="errMaSV" class="text-danger small mt-1 d-block"></span>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label fw-medium">Họ đệm <span class="text-danger">*</span></label>
-                        <input id="txtHo" class="form-control shadow-none" placeholder="Nhập họ đệm..." />
+                        <input id="txtHo" class="form-control shadow-none" placeholder="Nhập họ đệm..." maxlength="40" />
                         <span id="errHo" class="text-danger small mt-1 d-block"></span>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label fw-medium">Tên <span class="text-danger">*</span></label>
-                        <input id="txtTen" class="form-control shadow-none" placeholder="Nhập tên..." />
+                        <input id="txtTen" class="form-control shadow-none" placeholder="Nhập tên..." maxlength="10" />
                         <span id="errTen" class="text-danger small mt-1 d-block"></span>
                     </div>
                 </div>
                 <div class="row mb-3">
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <label class="form-label fw-medium">Ngày sinh <span class="text-danger">*</span></label>
                         <input id="txtNgaySinh" type="date" class="form-control shadow-none" max="@DateTime.Now.ToString("yyyy-MM-dd")" />
                         <span id="errNgaySinh" class="text-danger small mt-1 d-block"></span>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <label class="form-label fw-medium">Địa chỉ <span class="text-danger">*</span></label>
                         <input id="txtDiaChi" class="form-control shadow-none" placeholder="Nhập địa chỉ..." />
                         <span id="errDiaChi" class="text-danger small mt-1 d-block"></span>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label fw-medium">Mật khẩu <span class="text-danger">*</span></label>
-                        <input id="txtMatKhau" type="password" class="form-control shadow-none" placeholder="Nhập mật khẩu..." />
-                        <span id="errMatKhau" class="text-danger small mt-1 d-block"></span>
                     </div>
                 </div>
 
@@ -290,7 +285,7 @@
 
 <!-- Import Excel Modal -->
 <div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
         <div class="modal-content border-0 shadow-lg rounded-3">
             <div class="modal-header border-0 bg-light py-3">
                 <h5 class="modal-title d-flex align-items-center gap-2 fw-semibold" id="importModalLabel">
@@ -303,7 +298,7 @@
                 <div class="mb-3 d-flex justify-content-between align-items-center bg-light p-3 rounded-3 border border-dashed">
                     <div>
                         <span class="fw-medium text-secondary">Tải file cấu trúc mẫu (.xlsx):</span>
-                        <p class="mb-0 text-muted small">File gồm 6 cột: Mã SV, Họ, Tên, Ngày sinh, Địa chỉ, Mật khẩu</p>
+                        <p class="mb-0 text-muted small">File gồm 5 cột: Mã SV, Họ, Tên, Ngày sinh, Địa chỉ</p>
                     </div>
                     <button type="button" class="btn btn-outline-success btn-sm px-3 animate-btn" onclick="downloadTemplate()">
                         <i class="bi bi-download"></i> Tải file mẫu
@@ -327,9 +322,12 @@
                             <thead class="table-light sticky-top">
                                 <tr>
                                     <th class="text-center" style="width: 50px;">STT</th>
-                                    <th style="width: 150px;">Mã sinh viên</th>
-                                    <th>Họ & Tên</th>
-                                    <th style="width: 200px;">Trạng thái</th>
+                                    <th style="width: 120px;">Mã SV</th>
+                                    <th style="width: 150px;">Họ</th>
+                                    <th style="width: 100px;">Tên</th>
+                                    <th style="width: 140px;">Ngày sinh</th>
+                                    <th style="min-width: 150px;">Địa chỉ</th>
+                                    <th style="width: 180px;">Trạng thái</th>
                                 </tr>
                             </thead>
                             <tbody>
