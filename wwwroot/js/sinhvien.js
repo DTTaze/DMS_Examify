@@ -25,6 +25,8 @@
     let lopsPerPage = 5;
     let classDebounceTimer = null;
     let studentDebounceTimer = null;
+    let classDuplicateRequestSeq = 0;
+    let studentDuplicateRequestSeq = 0;
 
     // DOM Elements Cache
     const dom = {
@@ -563,11 +565,201 @@
         const maLop = dom.txtMaLop.value.trim().toUpperCase();
         const tenLop = dom.txtTenLop.value.trim();
         const isEditing = dom.txtMaLop.disabled;
+        const duplicateRequestSeq = ++classDuplicateRequestSeq;
 
         dom.errMaLop.textContent = "";
         dom.errTenLop.textContent = "";
         dom.txtMaLop.classList.remove("is-invalid");
         dom.txtTenLop.classList.remove("is-invalid");
+        clearTimeout(classDebounceTimer);
+
+        if (isEditing && selectedLopRow) {
+            const originalTenLop = (selectedLopRow.dataset.tenlop || "").trim();
+            if (tenLop === originalTenLop) {
+                updateClassButtonStates(
+                    true, "Đang ở chế độ hiệu chỉnh (Phục hồi để thêm mới)",
+                    true, "Vui lòng thay đổi tên lớp trước khi lưu hiệu chỉnh."
+                );
+                return;
+            }
+        }
+
+        let hasClientErrorNew = false;
+        let hasClassIdentityError = false;
+
+        if (maLop === "") {
+            hasClientErrorNew = true;
+            hasClassIdentityError = true;
+        } else if (maLop.length > 8) {
+            dom.errMaLop.textContent = "Mã lớp tối đa 8 ký tự.";
+            dom.txtMaLop.classList.add("is-invalid");
+            hasClientErrorNew = true;
+            hasClassIdentityError = true;
+        }
+
+        if (tenLop === "") {
+            hasClientErrorNew = true;
+        } else if (tenLop.length > 40) {
+            dom.errTenLop.textContent = "Tên lớp tối đa 40 ký tự.";
+            dom.txtTenLop.classList.add("is-invalid");
+            hasClientErrorNew = true;
+        }
+
+        let isLocalDuplicateNew = false;
+        let localReasonMaNew = "";
+        let localReasonTenNew = "";
+
+        const listItemsNew = dom.lopList.querySelectorAll("li");
+        for (const li of listItemsNew) {
+            if (AppCommon.isPendingDelete(li)) {
+                continue;
+            }
+            if (selectedLopRow !== null && li === selectedLopRow) {
+                continue;
+            }
+
+            const existingMaLop = (li.dataset.malop || "").trim().toUpperCase();
+            const existingTenLop = (li.dataset.tenlop || "").trim().toLowerCase();
+            const isPendingNew = li.dataset.changeState === "new";
+
+            if (maLop !== "" && existingMaLop === maLop) {
+                dom.errMaLop.textContent = isPendingNew
+                    ? "Mã lớp này đã tồn tại trên danh sách tạm thời."
+                    : "Mã lớp này đã tồn tại trong cơ sở dữ liệu.";
+                dom.txtMaLop.classList.add("is-invalid");
+                isLocalDuplicateNew = true;
+                localReasonMaNew = isPendingNew
+                    ? "Mã lớp bị trùng lặp trên danh sách tạm thời."
+                    : "Mã lớp đã tồn tại trong cơ sở dữ liệu.";
+            }
+
+            if (tenLop !== "" && existingTenLop === tenLop.toLowerCase()) {
+                dom.errTenLop.textContent = isPendingNew
+                    ? "Tên lớp này đã tồn tại trên danh sách tạm thời."
+                    : "Tên lớp này đã tồn tại trong cơ sở dữ liệu.";
+                dom.txtTenLop.classList.add("is-invalid");
+                isLocalDuplicateNew = true;
+                localReasonTenNew = isPendingNew
+                    ? "Tên lớp bị trùng lặp trên danh sách tạm thời."
+                    : "Tên lớp đã tồn tại trong cơ sở dữ liệu.";
+            }
+        }
+
+        if (isLocalDuplicateNew) {
+            const reasonThem = isEditing
+                ? "Đang ở chế độ hiệu chỉnh (Phục hồi để thêm mới)"
+                : (localReasonMaNew || localReasonTenNew);
+            const reasonSua = isEditing
+                ? localReasonTenNew || "Tên lớp trùng lặp trên danh sách tạm thời."
+                : "Vui lòng chọn lớp trong danh sách để hiệu chỉnh";
+            updateClassButtonStates(true, reasonThem, true, reasonSua);
+            return;
+        }
+
+        if (!hasClassIdentityError && (maLop !== "" || tenLop !== "")) {
+            updateClassButtonStates(
+                true,
+                "Đang kiểm tra trùng lặp từ cơ sở dữ liệu...",
+                true,
+                "Đang kiểm tra trùng lặp từ cơ sở dữ liệu..."
+            );
+
+            classDebounceTimer = setTimeout(() => {
+                const checkedMaLop = maLop;
+                const checkedTenLop = tenLop;
+                const action = isEditing ? "CheckClassDuplicateForUpdate" : "CheckClassDuplicateForCreate";
+                const checkUrl = `/LopSinhVien/${action}?maLop=${encodeURIComponent(checkedMaLop)}&tenLop=${encodeURIComponent(checkedTenLop)}`;
+
+                fetch(checkUrl)
+                    .then(res => {
+                        if (!res.ok) throw new Error("Lỗi HTTP");
+                        return res.json();
+                    })
+                    .then(status => {
+                        const currentMaLop = dom.txtMaLop.value.trim().toUpperCase();
+                        const currentTenLop = dom.txtTenLop.value.trim();
+                        if (duplicateRequestSeq !== classDuplicateRequestSeq || checkedMaLop !== currentMaLop || checkedTenLop !== currentTenLop) {
+                            return;
+                        }
+
+                        let dbDuplicate = false;
+                        let dbReasonMa = "";
+                        let dbReasonTen = "";
+
+                        if (!isEditing && checkedMaLop !== "" && status.maLopDuplicate) {
+                            dbDuplicate = true;
+                            dom.txtMaLop.classList.add("is-invalid");
+                            dom.errMaLop.textContent = "Mã lớp này đã tồn tại trong cơ sở dữ liệu.";
+                            dbReasonMa = "Mã lớp đã tồn tại trong cơ sở dữ liệu.";
+                        }
+
+                        if (checkedTenLop !== "" && status.tenLopDuplicate) {
+                            dbDuplicate = true;
+                            dom.txtTenLop.classList.add("is-invalid");
+                            dom.errTenLop.textContent = "Tên lớp này đã tồn tại trong cơ sở dữ liệu.";
+                            dbReasonTen = "Tên lớp đã tồn tại trong cơ sở dữ liệu.";
+                        }
+
+                        const reasonThem = isEditing
+                            ? "Đang ở chế độ hiệu chỉnh (Phục hồi để thêm mới)"
+                            : dbReasonMa || dbReasonTen || (hasClientErrorNew ? "Vui lòng nhập Mã và Tên lớp để thêm." : "");
+                        const reasonSua = !isEditing
+                            ? "Vui lòng chọn lớp trong danh sách để hiệu chỉnh"
+                            : dbReasonTen || (hasClientErrorNew ? "Tên lớp không được để trống." : "");
+
+                        if (dbDuplicate || hasClientErrorNew) {
+                            updateClassButtonStates(true, reasonThem, true, reasonSua);
+                            return;
+                        }
+
+                        if (isEditing) {
+                            updateClassButtonStates(true, "Đang ở chế độ hiệu chỉnh (Phục hồi để thêm mới)", false, "");
+                        } else {
+                            updateClassButtonStates(false, "", true, "Vui lòng chọn lớp trong danh sách để hiệu chỉnh");
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Lỗi kiểm tra CSDL:", error);
+                        const currentMaLop = dom.txtMaLop.value.trim().toUpperCase();
+                        const currentTenLop = dom.txtTenLop.value.trim();
+                        if (duplicateRequestSeq !== classDuplicateRequestSeq || checkedMaLop !== currentMaLop || checkedTenLop !== currentTenLop) {
+                            return;
+                        }
+
+                        if (hasClientErrorNew) {
+                            const reasonThem = isEditing ? "Đang ở chế độ hiệu chỉnh (Phục hồi để thêm mới)" : "Vui lòng nhập Mã và Tên lớp để thêm.";
+                            const reasonSua = isEditing ? "Tên lớp không được để trống." : "Vui lòng chọn lớp trong danh sách để hiệu chỉnh";
+                            updateClassButtonStates(true, reasonThem, true, reasonSua);
+                            return;
+                        }
+
+                        if (isEditing) {
+                            updateClassButtonStates(true, "Đang ở chế độ hiệu chỉnh (Phục hồi để thêm mới)", false, "");
+                        } else {
+                            updateClassButtonStates(false, "", true, "Vui lòng chọn lớp trong danh sách để hiệu chỉnh");
+                        }
+                    });
+            }, 250);
+            return;
+        }
+
+        if (hasClientErrorNew) {
+            const reasonThem = isEditing
+                ? "Đang ở chế độ hiệu chỉnh (Phục hồi để thêm mới)"
+                : "Vui lòng nhập Mã và Tên lớp để thêm.";
+            const reasonSua = isEditing
+                ? "Tên lớp không được để trống."
+                : "Vui lòng chọn lớp trong danh sách để hiệu chỉnh";
+            updateClassButtonStates(true, reasonThem, true, reasonSua);
+            return;
+        }
+
+        if (isEditing) {
+            updateClassButtonStates(true, "Đang ở chế độ hiệu chỉnh (Phục hồi để thêm mới)", false, "");
+        } else {
+            updateClassButtonStates(false, "", true, "Vui lòng chọn lớp trong danh sách để hiệu chỉnh");
+        }
+        return;
 
         if (isEditing && selectedLopRow) {
             const originalTenLop = (selectedLopRow.dataset.tenlop || "").trim();
@@ -1134,6 +1326,7 @@
     function validateStudentInputs() {
         const d = getStudentForm();
         const isEditing = dom.txtMaSV.disabled;
+        const duplicateRequestSeq = ++studentDuplicateRequestSeq;
 
         dom.errMaSV.textContent = "";
         dom.errHo.textContent = "";
@@ -1146,6 +1339,180 @@
         dom.txtTen.classList.remove("is-invalid");
         dom.txtNgaySinh.classList.remove("is-invalid");
         dom.txtDiaChi.classList.remove("is-invalid");
+        clearTimeout(studentDebounceTimer);
+
+        if (!selectedLop) {
+            updateStudentButtonStates(
+                true, "Vui lòng chọn lớp học trước.",
+                true, "Vui lòng chọn lớp học trước."
+            );
+            return;
+        }
+
+        if (isEditing && selectedRow) {
+            const hasChanges = (
+                d.Ho !== (selectedRow.dataset.ho || "").trim() ||
+                d.Ten !== (selectedRow.dataset.ten || "").trim() ||
+                d.NgaySinh !== (selectedRow.dataset.ngaysinh || "") ||
+                d.DiaChi !== (selectedRow.dataset.diachi || "").trim() ||
+                d.MatKhau !== (selectedRow.dataset.matkhau || "")
+            );
+            if (!hasChanges) {
+                updateStudentButtonStates(
+                    true, "Đang ở chế độ hiệu chỉnh (Reset để thêm mới)",
+                    true, "Vui lòng thay đổi thông tin sinh viên trước khi lưu hiệu chỉnh."
+                );
+                return;
+            }
+        }
+
+        let hasClientErrorNew = false;
+        let hasStudentIdError = false;
+
+        if (!d.MaSV) {
+            hasClientErrorNew = true;
+            hasStudentIdError = true;
+        } else if (d.MaSV.length > 8) {
+            dom.errMaSV.textContent = "Mã sinh viên tối đa 8 ký tự.";
+            dom.txtMaSV.classList.add("is-invalid");
+            hasClientErrorNew = true;
+            hasStudentIdError = true;
+        }
+
+        if (!isEditing && !hasStudentIdError) {
+            const duplicateRow = [...dom.svTable.querySelectorAll("tr")]
+                .find(r => !AppCommon.isPendingDelete(r) && (r.dataset.masv || "").trim().toUpperCase() === d.MaSV);
+
+            if (duplicateRow) {
+                const isPendingNew = newItems.some(x => (x.MaSV || "").trim().toUpperCase() === d.MaSV);
+                dom.errMaSV.textContent = isPendingNew
+                    ? "Mã SV này đã trùng trong danh sách tạm thời."
+                    : "Mã SV này đã tồn tại trong CSDL.";
+                dom.txtMaSV.classList.add("is-invalid");
+                updateStudentButtonStates(
+                    true,
+                    isPendingNew ? "Mã SV bị trùng lặp trên danh sách tạm thời." : "Mã SV đã tồn tại trong CSDL.",
+                    true,
+                    "Vui lòng chọn sinh viên trên lưới để hiệu chỉnh"
+                );
+                return;
+            }
+        }
+
+        if (!d.Ho) {
+            hasClientErrorNew = true;
+        } else if (d.Ho.length > 40) {
+            dom.errHo.textContent = "Họ tối đa 40 ký tự.";
+            dom.txtHo.classList.add("is-invalid");
+            hasClientErrorNew = true;
+        }
+
+        if (!d.Ten) {
+            hasClientErrorNew = true;
+        } else if (d.Ten.length > 10) {
+            dom.errTen.textContent = "Tên tối đa 10 ký tự.";
+            dom.txtTen.classList.add("is-invalid");
+            hasClientErrorNew = true;
+        }
+
+        if (!d.NgaySinh) {
+            hasClientErrorNew = true;
+        } else {
+            const selectedDate = new Date(d.NgaySinh);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            if (selectedDate > today) {
+                dom.errNgaySinh.textContent = "Ngày sinh không được lớn hơn ngày hiện tại.";
+                dom.txtNgaySinh.classList.add("is-invalid");
+                hasClientErrorNew = true;
+            }
+        }
+
+        if (!d.DiaChi) {
+            hasClientErrorNew = true;
+        } else if (d.DiaChi.length > 100) {
+            dom.errDiaChi.textContent = "Địa chỉ tối đa 100 ký tự.";
+            dom.txtDiaChi.classList.add("is-invalid");
+            hasClientErrorNew = true;
+        }
+
+        if (!isEditing && !hasStudentIdError) {
+            updateStudentButtonStates(
+                true,
+                "Đang kiểm tra trùng lặp từ cơ sở dữ liệu...",
+                true,
+                "Vui lòng chọn sinh viên trên lưới để hiệu chỉnh"
+            );
+
+            studentDebounceTimer = setTimeout(() => {
+                const checkedMaSV = d.MaSV;
+                const checkUrl = `/LopSinhVien/CheckStudentDuplicateForCreate?maSV=${encodeURIComponent(checkedMaSV)}`;
+
+                fetch(checkUrl)
+                    .then(res => {
+                        if (!res.ok) throw new Error("Lỗi HTTP");
+                        return res.json();
+                    })
+                    .then(status => {
+                        if (duplicateRequestSeq !== studentDuplicateRequestSeq || checkedMaSV !== getStudentForm().MaSV) {
+                            return;
+                        }
+
+                        if (status.maSVDuplicate) {
+                            dom.txtMaSV.classList.add("is-invalid");
+                            dom.errMaSV.textContent = "Mã SV này đã tồn tại trong CSDL.";
+                            updateStudentButtonStates(
+                                true,
+                                "Mã SV đã tồn tại trong CSDL.",
+                                true,
+                                "Vui lòng chọn sinh viên trên lưới để hiệu chỉnh"
+                            );
+                            return;
+                        }
+
+                        if (hasClientErrorNew) {
+                            updateStudentButtonStates(
+                                true,
+                                "Thông tin sinh viên nhập không hợp lệ.",
+                                true,
+                                "Vui lòng chọn sinh viên trên lưới để hiệu chỉnh"
+                            );
+                            return;
+                        }
+
+                        updateStudentButtonStates(false, "", true, "Vui lòng chọn sinh viên trên lưới để hiệu chỉnh");
+                    })
+                    .catch(error => {
+                        console.error("Lỗi kiểm tra trùng SV:", error);
+                        if (duplicateRequestSeq !== studentDuplicateRequestSeq || checkedMaSV !== getStudentForm().MaSV) {
+                            return;
+                        }
+
+                        if (hasClientErrorNew) {
+                            updateStudentButtonStates(
+                                true,
+                                "Thông tin sinh viên nhập không hợp lệ.",
+                                true,
+                                "Vui lòng chọn sinh viên trên lưới để hiệu chỉnh"
+                            );
+                            return;
+                        }
+
+                        updateStudentButtonStates(false, "", true, "Vui lòng chọn sinh viên trên lưới để hiệu chỉnh");
+                    });
+            }, 250);
+            return;
+        }
+
+        if (hasClientErrorNew) {
+            const reasonThem = isEditing ? "Đang ở chế độ hiệu chỉnh (Reset để thêm mới)" : "Thông tin sinh viên nhập không hợp lệ.";
+            const reasonSua = isEditing ? "Thông tin sinh viên nhập không hợp lệ." : "Vui lòng chọn sinh viên trên lưới để hiệu chỉnh";
+            updateStudentButtonStates(true, reasonThem, true, reasonSua);
+            return;
+        }
+
+        updateStudentButtonStates(true, "Đang ở chế độ hiệu chỉnh (Reset để thêm mới)", false, "");
+        return;
 
         if (!selectedLop) {
             updateStudentButtonStates(

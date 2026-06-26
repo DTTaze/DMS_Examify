@@ -12,6 +12,8 @@
     let currentPage = 1;
     let rowsPerPage = 10;
     let teacherDebounceTimer = null;
+    let teacherDuplicateDebounceTimer = null;
+    let teacherDuplicateRequestSeq = 0;
 
     function hasTeacherDependencies(row) {
         return row?.dataset.hasDependencies === "true";
@@ -506,6 +508,7 @@
     function validateGiaoVienInputs() {
         const d = getGiaoVienForm();
         const isEditing = dom.txtMaGV.disabled;
+        const duplicateRequestSeq = ++teacherDuplicateRequestSeq;
 
         dom.errMaGV.textContent = "";
         dom.errHoGV.textContent = "";
@@ -518,6 +521,166 @@
         dom.txtTenGV.classList.remove("is-invalid");
         dom.txtSoDTLL.classList.remove("is-invalid");
         dom.txtDiaChiGV.classList.remove("is-invalid");
+        clearTimeout(teacherDuplicateDebounceTimer);
+
+        if (isEditing && selectedRow) {
+            const hasChanges = (
+                d.Ho !== (selectedRow.dataset.ho || "").trim() ||
+                d.Ten !== (selectedRow.dataset.ten || "").trim() ||
+                d.SoDTLL !== (selectedRow.dataset.sdt || "").trim() ||
+                d.DiaChi !== (selectedRow.dataset.diachi || "").trim()
+            );
+
+            if (!hasChanges) {
+                updateTeacherButtonStates(
+                    true, "Đang ở chế độ hiệu chỉnh (Reset để thêm mới)",
+                    true, "Vui lòng thay đổi thông tin giáo viên trước khi lưu hiệu chỉnh."
+                );
+                return;
+            }
+        }
+
+        let hasClientErrorNew = false;
+        let hasTeacherIdErrorNew = false;
+
+        if (!d.MaGV) {
+            hasClientErrorNew = true;
+            hasTeacherIdErrorNew = true;
+        } else if (d.MaGV.length > 8) {
+            dom.errMaGV.textContent = "Mã giáo viên tối đa 8 ký tự.";
+            dom.txtMaGV.classList.add("is-invalid");
+            hasClientErrorNew = true;
+            hasTeacherIdErrorNew = true;
+        }
+
+        if (!isEditing && !hasTeacherIdErrorNew) {
+            const duplicateRow = [...dom.gvTable.querySelectorAll("tr")]
+                .find(r => !AppCommon.isPendingDelete(r) && (r.dataset.magv || "").trim().toUpperCase() === d.MaGV);
+
+            if (duplicateRow) {
+                const isPendingNew = newItems.some(x => (x.MaGV || "").trim().toUpperCase() === d.MaGV);
+                dom.errMaGV.textContent = isPendingNew
+                    ? "Mã GV này đã trùng trong danh sách tạm thời."
+                    : "Mã GV này đã tồn tại trong CSDL.";
+                dom.txtMaGV.classList.add("is-invalid");
+                updateTeacherButtonStates(
+                    true,
+                    isPendingNew ? "Mã GV bị trùng lặp trên danh sách tạm thời." : "Mã GV đã tồn tại trong CSDL.",
+                    true,
+                    "Vui lòng chọn giáo viên trên lưới để hiệu chỉnh"
+                );
+                return;
+            }
+        }
+
+        if (!d.Ho) {
+            hasClientErrorNew = true;
+        } else if (d.Ho.length > 50) {
+            dom.errHoGV.textContent = "Họ tối đa 50 ký tự.";
+            dom.txtHoGV.classList.add("is-invalid");
+            hasClientErrorNew = true;
+        }
+
+        if (!d.Ten) {
+            hasClientErrorNew = true;
+        } else if (d.Ten.length > 10) {
+            dom.errTenGV.textContent = "Tên tối đa 10 ký tự.";
+            dom.txtTenGV.classList.add("is-invalid");
+            hasClientErrorNew = true;
+        }
+
+        if (d.SoDTLL) {
+            const phoneRegex = /^(0[35789]\d{8}|02\d{9})$/;
+            if (!phoneRegex.test(d.SoDTLL)) {
+                dom.errSoDTLL.textContent = "Số điện thoại không hợp lệ (phải bắt đầu bằng 03, 05, 07, 08, 09 với 10 chữ số, hoặc 02 với 11 chữ số).";
+                dom.txtSoDTLL.classList.add("is-invalid");
+                hasClientErrorNew = true;
+            }
+        }
+
+        if (d.DiaChi && d.DiaChi.length > 40) {
+            dom.errDiaChiGV.textContent = "Địa chỉ tối đa 40 ký tự.";
+            dom.txtDiaChiGV.classList.add("is-invalid");
+            hasClientErrorNew = true;
+        }
+
+        if (!isEditing && !hasTeacherIdErrorNew) {
+            updateTeacherButtonStates(
+                true,
+                "Đang kiểm tra trùng lặp từ cơ sở dữ liệu...",
+                true,
+                "Vui lòng chọn giáo viên trên lưới để hiệu chỉnh"
+            );
+
+            teacherDuplicateDebounceTimer = setTimeout(() => {
+                const checkedMaGV = d.MaGV;
+                const checkUrl = `/GiaoVien/CheckDuplicateForCreate?maGV=${encodeURIComponent(checkedMaGV)}`;
+
+                fetch(checkUrl)
+                    .then(res => {
+                        if (!res.ok) throw new Error("Lỗi HTTP");
+                        return res.json();
+                    })
+                    .then(status => {
+                        if (duplicateRequestSeq !== teacherDuplicateRequestSeq || checkedMaGV !== getGiaoVienForm().MaGV) {
+                            return;
+                        }
+
+                        if (status.maGVDuplicate) {
+                            dom.txtMaGV.classList.add("is-invalid");
+                            dom.errMaGV.textContent = "Mã GV này đã tồn tại trong CSDL.";
+                            updateTeacherButtonStates(
+                                true,
+                                "Mã GV đã tồn tại trong CSDL.",
+                                true,
+                                "Vui lòng chọn giáo viên trên lưới để hiệu chỉnh"
+                            );
+                            return;
+                        }
+
+                        if (hasClientErrorNew) {
+                            updateTeacherButtonStates(
+                                true,
+                                "Thông tin giáo viên nhập không hợp lệ.",
+                                true,
+                                "Vui lòng chọn giáo viên trên lưới để hiệu chỉnh"
+                            );
+                            return;
+                        }
+
+                        updateTeacherButtonStates(false, "", true, "Vui lòng chọn giáo viên trên lưới để hiệu chỉnh");
+                    })
+                    .catch(error => {
+                        console.error("Lỗi kiểm tra trùng GV:", error);
+                        if (duplicateRequestSeq !== teacherDuplicateRequestSeq || checkedMaGV !== getGiaoVienForm().MaGV) {
+                            return;
+                        }
+
+                        if (hasClientErrorNew) {
+                            updateTeacherButtonStates(
+                                true,
+                                "Thông tin giáo viên nhập không hợp lệ.",
+                                true,
+                                "Vui lòng chọn giáo viên trên lưới để hiệu chỉnh"
+                            );
+                            return;
+                        }
+
+                        updateTeacherButtonStates(false, "", true, "Vui lòng chọn giáo viên trên lưới để hiệu chỉnh");
+                    });
+            }, 250);
+            return;
+        }
+
+        if (hasClientErrorNew) {
+            const reasonThem = isEditing ? "Đang ở chế độ hiệu chỉnh (Reset để thêm mới)" : "Thông tin giáo viên nhập không hợp lệ.";
+            const reasonSua = isEditing ? "Thông tin giáo viên nhập không hợp lệ." : "Vui lòng chọn giáo viên trên lưới để hiệu chỉnh";
+            updateTeacherButtonStates(true, reasonThem, true, reasonSua);
+            return;
+        }
+
+        updateTeacherButtonStates(true, "Đang ở chế độ hiệu chỉnh (Reset để thêm mới)", false, "");
+        return;
 
         if (isEditing && selectedRow) {
             const hasChanges = (
@@ -536,8 +699,10 @@
         }
 
         let hasClientError = false;
+        let hasTeacherIdError = false;
         if (!d.MaGV) {
             hasClientError = true;
+            hasTeacherIdError = true;
         } else if (d.MaGV.length > 8) {
             dom.errMaGV.textContent = "Mã giáo viên tối đa 8 ký tự.";
             dom.txtMaGV.classList.add("is-invalid");

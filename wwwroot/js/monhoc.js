@@ -14,6 +14,7 @@
 
     let debounceTimer = null;
     let searchDebounceTimer = null;
+    let subjectDuplicateRequestSeq = 0;
 
     // DOM Elements Cache
     const dom = {
@@ -512,6 +513,7 @@
         const subjectCode = dom.txtMaMH.value.trim().toUpperCase();
         const subjectName = dom.txtTenMH.value.trim();
         const isEditing = dom.txtMaMH.disabled;
+        const duplicateRequestSeq = ++subjectDuplicateRequestSeq;
         
         dom.errMaMH.textContent = "";
         dom.errTenMH.textContent = "";
@@ -610,6 +612,12 @@
             fetch(checkUrl)
                 .then(response => response.json())
                 .then(duplicateStatus => {
+                    const currentSubjectCode = dom.txtMaMH.value.trim().toUpperCase();
+                    const currentSubjectName = dom.txtTenMH.value.trim();
+                    if (duplicateRequestSeq !== subjectDuplicateRequestSeq || subjectCode !== currentSubjectCode || subjectName !== currentSubjectName) {
+                        return;
+                    }
+
                     let dbDuplicate = false;
                     let dbReasonMa = "";
                     let dbReasonTen = "";
@@ -659,6 +667,12 @@
                     }
                 })
                 .catch(error => {
+                    const currentSubjectCode = dom.txtMaMH.value.trim().toUpperCase();
+                    const currentSubjectName = dom.txtTenMH.value.trim();
+                    if (duplicateRequestSeq !== subjectDuplicateRequestSeq || subjectCode !== currentSubjectCode || subjectName !== currentSubjectName) {
+                        return;
+                    }
+
                     console.error("Lỗi kiểm tra trùng từ server:", error);
                     const isFormComplete = (subjectCode !== "" && subjectName !== "");
                     if (isFormComplete) {

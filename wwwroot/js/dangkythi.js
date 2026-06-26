@@ -84,6 +84,21 @@
             if (element) element.addEventListener("change", updateActionButtonStates);
         });
 
+        [dom.txtSoCau, dom.txtThoiGian].forEach(input => {
+            if (input) {
+                input.addEventListener("change", () => {
+                    const min = parseInt(input.min, 10);
+                    const max = parseInt(input.max, 10);
+                    const val = parseInt(input.value, 10);
+                    if (!isNaN(val)) {
+                        if (!isNaN(min) && val < min) input.value = min;
+                        if (!isNaN(max) && val > max) input.value = max;
+                    }
+                    updateActionButtonStates();
+                });
+            }
+        });
+
         if (dom.txtSearch) {
             dom.txtSearch.addEventListener("input", () => {
                 currentPage = 1;
@@ -444,6 +459,18 @@
         };
     }
 
+    function hasRegisteredFirstTime(maLop, maMH) {
+        const normLop = normalize(maLop);
+        const normMH = normalize(maMH);
+        if (!normLop || !normMH) return false;
+        return AppCommon.queryAll("tbody tr", dom.tbl).some(row => {
+            if (AppCommon.isPendingDelete(row)) return false;
+            return normalize(row.dataset.malop) === normLop &&
+                   normalize(row.dataset.mamh) === normMH &&
+                   Number(row.dataset.lan) === 1;
+        });
+    }
+
     function validateFormValues(values) {
         if (dom.selGiaoVien && !values.MaGV) {
             window.hienThongBao("Vui lòng chọn giáo viên.", "Thông báo");
@@ -451,6 +478,10 @@
         }
         if (!values.MaLop || !values.MaMH || !values.TrinhDo) {
             window.hienThongBao("Vui lòng chọn đầy đủ lớp, môn học và trình độ.", "Thông báo");
+            return false;
+        }
+        if (Number(values.Lan) === 2 && !hasRegisteredFirstTime(values.MaLop, values.MaMH)) {
+            window.hienThongBao("Không thể đăng ký thi lần 2 nếu chưa đăng ký thi lần 1.", "Thông báo");
             return false;
         }
         if (!values.NgayThi) {
@@ -461,12 +492,12 @@
             window.hienThongBao("Ngày thi không được ở trong quá khứ.", "Thông báo");
             return false;
         }
-        if (!Number.isInteger(values.SoCauThi) || values.SoCauThi <= 0) {
-            window.hienThongBao("Số câu thi không hợp lệ.", "Thông báo");
+        if (!Number.isInteger(values.SoCauThi) || values.SoCauThi < 10 || values.SoCauThi > 100) {
+            window.hienThongBao("Số câu thi phải từ 10 đến 100.", "Thông báo");
             return false;
         }
-        if (!Number.isInteger(values.ThoiGian) || values.ThoiGian <= 0) {
-            window.hienThongBao("Thời gian thi không hợp lệ.", "Thông báo");
+        if (!Number.isInteger(values.ThoiGian) || values.ThoiGian < 5 || values.ThoiGian > 60) {
+            window.hienThongBao("Thời gian thi phải từ 5 đến 60 phút.", "Thông báo");
             return false;
         }
         return true;
@@ -496,9 +527,40 @@
     function updateActionButtonStates() {
         const formValues = getFormValues();
         const hasRequiredTeacher = !dom.selGiaoVien || Boolean(formValues.MaGV);
-        const isComplete = Boolean(hasRequiredTeacher && formValues.MaLop && formValues.MaMH && formValues.TrinhDo && formValues.NgayThi && formValues.SoCauThi > 0 && formValues.ThoiGian > 0);
-        AppCommon.setDisabled(dom.btnThem, dom.wrapThem, !isComplete || Boolean(selectedTableRow), selectedTableRow ? "Reset để thêm lịch thi mới." : "Vui lòng nhập đủ thông tin.");
-        AppCommon.setDisabled(dom.btnSua, dom.wrapSua, !isComplete || !selectedTableRow, "Vui lòng chọn một lịch thi chưa thi để sửa.");
+        const isComplete = Boolean(hasRequiredTeacher && formValues.MaLop && formValues.MaMH && formValues.TrinhDo && formValues.NgayThi && formValues.SoCauThi >= 10 && formValues.SoCauThi <= 100 && formValues.ThoiGian >= 5 && formValues.ThoiGian <= 60);
+        
+        let disableThem = !isComplete || Boolean(selectedTableRow);
+        let reasonThem = selectedTableRow ? "Reset để thêm lịch thi mới." : "Vui lòng nhập đủ thông tin.";
+
+        if (!disableThem && Number(formValues.Lan) === 2) {
+            if (!hasRegisteredFirstTime(formValues.MaLop, formValues.MaMH)) {
+                disableThem = true;
+                reasonThem = "Không thể đăng ký thi lần 2 nếu chưa đăng ký thi lần 1.";
+            }
+        } else if (!selectedTableRow && isComplete === false) {
+            const isBasicInfoEntered = Boolean(hasRequiredTeacher && formValues.MaLop && formValues.MaMH && formValues.TrinhDo && formValues.NgayThi);
+            if (isBasicInfoEntered) {
+                if (formValues.SoCauThi < 10 || formValues.SoCauThi > 100) {
+                    reasonThem = "Số câu thi phải từ 10 đến 100.";
+                } else if (formValues.ThoiGian < 5 || formValues.ThoiGian > 60) {
+                    reasonThem = "Thời gian thi phải từ 5 đến 60 phút.";
+                }
+            }
+        }
+
+        let disableSua = !isComplete || !selectedTableRow;
+        let reasonSua = !selectedTableRow ? "Vui lòng chọn một lịch thi chưa thi để sửa." : "Vui lòng nhập đủ thông tin.";
+
+        if (selectedTableRow && isComplete === false) {
+            if (formValues.SoCauThi < 10 || formValues.SoCauThi > 100) {
+                reasonSua = "Số câu thi phải từ 10 đến 100.";
+            } else if (formValues.ThoiGian < 5 || formValues.ThoiGian > 60) {
+                reasonSua = "Thời gian thi phải từ 5 đến 60 phút.";
+            }
+        }
+
+        AppCommon.setDisabled(dom.btnThem, dom.wrapThem, disableThem, reasonThem);
+        AppCommon.setDisabled(dom.btnSua, dom.wrapSua, disableSua, reasonSua);
         if (dom.btnXoa) {
             dom.btnXoa.disabled = !selectedTableRow;
         }
